@@ -1,0 +1,59 @@
+InputScreen {
+    align: center middle;
+}
+
+InputScreen Grid {
+    width: 90%;
+    height: 80%;
+    grid-size: 2;
+    grid-rows: 1fr 3;
+    border: tall $primary;
+    background: $surface;
+    padding: 0 1;
+}
+
+InputScreen Grid #input_dialog {
+    column-span: 2;
+    margin-bottom: 1;
+
+    #input_title {
+        text-align: center;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #input_description {
+        text-align: center;
+        margin-bottom: 1;
+        text-style: italic;
+    }
+
+    #input_content {
+        height: 1fr;
+        padding: 1;
+
+        #input_field {
+            width: 1fr;
+            margin-top: 1;
+        }
+
+        RadioSet {
+            width: 1fr;
+            border: none;
+        }
+
+        RadioSet RadioButton {
+            border:round $background;
+        }
+
+        Checkbox {
+            width: 1fr;
+            border:round $background;
+        }
+    }
+}
+
+InputScreen Grid Button {
+    width: 1fr;
+    margin: 0 1;
+}

@@ -1,0 +1,31 @@
+LogScreen {
+    align: center middle;
+}
+
+#log_dialog {
+    width: 90%;
+    height: 90%;
+    border: tall $primary;
+    background: $surface;
+    padding: 0 1;
+}
+
+RichLog {
+    height: 1fr;
+    border: tall $panel;
+    padding-left: 1;
+}
+
+#log_controls {
+    height: auto;
+    padding: 0 1;
+    margin-top: 1;
+}
+
+#log_controls Checkbox {
+    width: 1fr;
+}
+
+#close_button {
+    width: 1fr;
+}

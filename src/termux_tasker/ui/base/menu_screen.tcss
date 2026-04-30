@@ -1,0 +1,16 @@
+#description {
+    width: 1fr;
+    margin: 1;
+    content-align: center middle;
+    border: tall $primary;
+    background: $surface;
+}
+
+Button {
+    width: 1fr;
+    margin: 1 2;
+}
+
+.spacer {
+    width: 1;
+}

@@ -1,0 +1,33 @@
+InfoScreen {
+    align: center middle;
+}
+
+#info_dialog {
+    width: 90%;
+    height: 80%;
+    border: tall $primary;
+    background: $surface;
+    padding: 0 2;
+}
+
+#info_message {
+    height: 1fr;
+    width: 1fr;
+    content-align: center middle;
+}
+
+#info_message.info {
+    color: $text;
+}
+
+#info_message.warning {
+    color: $warning;
+}
+
+#info_message.error {
+    color: $error;
+}
+
+#info_button {
+    width: 1fr;
+}
