@@ -68,11 +68,11 @@ class MenuScreen(Screen):
     def on_key(self, event) -> None:
         """Handle key presses for navigation."""
         if event.key == "up":
+            event.stop()
             self.focus_previous(Button)
-            event.stop()
         elif event.key == "down":
-            self.focus_next(Button)
             event.stop()
+            self.focus_next(Button)
 
     def on_mount(self) -> None:
         pass
@@ -121,12 +121,14 @@ class FileBrowserScreen(ModalScreen[Path]):
             self.query_one("#select", Button).disabled = True
 
     @on(Button.Pressed, "#select")
-    def on_select(self) -> None:
+    def on_select(self, event: Button.Pressed) -> None:
+        event.stop()
         if self._selected_path:
             self.dismiss(self._selected_path)
 
     @on(Button.Pressed, "#cancel")
-    def on_cancel(self) -> None:
+    def on_cancel(self, event: Button.Pressed) -> None:
+        event.stop()
         self.dismiss(None)
 
 
@@ -201,8 +203,9 @@ class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
             yield Button("Ok", id="ok", variant="primary")
 
     @on(Button.Pressed, "#ok")
-    def handle_ok(self) -> None:
+    def handle_ok(self, event: Button.Pressed) -> None:
         """Collect and return the selected value(s)."""
+        event.stop()
         if self.input_type == "text":
             self.dismiss(self.query_one(Input).value)
         elif self.input_type == "radio":
@@ -218,8 +221,9 @@ class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
             self.dismiss(selected)
 
     @on(Button.Pressed, "#cancel")
-    def handle_cancel(self) -> None:
+    def handle_cancel(self, event: Button.Pressed) -> None:
         """Close the dialog without returning a value."""
+        event.stop()
         self.dismiss(None)
 
 
@@ -248,7 +252,53 @@ class InfoScreen(ModalScreen[None]):
             yield Button(self.button_text, id="info_button", variant="primary")
 
     @on(Button.Pressed, "#info_button")
-    def on_ok(self) -> None:
+    def on_ok(self, event: Button.Pressed) -> None:
+        event.stop()
+        self.dismiss(None)
+
+
+class ConfirmationScreen(ModalScreen[Union[str, None]]):
+    """A modal screen for displaying a confirmation message with two action buttons."""
+
+    CSS_PATH = "confirmation_screen.tcss"
+
+    def __init__(
+            self,
+            message: str,
+            ok_button_text: str = "Ok",
+            cancel_button_text: str = "Cancel",
+            ok_button_id: str = "ok_button",  # Renamed default ID
+            name: str | None = None,
+            id: str | None = None,
+            classes: str | None = None,
+    ) -> None:
+        """Initialize the confirmation screen.
+
+        Args:
+            message: The message to display to the user.
+            ok_button_text: The text for the 'Ok' button.
+            cancel_button_text: The text for the 'Cancel' button.
+            ok_button_id: The ID to use for the 'Ok' button, which is also the value
+                          dismissed with if 'Ok' is pressed.
+        """
+        super().__init__(name=name, id=id, classes=classes)
+        self.message = message
+        self.ok_button_text = ok_button_text
+        self.cancel_button_text = cancel_button_text
+        self.ok_button_id = ok_button_id
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="confirmation_dialog"):
+            yield Static(self.message, id="confirmation_message")
+            with Horizontal(id="confirmation_buttons"):
+                yield Button(self.cancel_button_text, id="cancel_button", variant="error")
+                yield Button(self.ok_button_text, id=self.ok_button_id, variant="primary")
+
+    @on(Button.Pressed)
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Dismiss the screen with None."""
+        if event.button.id == "cancel_button":
+            event.stop()
         self.dismiss(None)
 
 
@@ -331,7 +381,8 @@ class LogScreen(ModalScreen[None]):
             log.write(self.content.read_text())
 
     @on(Button.Pressed, "#close_button")
-    def on_close(self) -> None:
+    def on_close(self, event: Button.Pressed) -> None:
+        event.stop()
         if self._timer:
             self._timer.stop()
         self.dismiss(None)
