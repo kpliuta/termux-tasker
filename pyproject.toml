@@ -1,7 +1,7 @@
 [project]
 name = "termux-tasker"
 version = "0.1.0"
-description = ""
+description = "A TUI tool for managing Termux automation tasks with Tasker integration"
 authors = [
     { name = "kpliuta", email = "9212935+kpliuta@users.noreply.github.com" }
 ]
@@ -9,17 +9,27 @@ license = "MIT"
 readme = "README.md"
 requires-python = ">=3.13,<4.0"
 dependencies = [
-    "textual (>=8.2.4,<9.0.0)"
+    "textual (>=8.2.4,<9.0.0)",
+    "tomlkit (>=0.13.0,<1.0.0)",
+    "packaging (>=24.0,<25.0)"
 ]
+
+[project.scripts]
+termux-tasker = "termux_tasker.app:main"
 
 [dependency-groups]
 dev = [
-    "textual-dev (>=1.8.0,<2.0.0)"
+    "textual-dev (>=1.8.0,<2.0.0)",
+    "pytest (>=8.0.0,<9.0.0)",
+    "pytest-asyncio (>=0.24.0,<1.0.0)"
 ]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [tool.poetry]
 packages = [{ include = "termux_tasker", from = "src" }]

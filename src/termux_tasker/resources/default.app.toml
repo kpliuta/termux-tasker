@@ -1,0 +1,2 @@
+[settings.termux]
+upgrade-on-startup = false

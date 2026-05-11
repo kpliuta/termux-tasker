@@ -1,0 +1,14 @@
+[general]
+id = "sh_runner_task"
+name = "Simple sh runner task"
+description = "A demo task for the Simple sh runner. Prints a countdown from 10 to 1."
+version = "10"
+runner_id = "sh_runner"
+runner_min_version = ">=1.1.0,<2.0.0"
+default_timeout = "1m"
+
+[[property]]
+name = "task-property-1"
+description = "Description of Property 1"
+input-type = "text"
+optional = false

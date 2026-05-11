@@ -1,0 +1,16 @@
+#!/bin/sh
+echo "Runner properties:"
+echo "  property-1: $VAR_PROPERTY_1"
+echo "  property-2: $VAR_PROPERTY_2"
+echo "  property-3: $VAR_PROPERTY_3"
+echo "  property-4: $VAR_PROPERTY_4"
+echo ""
+echo "Task property: $VAR_TASK_PROPERTY_1"
+echo ""
+echo "Countdown:"
+i=10
+while [ $i -ge 1 ]; do
+    echo $i
+    i=$((i - 1))
+    sleep 1
+done

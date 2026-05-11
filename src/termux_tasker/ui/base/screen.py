@@ -4,21 +4,29 @@ from typing import Mapping, Sequence, Union
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll, Grid, Vertical, Horizontal
+from textual.events import ScreenResume
+from textual.reactive import reactive
 from textual.screen import Screen, ModalScreen
 from textual.widgets import (
     Header, Footer, Button, Static, DirectoryTree, Input,
     Checkbox, RadioButton, RadioSet, LoadingIndicator, RichLog
 )
 
+_HERE = Path(__file__).parent
+
 
 class MenuScreen(Screen):
     """A screen with a menu of buttons."""
 
-    CSS_PATH = "menu_screen.tcss"
+    CSS_PATH = _HERE / "menu_screen.tcss"
+    BINDINGS = [("escape", "press_back", "Back")]
+
+    menu_items: reactive[dict[str, str]] = reactive({}, init=False)
+    description: reactive[str | None] = reactive(None, init=False)
 
     def __init__(
             self,
-            menu_items: Mapping[str, str],
+            menu_items: dict[str, str],
             description: str | None = None,
             show_back_button: bool = False,
             show_exit_button: bool = False,
@@ -26,14 +34,6 @@ class MenuScreen(Screen):
             id: str | None = None,
             classes: str | None = None,
     ) -> None:
-        """Initialize the menu screen.
-
-        Args:
-            menu_items: A mapping of button IDs to their labels.
-            description: Optional multiline description text.
-            show_back_button: Whether to show a 'Back' button.
-            show_exit_button: Whether to show an 'Exit' button.
-        """
         super().__init__(name=name, id=id, classes=classes)
         self.menu_items = menu_items
         self.description = description
@@ -46,8 +46,11 @@ class MenuScreen(Screen):
             if self.description:
                 yield Static(self.description, id="description")
 
-            for btn_id, label in self.menu_items.items():
-                yield Button(label, id=btn_id, variant="default")
+            for label, btn_id in self.menu_items.items():
+                if btn_id:
+                    yield Button(label, id=btn_id, variant="default")
+                else:
+                    yield Button(label, variant="default", disabled=True)
 
             yield Static(classes="spacer")
 
@@ -59,11 +62,59 @@ class MenuScreen(Screen):
 
         yield Footer()
 
+    def watch_menu_items(self) -> None:
+        try:
+            scroll = self.query_one(VerticalScroll)
+        except Exception:
+            return
+        existing_ids = {btn.id for btn in scroll.query(Button) if btn.id}
+        needed_ids = {v for v in self.menu_items.values() if v}
+        if needed_ids == existing_ids - {"back", "exit"}:
+            id_to_label = {v: k for k, v in self.menu_items.items()}
+            for btn in scroll.query(Button):
+                if btn.id in id_to_label:
+                    btn.label = id_to_label[btn.id]
+        else:
+            self.run_worker(self._rebuild_menu(scroll))
+
+    async def _rebuild_menu(self, scroll: VerticalScroll) -> None:
+        await scroll.remove_children()
+
+        desc = Static(self.description or "", id="description")
+        desc.display = bool(self.description)
+        scroll.mount(desc)
+
+        for label, btn_id in self.menu_items.items():
+            if btn_id:
+                btn = Button(label, id=btn_id, variant="default")
+            else:
+                btn = Button(label, variant="default", disabled=True)
+            scroll.mount(btn)
+
+        scroll.mount(Static(classes="spacer"))
+        if self.show_back_button:
+            scroll.mount(Button("Back", id="back", variant="error"))
+        if self.show_exit_button:
+            scroll.mount(Button("Exit", id="exit", variant="error"))
+
+    def watch_description(self, description: str | None) -> None:
+        try:
+            desc = self.query_one("#description", Static)
+            desc.update(description or "")
+            desc.display = bool(description)
+        except Exception:
+            pass
+
     @on(Button.Pressed, "#back")
     def on_back_button_pressed(self, event: Button.Pressed) -> None:
         """Handle back button presses."""
         event.stop()
         self.app.pop_screen()
+
+    def action_press_back(self) -> None:
+        """Handle Esc key — pop screen if back button is shown."""
+        if self.show_back_button:
+            self.app.pop_screen()
 
     def on_key(self, event) -> None:
         """Handle key presses for navigation."""
@@ -77,11 +128,18 @@ class MenuScreen(Screen):
     def on_mount(self) -> None:
         pass
 
+    def on_screen_resume(self, event: ScreenResume) -> None:
+        self._refresh()
+
+    def _refresh(self) -> None:
+        pass
+
 
 class FileBrowserScreen(ModalScreen[Path]):
     """A modal screen for browsing and selecting files or folders."""
 
     CSS_PATH = "file_browser_screen.tcss"
+    BINDINGS = [("escape", "cancel", "Cancel")]
 
     def __init__(
             self,
@@ -131,11 +189,15 @@ class FileBrowserScreen(ModalScreen[Path]):
         event.stop()
         self.dismiss(None)
 
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
 
 class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
     """A modal screen for gathering user input via text, radio buttons, or checkboxes."""
 
     CSS_PATH = "input_screen.tcss"
+    BINDINGS = [("escape", "cancel", "Cancel")]
 
     def __init__(
             self,
@@ -226,11 +288,15 @@ class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
         event.stop()
         self.dismiss(None)
 
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
 
 class InfoScreen(ModalScreen[None]):
     """A modal screen for displaying messages with different severity levels."""
 
     CSS_PATH = "info_screen.tcss"
+    BINDINGS = [("escape", "dismiss", "Close")]
 
     def __init__(
             self,
@@ -256,11 +322,15 @@ class InfoScreen(ModalScreen[None]):
         event.stop()
         self.dismiss(None)
 
+    def action_dismiss(self) -> None:
+        self.dismiss(None)
+
 
 class ConfirmationScreen(ModalScreen[Union[str, None]]):
     """A modal screen for displaying a confirmation message with two action buttons."""
 
     CSS_PATH = "confirmation_screen.tcss"
+    BINDINGS = [("escape", "cancel", "Cancel")]
 
     def __init__(
             self,
@@ -296,9 +366,14 @@ class ConfirmationScreen(ModalScreen[Union[str, None]]):
 
     @on(Button.Pressed)
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Dismiss the screen with None."""
+        """Dismiss the screen with ok_button_id or None."""
+        event.stop()
         if event.button.id == "cancel_button":
-            event.stop()
+            self.dismiss(None)
+        else:
+            self.dismiss(self.ok_button_id)
+
+    def action_cancel(self) -> None:
         self.dismiss(None)
 
 
@@ -331,6 +406,7 @@ class LogScreen(ModalScreen[None]):
     """A modal screen for displaying logs with an optional 'follow' feature."""
 
     CSS_PATH = "log_screen.tcss"
+    BINDINGS = [("escape", "close", "Close")]
 
     def __init__(
             self,
@@ -344,29 +420,33 @@ class LogScreen(ModalScreen[None]):
         self.content = content
         self.show_follow = show_follow and isinstance(content, Path)
         self._timer = None
+        self._file_pos = 0
 
     def compose(self) -> ComposeResult:
         with Vertical(id="log_dialog"):
-            yield RichLog(highlight=True, markup=True)
+            yield RichLog(highlight=True, markup=False)
             with Horizontal(id="log_controls"):
                 if self.show_follow:
                     yield Checkbox("Follow", id="follow_checkbox")
+                    yield Button("Reset", id="reset_button", variant="default")
                 yield Button("Close", id="close_button", variant="primary")
 
     def on_mount(self) -> None:
         log = self.query_one(RichLog)
         if isinstance(self.content, Path):
             if self.content.exists():
-                log.write(self.content.read_text())
+                with open(self.content, "rb") as f:
+                    data = f.read()
+                    log.write(data.decode(errors="replace").rstrip("\n"))
+                    self._file_pos = f.tell()
             else:
-                log.write(f"[red]File not found: {self.content}[/]")
+                log.write(f"File not found: {self.content}")
         else:
             log.write(self.content)
 
     @on(Checkbox.Changed, "#follow_checkbox")
     def on_follow_changed(self, event: Checkbox.Changed) -> None:
         if event.value:
-            # Simple follow implementation using a timer
             self._timer = self.set_interval(1.0, self._update_log_from_file)
         else:
             if self._timer:
@@ -376,13 +456,28 @@ class LogScreen(ModalScreen[None]):
     def _update_log_from_file(self) -> None:
         if isinstance(self.content, Path) and self.content.exists():
             log = self.query_one(RichLog)
-            # This is a naive implementation; in a real app, you'd track file offset
-            log.clear()
-            log.write(self.content.read_text())
+            with open(self.content, "rb") as f:
+                f.seek(self._file_pos)
+                data = f.read()
+                self._file_pos = f.tell()
+            if data:
+                log.write(data.decode(errors="replace").rstrip("\n"))
+
+    @on(Button.Pressed, "#reset_button")
+    def on_reset(self, event: Button.Pressed) -> None:
+        event.stop()
+        if isinstance(self.content, Path) and self.content.exists():
+            self._file_pos = self.content.stat().st_size
+            self.query_one(RichLog).clear()
 
     @on(Button.Pressed, "#close_button")
     def on_close(self, event: Button.Pressed) -> None:
         event.stop()
+        if self._timer:
+            self._timer.stop()
+        self.dismiss(None)
+
+    def action_close(self) -> None:
         if self._timer:
             self._timer.stop()
         self.dismiss(None)

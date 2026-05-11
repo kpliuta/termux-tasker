@@ -1,0 +1,13 @@
+[general]
+id = "sh_runner_task_malformed_wrong_runner_version"
+name = "Wrong Runner Version"
+version = "1"
+runner_id = "sh_runner"
+runner_min_version = ">=10.1.0"
+default_timeout = "1m"
+
+[[property]]
+name = "task-property-1"
+description = "Description of Property 1"
+input-type = "text"
+optional = false

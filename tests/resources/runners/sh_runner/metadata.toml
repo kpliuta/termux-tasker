@@ -1,0 +1,45 @@
+[general]
+id = "sh_runner"
+name = "Simple sh runner"
+description = "A simple shell-based runner. Executes shell scripts as tasks."
+version = "1.1.0"
+app_min_version = ">=0.1.0"
+
+[[property]]
+name = "property-1"
+description = "Description of Property 1"
+input-type = "text"
+optional = false
+
+[[property]]
+name = "property-2"
+description = "Description of Property 2"
+input-type = "text"
+optional = false
+default = "Property 1 Default"
+
+[[property]]
+name = "property-3"
+description = "Description of Property 3"
+input-type = "radio"
+optional = false
+options = ["one", "two", "three"]
+
+[[property]]
+name = "property-4"
+description = "Description of Property 4"
+input-type = "checkbox"
+optional = false
+options = ["one", "two", "three"]
+
+[[task-validator]]
+command = "test -f {task_dir}/required_file"
+
+[exec]
+initialization = "echo initialization && echo \"property-1 value: $VAR_PROPERTY_1\" && sleep 2"
+before-exec = "echo before-exec && sleep 2"
+before-task = "echo before-task && sleep 2"
+task-exec = "sh {task_dir}/required_file"
+after-task = "echo after-task && sleep 2"
+after-exec = "echo after-exec && sleep 2"
+termination = "echo termination && sleep 2"
