@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 from termux_tasker.config import (
     RunnerMetadata,
     RunnerSettings,
+    TaskMetadata,
     PropertyDef,
 )
 from termux_tasker.runner_process import RunnerProcess
@@ -128,7 +129,7 @@ def get_installed_task_versions(
             continue
         meta_path = task_dir / "metadata.toml"
         if meta_path.exists():
-            meta = RunnerMetadata.load(meta_path)
+            meta = TaskMetadata.load(meta_path)
             if meta.general.id == task_id:
                 versions.add(meta.general.version)
     return versions

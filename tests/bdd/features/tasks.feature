@@ -14,7 +14,7 @@ Feature: Tasks Screen
     Given the Tasks screen is shown
     And there is at least one installed task
     When I press a task button
-    Then the Task Menu screen is pushed
+    Then the Task Menu screen is shown
     And the title is "Task"
     And the subtitle is the task's name
 
@@ -26,7 +26,7 @@ Feature: Tasks Screen
   Scenario: Navigate to install task flow
     Given the Tasks screen is shown
     When I press "Install Task" button
-    Then the Task Type screen is pushed
+    Then the Task Type screen is shown
     And it contains "Bundled" button
     And it contains "GitHub URL" button
     And it contains "Local Storage" button

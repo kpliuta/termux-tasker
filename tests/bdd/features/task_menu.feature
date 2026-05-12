@@ -69,4 +69,4 @@ Feature: Task Menu
     Given the Task Menu screen is shown
     When I press "Update" button
     Then the task directory is copied to a temporary location
-    And the Install Task Version screen is pushed
+    And the Install Task Version screen is shown

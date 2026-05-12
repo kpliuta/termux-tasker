@@ -8,53 +8,52 @@ def then_main_menu_shown(pilot) -> None:
     ui(pilot).assert_screen(MainMenuScreen)
 
 
-@then("the Runners screen is pushed")
-def then_runners_screen_pushed(pilot) -> None:
+@then("the Runners screen is shown")
+def then_runners_screen_shown(pilot) -> None:
     ui(pilot).assert_screen(RunnersScreen)
 
 
-@then("the Settings screen is pushed")
-def then_settings_pushed(pilot) -> None:
+@then("the Settings screen is shown")
+def then_settings_shown(pilot) -> None:
     ui(pilot).assert_screen(SettingsScreen)
 
 
-@then("the Runner Menu screen is pushed")
 @then("the Runner Menu screen is shown")
 @then("the Runner Menu screen is shown again")
-def then_runner_menu_pushed(pilot) -> None:
+def then_runner_menu_shown(pilot) -> None:
     ui(pilot).assert_screen(RunnerMenuScreen)
 
 
-@then("the Runner Type screen is pushed")
-def then_runner_type_pushed(pilot) -> None:
+@then("the Runner Type screen is shown")
+def then_runner_type_shown(pilot) -> None:
     ui(pilot).assert_screen(RunnerTypeScreen)
 
 
-@then("the Tasks screen is pushed")
-def then_tasks_pushed(pilot) -> None:
+@then("the Tasks screen is shown")
+def then_tasks_shown(pilot) -> None:
     ui(pilot).assert_screen(TasksMenuScreen)
 
 
-@then("the Task Menu screen is pushed")
-def then_task_menu_pushed(pilot) -> None:
+@then("the Task Menu screen is shown")
+def then_task_menu_shown(pilot) -> None:
     ui(pilot).assert_screen(TaskMenuScreen)
 
 
-@then("the Task Type screen is pushed")
-def then_task_type_pushed(pilot) -> None:
+@then("the Task Type screen is shown")
+def then_task_type_shown(pilot) -> None:
     ui(pilot).assert_screen(TaskTypeScreen)
 
 
-@then("the Install Runner Version screen is pushed")
-def then_install_runner_version_pushed(pilot) -> None:
+@then("the Install Runner Version screen is shown")
+def then_install_runner_version_shown(pilot) -> None:
     from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
 
     ui(pilot).assert_screen(InstallRunnerVersionScreen)
 
 
-@then("the Install Runner screen is pushed")
-@then("the Install Runner screen is pushed with the cloned folder")
-def then_install_runner_screen_pushed(pilot) -> None:
+@then("the Install Runner screen is shown")
+@then("the Install Runner screen is shown with the cloned folder")
+def then_install_runner_screen_shown(pilot) -> None:
     from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
 
     for _ in range(50):
@@ -64,28 +63,28 @@ def then_install_runner_screen_pushed(pilot) -> None:
     ui(pilot).assert_screen(InstallRunnerScreen)
 
 
-@then("the Install Task Version screen is pushed")
-def then_install_task_version_pushed(pilot) -> None:
+@then("the Install Task Version screen is shown")
+def then_install_task_version_shown(pilot) -> None:
     from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
 
     ui(pilot).assert_screen(InstallTaskVersionScreen)
 
 
-@then("the Install Task screen is pushed")
-def then_install_task_pushed(pilot) -> None:
+@then("the Install Task screen is shown")
+def then_install_task_shown(pilot) -> None:
     from termux_tasker.ui.screens.install_task import InstallTaskScreen
 
     ui(pilot).assert_screen(InstallTaskScreen)
 
 
-@then("the Bundled Runner screen is pushed")
+@then("the Bundled Runner screen is shown")
 def then_bundled_runner_screen(pilot) -> None:
     from termux_tasker.ui.screens.bundled_runner import BundledRunnerScreen
 
     ui(pilot).assert_screen(BundledRunnerScreen)
 
 
-@then("the Bundled Task screen is pushed")
+@then("the Bundled Task screen is shown")
 def then_bundled_task_screen(pilot) -> None:
     from termux_tasker.ui.screens.bundled_task import BundledTaskScreen
 
@@ -643,9 +642,9 @@ def then_error_flow(pilot) -> None:
     )
 
 
-@then("a LogScreen is pushed with the runner's stdout file")
-@then("a LogScreen is pushed with the runner's metadata file")
-def then_log_screen_pushed(pilot) -> None:
+@then("a LogScreen is shown with the runner's stdout file")
+@then("a LogScreen is shown with the runner's metadata file")
+def then_log_screen_shown(pilot) -> None:
     ui(pilot).assert_screen(LogScreen)
 
 

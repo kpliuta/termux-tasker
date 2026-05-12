@@ -63,13 +63,7 @@ class TermuxTaskerApp(App[None]):
                 shutil.copy2(default_path, config_path)
             else:
                 AppConfig().save(config_path)
-        else:
-            cfg = AppConfig.load(config_path)
-            if default_path.exists():
-                default_cfg = AppConfig.load(default_path)
-                if default_cfg.settings.upgrade_on_startup != cfg.settings.upgrade_on_startup:
-                    cfg.settings.upgrade_on_startup = default_cfg.settings.upgrade_on_startup
-                    cfg.save(config_path)
+
 
     def on_exit_app(self) -> None:
         self.state.cleanup()

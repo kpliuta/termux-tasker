@@ -6,7 +6,7 @@ Feature: Main Menu Navigation
   Scenario: Navigate to Runners screen from main menu
     Given the main menu screen is shown
     When I press "Show Runners" button
-    Then the Runners screen is pushed
+    Then the Runners screen is shown
     And the title is "Runners"
     And it contains "Install Runner" button
     And it contains "Back" button
@@ -14,7 +14,7 @@ Feature: Main Menu Navigation
   Scenario: Navigate to Settings screen from main menu
     Given the main menu screen is shown
     When I press "Settings" button
-    Then the Settings screen is pushed
+    Then the Settings screen is shown
     And the title is "Settings"
     And it shows "Termux upgrade on startup" option
     And it contains "Back" button

@@ -13,14 +13,14 @@ Feature: Runners Screen
     Given the Runners screen is shown
     And there is at least one installed runner
     When I press a runner button
-    Then the Runner Menu screen is pushed
+    Then the Runner Menu screen is shown
     And the title is "Runner"
     And the subtitle is the runner's name
 
   Scenario: Navigate to install runner flow
     Given the Runners screen is shown
     When I press "Install Runner" button
-    Then the Runner Type screen is pushed
+    Then the Runner Type screen is shown
     And it contains "Bundled" button
     And it contains "GitHub URL" button
     And it contains "Local Storage" button

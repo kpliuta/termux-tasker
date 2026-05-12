@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,8 @@ from termux_tasker.ui.screens._utils import (
     is_property_value_empty,
 )
 
+_TIMEOUT_RE = re.compile(r"^[0-9]+[hms]$")
+
 
 class TaskMenuScreen(MenuScreen):
     def __init__(self, task_dir: Path) -> None:
@@ -40,16 +43,6 @@ class TaskMenuScreen(MenuScreen):
         self.title = "Task"
         self.sub_title = meta.general.name
         self._poll_timer: Any = None
-
-    def action_press_back(self) -> None:
-        self.app.pop_screen()
-        self.app.pop_screen()
-
-    @on(Button.Pressed, "#back")
-    def on_back_button_pressed(self, event: Button.Pressed) -> None:
-        event.stop()
-        self.app.pop_screen()
-        self.app.pop_screen()
 
     def on_mount(self) -> None:
         self._start_polling()
@@ -150,26 +143,54 @@ class TaskMenuScreen(MenuScreen):
 
     @on(Button.Pressed, "#set_timeout")
     def on_set_timeout(self, event: Button.Pressed) -> None:
-        event.stop()
-        settings = TaskSettings.load(self.task_dir / "settings.toml")
 
-        def on_result(result: Any) -> None:
-            if result is not None:
-                settings = TaskSettings.load(self.task_dir / "settings.toml")
-                settings.general.timeout = str(result)
-                settings.save(self.task_dir / "settings.toml")
-                meta = TaskMetadata.load(self.task_dir / "metadata.toml")
-                settings = TaskSettings.load(self.task_dir / "settings.toml")
-                self._refresh_ui(meta, settings)
+        def _show_input() -> None:
+            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            self.app.push_screen(
+                InputScreen(
+                    title="Timeout",
+                    input_type="text",
+                    current_value=settings.general.timeout,
+                ),
+                _on_result,
+            )
 
-        self.app.push_screen(
-            InputScreen(
-                title="Timeout",
-                input_type="text",
-                current_value=settings.general.timeout,
-            ),
-            on_result,
-        )
+        def _warn_empty() -> None:
+            self.app.push_screen(
+                InfoScreen(
+                    message="Timeout is required and must have a value.",
+                    severity="warning",
+                ),
+                lambda _: _show_input(),
+            )
+
+        def _warn_format() -> None:
+            self.app.push_screen(
+                InfoScreen(
+                    message="Invalid timeout format. Use e.g. 30s, 5m, 1h.",
+                    severity="warning",
+                ),
+                lambda _: _show_input(),
+            )
+
+        def _on_result(result: Any) -> None:
+            if result is None:
+                return
+            val = str(result).strip()
+            if not val:
+                _warn_empty()
+                return
+            if not _TIMEOUT_RE.match(val):
+                _warn_format()
+                return
+            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            settings.general.timeout = val
+            settings.save(self.task_dir / "settings.toml")
+            meta = TaskMetadata.load(self.task_dir / "metadata.toml")
+            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            self._refresh_ui(meta, settings)
+
+        _show_input()
 
     @on(Button.Pressed, "#update")
     def on_update(self, event: Button.Pressed) -> None:

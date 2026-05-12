@@ -49,7 +49,7 @@ Feature: Runner Menu
   Scenario: Navigate to Tasks from Runner menu
     Given the Runner Menu screen is shown
     When I press "Show Tasks" button
-    Then the Tasks screen is pushed
+    Then the Tasks screen is shown
     And the title is "Tasks"
     And it shows all installed tasks for this runner (if any)
     And it contains "Install Task" button
@@ -58,20 +58,20 @@ Feature: Runner Menu
   Scenario: View runner logs
     Given the Runner Menu screen is shown
     When I press "Show Runner Logs" button
-    Then a LogScreen is pushed with the runner's stdout file
+    Then a LogScreen is shown with the runner's stdout file
     And follow mode is enabled
 
   Scenario: View runner metadata
     Given the Runner Menu screen is shown
     When I press "Show metadata.toml" button
-    Then a LogScreen is pushed with the runner's metadata file
+    Then a LogScreen is shown with the runner's metadata file
     And follow mode is disabled
 
   Scenario: Update a runner
     Given the Runner Menu screen is shown
     When I press "Update" button
     Then the runner directory is copied to a temporary location
-    And the Install Runner Version screen is pushed
+    And the Install Runner Version screen is shown
 
   Scenario: Set a runner property
     Given the Runner Menu screen is shown

@@ -6,7 +6,7 @@ Feature: Runner Installation
   Scenario: Install runner from bundled list
     Given the Runner Type screen is shown
     When I press "Bundled" button
-    Then the Bundled Runner screen is pushed
+    Then the Bundled Runner screen is shown
     And bundled runners are fetched from `bundled_runners.toml`
     And each runner repo is cloned to a temporary directory
     And each runner shows its name with "[Installed]" suffix if already installed
@@ -19,7 +19,7 @@ Feature: Runner Installation
     When I enter a valid GitHub URL and press Ok
     Then the repository is cloned to a temporary directory
     And metadata is validated (existence + essentials)
-    Then the Install Runner screen is pushed with the cloned folder
+    Then the Install Runner screen is shown with the cloned folder
 
   Scenario: Install runner from local storage
     Given the Runner Type screen is shown
@@ -28,12 +28,12 @@ Feature: Runner Installation
     When I select a folder and press "Select"
     Then the folder is copied to a temporary directory
     And metadata is validated (existence + essentials)
-    Then the Install Runner screen is pushed
+    Then the Install Runner screen is shown
 
   Scenario: Install runner with version selection (git source)
     Given the Install Runner screen is shown for a git-based runner
     When I press "Install" button
-    Then the Install Runner Version screen is pushed
+    Then the Install Runner Version screen is shown
     And a loading screen "Fetching <name> versions" is shown
     Then the main branch and all tags are shown as version buttons
     And already-installed versions show "[Installed]" suffix
@@ -43,7 +43,7 @@ Feature: Runner Installation
   Scenario: Install runner with version selection (local source)
     Given the Install Runner screen is shown for a local runner
     When I press "Install" button
-    Then the Install Runner Version screen is pushed
+    Then the Install Runner Version screen is shown
     And a single version button is shown for the local version
     And "[Installed]" suffix shown if already installed
 

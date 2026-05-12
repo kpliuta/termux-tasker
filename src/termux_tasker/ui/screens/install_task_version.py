@@ -33,23 +33,6 @@ from termux_tasker.ui.screens._utils import (
 )
 
 
-def _count_installed_task_versions(
-    tasks_dir: Path, task_id: str
-) -> set[str]:
-    versions: set[str] = set()
-    if not tasks_dir.exists():
-        return versions
-    for task_dir in tasks_dir.iterdir():
-        if not task_dir.is_dir():
-            continue
-        meta_path = task_dir / "metadata.toml"
-        if meta_path.exists():
-            meta = TaskMetadata.load(meta_path)
-            if meta.general.id == task_id:
-                versions.add(meta.general.version)
-    return versions
-
-
 class InstallTaskVersionScreen(MenuScreen):
     def __init__(self, runner_dir: Path, tmp_task_folder: Path) -> None:
         self.runner_dir = runner_dir
@@ -73,7 +56,7 @@ class InstallTaskVersionScreen(MenuScreen):
         tmp_folder = self.tmp_task_folder
         is_git = (tmp_folder / ".git").exists()
 
-        installed_versions = _count_installed_task_versions(
+        installed_versions = get_installed_task_versions(
             self.runner_dir / "tasks", meta.general.id
         )
 

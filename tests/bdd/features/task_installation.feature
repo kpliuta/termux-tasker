@@ -6,7 +6,7 @@ Feature: Task Installation
   Scenario: Install task from bundled list
     Given the Task Type screen is shown
     When I press "Bundled" button
-    Then the Bundled Task screen is pushed
+    Then the Bundled Task screen is shown
     And bundled tasks are fetched from the runner's `bundled.toml`
     And each task repository is cloned
     And the runner's task validator is run to check metadata
@@ -18,7 +18,7 @@ Feature: Task Installation
     When I enter a valid GitHub URL and press Ok
     Then the repository is cloned
     And metadata is validated
-    Then the Install Task screen is pushed
+    Then the Install Task screen is shown
 
   Scenario: Install task from local storage
     Given the Task Type screen is shown
@@ -27,16 +27,16 @@ Feature: Task Installation
     When I select a folder and press "Select"
     Then the folder is copied to a temporary directory
     And metadata is validated
-    Then the Install Task screen is pushed
+    Then the Install Task screen is shown
 
   Scenario: Install task - post-install navigation
     Given a task is successfully installed
     Then the install screens are popped back to the Runner Menu screen
-    And the Tasks screen is pushed
+    And the Tasks screen is shown
     And the newly installed task is visible in the list
 
-  Scenario: Navigate back from Task Menu to Runner Menu
+  Scenario: Navigate back from Task Menu to Tasks Menu
     Given the Task Menu screen is shown for an installed task
     When I press "Back" button (or Escape)
     Then the screen is popped
-    And the Runner Menu screen is shown
+    And the Tasks screen is shown

@@ -47,6 +47,12 @@ poetry run python -m pytest tests/unit/ -v
 poetry run python -m pytest tests/bdd/ -v
 ```
 
+Run a particular BDD scenario by name (pytest -k filters):
+
+```
+poetry run python -m pytest tests/bdd/ -v -k "navigate_back_from_task_menu_to_tasks_menu"
+```
+
 ### All tests (126)
 
 ```
