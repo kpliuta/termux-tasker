@@ -32,7 +32,7 @@ class TasksMenuScreen(MenuScreen):
                 meta = TaskMetadata.load(meta_path)
                 settings = TaskSettings.load(task_dir / "settings.toml")
                 status = "enabled" if settings.general.enabled else "disabled"
-                items[f"{meta.general.name} [{status}]"] = f"open_{meta.general.id}"
+                items[rf"{meta.general.name} \[{status}]"] = f"open_{meta.general.id}"
 
         items["Install Task"] = "install_task"
         self.menu_items = items

@@ -14,7 +14,7 @@ class SettingsScreen(MenuScreen):
     def __init__(self, app_version: str, session_id: str, upgrade_on_startup: bool) -> None:
         super().__init__(
             menu_items={
-                f"Termux upgrade on startup [{upgrade_on_startup}]": "upgrade_on_startup",
+                rf"Termux upgrade on startup \[{upgrade_on_startup}]": "upgrade_on_startup",
             },
             description=f"App Version: {app_version}\nSession ID: {session_id}",
             show_back_button=True,
@@ -35,7 +35,7 @@ class SettingsScreen(MenuScreen):
                 cfg.save(app.state.app_config_file)
                 self._upgrade_val = cfg.settings.upgrade_on_startup
                 self.menu_items = {
-                    f"Termux upgrade on startup [{cfg.settings.upgrade_on_startup}]": "upgrade_on_startup",
+                    rf"Termux upgrade on startup \[{cfg.settings.upgrade_on_startup}]": "upgrade_on_startup",
                 }
 
         self.app.push_screen(

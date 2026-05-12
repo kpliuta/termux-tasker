@@ -100,4 +100,5 @@ class RunnerTypeScreen(MenuScreen):
         except RunnerValidatorException as e:
             self.app.push_screen(InfoScreen(message=e.message, severity="error"))
             return
+        from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
         self.app.push_screen(InstallRunnerScreen(folder))

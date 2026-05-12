@@ -101,4 +101,5 @@ class TaskTypeScreen(MenuScreen):
         except TaskValidatorException as e:
             self.app.push_screen(InfoScreen(message=e.message, severity="error"))
             return
+        from termux_tasker.ui.screens.install_task import InstallTaskScreen
         self.app.push_screen(InstallTaskScreen(self.runner_dir, folder))

@@ -49,14 +49,10 @@ class RunnersScreen(MenuScreen):
             meta = RunnerMetadata.load(meta_path)
             settings = RunnerSettings.load(runner_dir / "settings.toml")
             status = self._status_str(settings)
-            items[f"{meta.general.name} [{status}]"] = f"open_{meta.general.id}"
+            items[rf"{meta.general.name} \[{status}]"] = f"open_{meta.general.id}"
 
         items["Install Runner"] = "install_runner"
         self.menu_items = items
-        id_to_label = {v: k for k, v in items.items()}
-        for btn in self.query(Button):
-            if btn.id in id_to_label:
-                btn.label = id_to_label[btn.id]
 
     @staticmethod
     def _status_str(settings: RunnerSettings) -> str:

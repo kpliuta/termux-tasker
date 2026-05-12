@@ -41,6 +41,16 @@ class TaskMenuScreen(MenuScreen):
         self.sub_title = meta.general.name
         self._poll_timer: Any = None
 
+    def action_press_back(self) -> None:
+        self.app.pop_screen()
+        self.app.pop_screen()
+
+    @on(Button.Pressed, "#back")
+    def on_back_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        self.app.pop_screen()
+        self.app.pop_screen()
+
     def on_mount(self) -> None:
         self._start_polling()
 

@@ -88,7 +88,7 @@ class InstallTaskVersionScreen(MenuScreen):
 
             main_label = main_branch
             if main_branch in installed_versions:
-                main_label += " [Installed]"
+                main_label += " \\[Installed]"
             safe = sanitize_id(main_branch)
             self._id_to_tag[safe] = main_branch
             items[main_label] = f"version_{safe}"
@@ -96,7 +96,7 @@ class InstallTaskVersionScreen(MenuScreen):
             for tag in tags:
                 label = tag
                 if tag in installed_versions:
-                    label += " [Installed]"
+                    label += " \\[Installed]"
                 safe = sanitize_id(tag)
                 self._id_to_tag[safe] = tag
                 items[label] = f"version_{safe}"
@@ -106,7 +106,7 @@ class InstallTaskVersionScreen(MenuScreen):
             tag = meta.general.version
             label = tag
             if "local" in installed_versions:
-                label += " [Installed]"
+                label += " \\[Installed]"
             safe = sanitize_id(tag)
             self._id_to_tag[safe] = tag
             items[label] = f"version_{safe}"
