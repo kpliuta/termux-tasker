@@ -265,12 +265,15 @@ def given_runner_executing(pilot) -> None:
 
 @given("a task is successfully installed")
 def given_task_installed(pilot) -> None:
-    from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
+    from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    task_dir = (
+        ui(pilot).app.state.runners_dir
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
 
     def _push():
-        ui(pilot).app.push_screen(TasksMenuScreen(runner_dir))
+        ui(pilot).app.push_screen(TaskMenuScreen(task_dir))
 
     ui(pilot).app.call_from_thread(_push)
     ui(pilot).pause(0.3)

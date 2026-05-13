@@ -200,6 +200,13 @@ def when_enter_timeout(pilot) -> None:
     ui(pilot).pause(0.1)
 
 
+@when("I enter an invalid timeout and press Ok")
+def when_enter_invalid_timeout(pilot) -> None:
+    ui(pilot).set_value("#input_field", "abc")
+    ui(pilot).pause(0.2)
+    ui(pilot).click_id("#ok")
+
+
 @when("I select a value and press Ok")
 def when_select_radio_value(pilot) -> None:
     ui(pilot).click_id("#ok")

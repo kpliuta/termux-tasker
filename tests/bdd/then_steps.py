@@ -614,6 +614,28 @@ def then_error_screen(pilot) -> None:
     ui(pilot).assert_screen(InfoScreen)
 
 
+@then('it shows "Invalid timeout format. Use e.g. 30s, 5m, 1h."')
+def then_invalid_timeout_format_msg(pilot) -> None:
+    screen = ui(pilot).app.screen
+    if isinstance(screen, InfoScreen):
+        msg = screen.query_one("#info_message")
+        content = (
+            msg._content if hasattr(msg, "_content") else str(msg.render())
+        )
+        assert "Invalid timeout format" in content
+
+
+@then('it shows "Timeout is required and must have a value."')
+def then_timeout_required_msg(pilot) -> None:
+    screen = ui(pilot).app.screen
+    if isinstance(screen, InfoScreen):
+        msg = screen.query_one("#info_message")
+        content = (
+            msg._content if hasattr(msg, "_content") else str(msg.render())
+        )
+        assert "Timeout is required" in content
+
+
 @then("it says \"'<property>' is required and must have a value.\"")
 def then_required_warning(pilot) -> None:
     screen = ui(pilot).app.screen

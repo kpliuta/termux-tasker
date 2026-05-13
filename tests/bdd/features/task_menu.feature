@@ -65,6 +65,26 @@ Feature: Task Menu
     Then the task directory is deleted
     And the screen is popped
 
+  Scenario: Set task timeout with invalid format
+    Given the Task Menu screen is shown
+    When I press "Set Timeout" button
+    Then an InputScreen is shown with the current timeout value
+    When I enter an invalid timeout and press Ok
+    Then a warning InfoScreen is shown
+    And it shows "Invalid timeout format. Use e.g. 30s, 5m, 1h."
+    When I dismiss the warning
+    Then the InputScreen is shown again to retry
+
+  Scenario: Set task timeout with empty value
+    Given the Task Menu screen is shown
+    When I press "Set Timeout" button
+    Then an InputScreen is shown with the current timeout value
+    When I clear the value and press Ok
+    Then a warning InfoScreen is shown
+    And it shows "Timeout is required and must have a value."
+    When I dismiss the warning
+    Then the InputScreen is shown again to retry
+
   Scenario: Update a task
     Given the Task Menu screen is shown
     When I press "Update" button

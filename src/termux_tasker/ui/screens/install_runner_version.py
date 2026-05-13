@@ -127,6 +127,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                     )
                 )
                 return
+            RunnerMetadata.clear_cache(tmp_folder / "metadata.toml")
 
         app = termux_app(self)
         try:

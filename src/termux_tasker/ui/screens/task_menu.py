@@ -31,7 +31,7 @@ _TIMEOUT_RE = re.compile(r"^[0-9]+[hms]$")
 class TaskMenuScreen(MenuScreen):
     def __init__(self, task_dir: Path) -> None:
         self.task_dir = task_dir
-        self.runner_dir = task_dir.parent
+        self.runner_dir = task_dir.parent.parent
         meta = TaskMetadata.load(task_dir / "metadata.toml")
         settings = TaskSettings.load(task_dir / "settings.toml")
 

@@ -69,9 +69,10 @@ class MenuScreen(Screen):
             return
         existing_ids = {btn.id for btn in scroll.query(Button) if btn.id}
         needed_ids = {v for v in self.menu_items.values() if v}
-        if needed_ids == existing_ids - {"back", "exit"}:
+        action_btns = [b for b in scroll.query(Button) if b.id not in ("back", "exit")]
+        if needed_ids == existing_ids - {"back", "exit"} and len(self.menu_items) == len(action_btns):
             id_to_label = {v: k for k, v in self.menu_items.items()}
-            for btn in scroll.query(Button):
+            for btn in action_btns:
                 if btn.id in id_to_label:
                     btn.label = id_to_label[btn.id]
         else:

@@ -127,6 +127,7 @@ class InstallTaskVersionScreen(MenuScreen):
                     )
                 )
                 return
+            TaskMetadata.clear_cache(tmp_folder / "metadata.toml")
 
         app = termux_app(self)
         try:
@@ -264,7 +265,7 @@ class InstallTaskVersionScreen(MenuScreen):
             self, meta: TaskMetadata, target_dir: Path
     ) -> None:
         from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
-        from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
+        from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 
         fill_default_properties(
             self.tmp_task_folder / "settings.toml", meta.properties
@@ -280,4 +281,4 @@ class InstallTaskVersionScreen(MenuScreen):
         while not isinstance(self.app.screen, RunnerMenuScreen):
             self.app.pop_screen()
 
-        self.app.push_screen(TasksMenuScreen(self.runner_dir))
+        self.app.push_screen(TaskMenuScreen(target_dir))

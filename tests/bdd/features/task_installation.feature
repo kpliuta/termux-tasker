@@ -32,7 +32,7 @@ Feature: Task Installation
   Scenario: Install task - post-install navigation
     Given a task is successfully installed
     Then the install screens are popped back to the Runner Menu screen
-    And the Tasks screen is shown
+    And the Task Menu screen is shown
     And the newly installed task is visible in the list
 
   Scenario: Navigate back from Task Menu to Tasks Menu
