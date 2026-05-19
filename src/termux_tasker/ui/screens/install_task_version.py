@@ -237,6 +237,9 @@ class InstallTaskVersionScreen(MenuScreen):
         def _next(index: int = index) -> None:
             self._prompt_properties(props, index, meta, target_dir)
 
+        def _schedule_retry(_: object = None) -> None:
+            asyncio.get_event_loop().call_soon(_next, index)
+
         def _skip_or_next(result: Any) -> None:
             if result is None:
                 if prop.optional:
@@ -247,7 +250,7 @@ class InstallTaskVersionScreen(MenuScreen):
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
                     ),
-                    lambda _: asyncio.get_event_loop().call_soon(_next, index),
+                    _schedule_retry,
                 )
                 return
             if not prop.optional and is_property_value_empty(result, prop.input_type):
@@ -256,7 +259,7 @@ class InstallTaskVersionScreen(MenuScreen):
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
                     ),
-                    lambda _: asyncio.get_event_loop().call_soon(_next, index),
+                    _schedule_retry,
                 )
                 return
             settings = TaskSettings.load(self.tmp_task_folder / "settings.toml")

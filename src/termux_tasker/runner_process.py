@@ -56,8 +56,8 @@ class RunnerProcess:
         self.session_id = session_id
         self.tmp_dir = tmp_dir
         self.shutting_down = False
-        self._task: Optional[asyncio.Task] = None
-        self._processes: list[subprocess.Popen] = []
+        self._task: Optional[asyncio.Task[None]] = None
+        self._processes: list[asyncio.subprocess.Process] = []
         self._run_lock = False
 
         self._stdout_path = runner_dir / "stdout"
@@ -116,6 +116,7 @@ class RunnerProcess:
             env=env,
         )
         self._processes.append(proc)
+        assert proc.stdout is not None
         while True:
             line = await proc.stdout.readline()
             if not line:
@@ -306,7 +307,7 @@ class RunnerProcess:
         self._task = asyncio.create_task(self._run_loop())
         self._task.add_done_callback(self._on_run_done)
 
-    def _on_run_done(self, task: asyncio.Task) -> None:
+    def _on_run_done(self, task: asyncio.Task[None]) -> None:
         try:
             exc = task.exception()
             if exc:

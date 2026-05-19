@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import importlib.resources
 import shutil
-from pathlib import Path
 
 from textual.app import App
 
@@ -19,7 +17,7 @@ class TermuxTaskerApp(App[None]):
         super().__init__()
         self.state = AppState(app_version)
 
-    def action_quit(self) -> None:
+    def action_quit(self) -> None:  # type: ignore[override]
         if not self.state.runners:
             self.exit()
             return

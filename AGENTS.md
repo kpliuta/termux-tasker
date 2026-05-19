@@ -12,6 +12,7 @@
 - Ask before starting if anything is unclear.
 - Cover new/modified logic with both BDD and unit tests; run after each change — must be green.
 - Delete all unused code (methods, classes, files, imports).
+- Run `poetry run mypy src/` and `poetry run autoflake --remove-all-unused-imports --ignore-init-module-imports --in-place --recursive src/` after every change — both must pass/be clean.
 - Update README.md for user-visible changes.
 
 [//]: # (python)

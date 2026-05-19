@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Mapping, Sequence, Union
+from typing import Any, Sequence, Union
 
 from textual import on
 from textual.app import ComposeResult
@@ -17,7 +17,7 @@ from textual.widgets import (
 _HERE = Path(__file__).parent
 
 
-class MenuScreen(Screen):
+class MenuScreen(Screen[None]):
     """A screen with a menu of buttons.
 
     Uses Textual reactive attributes (menu_items, description) so that
@@ -348,7 +348,7 @@ class InfoScreen(ModalScreen[None]):
         event.stop()
         self.dismiss(None)
 
-    def action_dismiss(self) -> None:
+    def action_dismiss(self, result: None = None) -> None:  # type: ignore[override]
         self.dismiss(None)
 
 
@@ -446,7 +446,7 @@ class LogScreen(ModalScreen[None]):
         super().__init__(name=name, id=id, classes=classes)
         self.content = content
         self.show_follow = show_follow and isinstance(content, Path)
-        self._timer = None
+        self._timer: Any = None
         self._file_pos = 0
 
     def compose(self) -> ComposeResult:

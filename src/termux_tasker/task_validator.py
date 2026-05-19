@@ -8,7 +8,7 @@ from typing import Optional
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
-from termux_tasker.config import TaskMetadata, BundledTasks, RunnerMetadata, PropertyDef
+from termux_tasker.config import TaskMetadata, RunnerMetadata, PropertyDef
 
 
 TIMEOUT_RE = re.compile(r"^[0-9]+[hm]$")

@@ -14,8 +14,6 @@ from termux_tasker.config import (
     TaskMetadata,
     PropertyDef,
 )
-from termux_tasker.runner_process import RunnerProcess
-from termux_tasker.ui.base.screen import LoadingScreen, InfoScreen
 
 if TYPE_CHECKING:
     from textual.screen import Screen
@@ -42,7 +40,7 @@ def sanitize_id(name: str) -> str:
     return result if result else "_"
 
 
-def termux_app(screen: Screen) -> TermuxTaskerApp:
+def termux_app(screen: Screen[Any]) -> TermuxTaskerApp:
     return cast("TermuxTaskerApp", screen.app)
 
 

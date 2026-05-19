@@ -20,8 +20,8 @@ class AppState:
 
         import importlib.resources as res
         pkg = res.files("termux_tasker")
-        self.default_app_config_file = pkg / "resources" / "default.app.toml"
-        self.bundled_runners_file = pkg / "resources" / "bundled_runners.toml"
+        self.default_app_config_file = Path(str(pkg / "resources" / "default.app.toml"))
+        self.bundled_runners_file = Path(str(pkg / "resources" / "bundled_runners.toml"))
 
         self.runners: dict[str, RunnerProcess] = {}
         self._current_runner_dir: Optional[Path] = None

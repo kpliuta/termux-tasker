@@ -38,4 +38,4 @@ class MainMenuScreen(MenuScreen):
     @on(Button.Pressed, "#exit")
     def on_exit(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.action_quit()
+        termux_app(self).action_quit()

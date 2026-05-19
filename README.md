@@ -168,6 +168,16 @@ poetry run python -m pytest tests/bdd/ -v -k "navigate_back_from_task_menu_to_ta
 poetry run python -m pytest tests/ -v
 ```
 
+### Static analysis
+
+```bash
+# Type checking (strict mode)
+poetry run mypy src/
+
+# Remove unused imports
+poetry run autoflake --remove-all-unused-imports --ignore-init-module-imports --in-place --recursive src/
+```
+
 ### UI component previews (manual)
 
 ```bash
