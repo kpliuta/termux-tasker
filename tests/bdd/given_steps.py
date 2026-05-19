@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from tests.bdd.steps_common import *  # noqa: F403, F401
 
 
@@ -375,11 +377,13 @@ def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
 
     folder = _write_runner(tmp_dir / f"_test_{uuid.uuid4().hex}", RUNNER_REQUIRED_META)
     screen = InstallRunnerVersionScreen(folder)
-    pilot.push_screen(screen)
-    pilot.pause(0.3)
+    ui(pilot).push_screen(screen)
+    ui(pilot).pause(0.3)
 
-    pilot._submit(lambda p: screen._finalize_install("test_runner", "1.0.0", "install"))
-    pilot.wait_until_screen(InputScreen, timeout=5)
+    ui(pilot).pilot_driver._submit(
+        lambda p: screen._finalize_install("test_runner", "1.0.0", "install")
+    )
+    ui(pilot).wait_until_screen(InputScreen, timeout=5)
 
 
 @given("I am installing a task with non-optional properties without defaults")
@@ -393,11 +397,13 @@ def given_task_non_optional(pilot, tmp_dir: Path) -> None:
     folder = _write_task(tmp_dir / f"_test_{uuid.uuid4().hex}", TASK_REQUIRED_META)
     runner_dir = pilot.app.state.runners_dir / "sh_runner"
     screen = InstallTaskVersionScreen(runner_dir, folder)
-    pilot.push_screen(screen)
-    pilot.pause(0.3)
+    ui(pilot).push_screen(screen)
+    ui(pilot).pause(0.3)
 
-    pilot._submit(lambda p: screen._finalize_install("test_task", "1.0.0", "install"))
-    pilot.wait_until_screen(InputScreen, timeout=5)
+    ui(pilot).pilot_driver._submit(
+        lambda p: screen._finalize_install("test_task", "1.0.0", "install")
+    )
+    ui(pilot).wait_until_screen(InputScreen, timeout=5)
 
 
 @given("a LogScreen is opened with a file path")

@@ -70,7 +70,7 @@ class RunnerTypeScreen(MenuScreen):
                 self.app.push_screen(InstallRunnerScreen(tmp_folder))
 
         self.app.push_screen(
-            FileBrowserScreen(select_folder=True, path=str(Path.home())),
+            FileBrowserScreen(select_folder=True, path=Path.home()),
             on_folder,
         )
 

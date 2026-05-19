@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from termux_tasker.ui.screens.main_menu import MainMenuScreen
 from termux_tasker.ui.screens.settings_screen import SettingsScreen
 from termux_tasker.ui.screens.runners_screen import RunnersScreen

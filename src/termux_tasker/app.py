@@ -55,15 +55,15 @@ class TermuxTaskerApp(App[None]):
         self.push_screen(MainMenuScreen())
 
     def _ensure_app_config(self) -> None:
-        default_path = self.state.default_app_config_file
         config_path = self.state.app_config_file
+        if config_path.exists():
+            return
 
-        if not config_path.exists():
-            if default_path.exists():
-                shutil.copy2(default_path, config_path)
-            else:
-                AppConfig().save(config_path)
-
+        default_path = self.state.default_app_config_file
+        if default_path.exists():
+            shutil.copy2(default_path, config_path)
+        else:
+            AppConfig().save(config_path)
 
     def on_exit_app(self) -> None:
         self.state.cleanup()

@@ -2,8 +2,9 @@
 .idea/
 *.iml
 
-# Poetry
-poetry.lock
-
 # Other
 *.log
+
+# Agent
+.agents/
+MEMORY.md

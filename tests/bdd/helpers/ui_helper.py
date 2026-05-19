@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from termux_tasker.ui.base.screen import ConfirmationScreen, LogScreen
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
@@ -11,54 +12,27 @@ from termux_tasker.ui.screens.settings_screen import SettingsScreen
 from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
 
+if TYPE_CHECKING:
+    from tests.bdd.pilot_driver import PilotDriver
+
 
 class UIHelper:
     """Wraps a Textual PilotDriver and exposes high-level interaction methods."""
 
-    # Maps display labels to widget IDs for common buttons.
-    PRESS_LABEL_MAP = {
-        "Show Runners": "#show_runners",
-        "Settings": "#settings",
-        "Exit": "#exit",
-        "Install Runner": "#install_runner",
-        "Install Task": "#install_task",
-        "Back": "#back",
-        "Enable": "#toggle",
-        "Disable": "#toggle",
-        "Show Tasks": "#show_tasks",
-        "Show Runner Logs": "#show_logs",
-        "Show metadata.toml": "#show_metadata",
-        "Show settings.toml": "#show_settings",
-        "Update": "#update",
-        "Uninstall": "#uninstall",
-        "Set Timeout": "#set_timeout",
-        "Yes": None,
-        "No": "#cancel_button",
-        "Cancel": "#cancel",
-        "Ok": "#ok",
-        "Reset": "#reset_button",
-        "Close": "#close_button",
-        "Select": "#select",
-        "Bundled": None,
-        "GitHub URL": None,
-        "Local Storage": None,
-        "Install": None,
-    }
-
-    def __init__(self, pilot):
+    def __init__(self, pilot: PilotDriver) -> None:
         self._pilot = pilot
 
     @property
-    def pilot(self):
+    def pilot(self) -> PilotDriver:
         return self._pilot
 
     @property
-    def app(self):
+    def app(self) -> Any:
         return self._pilot.app
 
     # ── Button helpers ──────────────────────────────────────────────────
 
-    def button(self, label: str):
+    def button(self, label: str) -> Any:
         """Return the first Button whose display text matches *label*."""
         for btn in self.app.screen.query("Button"):
             if str(btn.label).strip() == label:
@@ -66,7 +40,7 @@ class UIHelper:
         msg = f"Button {label!r} not found on {type(self.app.screen).__name__}"
         raise AssertionError(msg)
 
-    def click_label(self, label: str):
+    def click_label(self, label: str) -> None:
         """Click a button by its display label.
 
         Handles both menu-driven screens (via menu_items) and direct
@@ -86,7 +60,7 @@ class UIHelper:
                 return
         raise AssertionError(f"No clickable button with label {label!r}")
 
-    def click_id(self, selector: str):
+    def click_id(self, selector: str) -> None:
         """Click a widget by its CSS selector (e.g. ``#my_button``)."""
         self._pilot.click(selector)
 
@@ -107,34 +81,23 @@ class UIHelper:
     def screen_is(self, screen_type) -> bool:
         return isinstance(self.app.screen, screen_type)
 
-    def assert_screen(self, screen_type):
+    def assert_screen(self, screen_type: type) -> None:
         assert isinstance(self.app.screen, screen_type), (
             f"Expected {screen_type.__name__}, got {type(self.app.screen).__name__}"
         )
 
     # ── Value / key helpers ─────────────────────────────────────────────
 
-    def set_value(self, selector: str, value: str):
+    def set_value(self, selector: str, value: str) -> None:
         self._pilot.set_value(selector, value)
 
-    def press(self, *keys: str):
+    def press(self, *keys: str) -> None:
         self._pilot.press(*keys)
 
-    def pause(self, delay: float = 0.1):
+    def pause(self, delay: float = 0.1) -> None:
         self._pilot.pause(delay)
 
-    # ── Button helpers for dynamic labels ───────────────────────────────
-
-    def click_mapped_button(self, label: str):
-        """Click a button using PRESS_LABEL_MAP, falling back to dynamic lookup."""
-        selector = self.PRESS_LABEL_MAP.get(label)
-        if selector:
-            self._pilot.click(selector)
-            self._pilot.pause()
-            return
-        self.click_label(label)
-
-    def click_yes(self):
+    def click_yes(self) -> None:
         """Click the 'Yes' button, which can have varying IDs."""
         screen = self.app.screen
         for btn in screen.query("Button"):
@@ -146,11 +109,11 @@ class UIHelper:
 
     # ── Navigation ──────────────────────────────────────────────────────
 
-    def nav_to_runners(self):
+    def nav_to_runners(self) -> None:
         """From the main menu, navigate to the Runners screen."""
         self._pilot.click("#show_runners")
 
-    def nav_to_runner_menu(self, runner_id: str = "sh_runner"):
+    def nav_to_runner_menu(self, runner_id: str = "sh_runner") -> None:
         """Navigate to the Runner Menu screen for *runner_id*."""
         screen = self.app.screen
         while isinstance(screen, ConfirmationScreen):
@@ -167,7 +130,7 @@ class UIHelper:
         self._pilot.click(f"#open_{runner_id}")
         self._pilot.pause()
 
-    def nav_to_tasks(self, runner_id: str = "sh_runner"):
+    def nav_to_tasks(self, runner_id: str = "sh_runner") -> None:
         """Navigate to the Tasks screen for *runner_id*."""
         screen = self.app.screen
         if isinstance(screen, TasksMenuScreen):
@@ -179,7 +142,7 @@ class UIHelper:
         self._pilot.click("#show_tasks")
         self._pilot.pause()
 
-    def nav_to_task_menu(self, task_id: str = "sh_runner_task"):
+    def nav_to_task_menu(self, task_id: str = "sh_runner_task") -> None:
         """Navigate to the Task Menu screen for *task_id*."""
         screen = self.app.screen
         if isinstance(screen, TaskMenuScreen):
@@ -190,24 +153,28 @@ class UIHelper:
             return
         self._pilot.click(f"#open_{task_id}")
 
-    def nav_to_settings(self):
+    def nav_to_settings(self) -> None:
         """From the main menu, navigate to the Settings screen."""
         screen = self.app.screen
         if isinstance(screen, SettingsScreen):
             return
         self._pilot.click("#settings")
 
-    # ── Toggle helper ───────────────────────────────────────────────────
+    # ── Pilot passthrough ────────────────────────────────────────────────
 
-    def click_toggle_if_matches(self, label: str):
-        """Click Enable or Disable toggle by label."""
-        btn = self.button(label)
-        if btn is not None:
-            self._pilot.click(f"#{btn.id}")
+    def push_screen(self, screen: Any) -> None:
+        self._pilot.push_screen(screen)
+
+    def wait_until_screen(self, screen_type: type, timeout: float = 5) -> None:
+        self._pilot.wait_until_screen(screen_type, timeout=timeout)
+
+    @property
+    def pilot_driver(self) -> Any:
+        return self._pilot
 
     # ── Log screen helpers ──────────────────────────────────────────────
 
-    def push_log_screen(self, log_file: Path, follow: bool = False):
+    def push_log_screen(self, log_file: Path, follow: bool = False) -> None:
         log_file.parent.mkdir(parents=True, exist_ok=True)
         if not log_file.exists():
             log_file.write_text("")

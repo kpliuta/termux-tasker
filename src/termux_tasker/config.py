@@ -65,7 +65,7 @@ class PropertyDef:
     default: Optional[str] = None
 
 
-def _parse_properties(items) -> list[PropertyDef]:
+def _parse_properties(items: list[dict[str, str]]) -> list[PropertyDef]:
     """Convert TOML [[property]] array items to PropertyDef dataclasses."""
     result = []
     for item in items:

@@ -160,6 +160,7 @@ class TaskMenuScreen(MenuScreen):
         On empty or invalid format: warning InfoScreen → re-prompt.
         On valid format: save and refresh.
         """
+        event.stop()
 
         def _show_input() -> None:
             settings = TaskSettings.load(self.task_dir / "settings.toml")

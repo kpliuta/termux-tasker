@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from tests.bdd.steps_common import *  # noqa: F403, F401
 from termux_tasker.runner_process import _parse_timeout
 

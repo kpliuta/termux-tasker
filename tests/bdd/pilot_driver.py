@@ -6,9 +6,11 @@ import asyncio
 import queue
 import threading
 from concurrent.futures import Future
+from typing import Any, Callable
 
-from textual.widgets import Button, Checkbox
+from textual.app import App
 from textual.pilot import Pilot
+from textual.widgets import Button, Checkbox
 
 
 class PilotDriver:
@@ -23,7 +25,7 @@ class PilotDriver:
         driver.stop()
     """
 
-    def __init__(self, app, size: tuple[int, int] = (80, 40)):
+    def __init__(self, app: App, size: tuple[int, int] = (80, 40)):
         self._app = app
         self._size = size
         self._pilot: Pilot | None = None
@@ -45,7 +47,7 @@ class PilotDriver:
         return self._pilot
 
     @property
-    def app(self):
+    def app(self) -> Any:
         return self.pilot.app
 
     def start(self, timeout: float = 10) -> PilotDriver:
@@ -65,25 +67,19 @@ class PilotDriver:
 
     # -- Public action methods -----------------------------------------------
 
-    def press(self, *keys: str):
+    def press(self, *keys: str) -> Any:
         return self._submit(lambda p: p.press(*keys))
 
-    def pause(self, delay: float = 0.1):
+    def pause(self, delay: float = 0.1) -> Any:
         return self._submit(lambda p: p.pause(delay))
 
-    def resize_terminal(self, width: int, height: int):
+    def resize_terminal(self, width: int, height: int) -> Any:
         return self._submit(lambda p: p.resize_terminal(width, height))
 
-    def wait_for_animation(self):
+    def wait_for_animation(self) -> Any:
         return self._submit(lambda p: p.wait_for_animation())
 
-    def push_screen(self, screen=None, *, factory=None):
-        """Push a screen on the background app's screen stack.
-
-        Accept either an already-created *screen* instance, or a
-        zero-argument *factory* callable that creates the screen
-        on the background thread.
-        """
+    def push_screen(self, screen: Any = None, *, factory: Callable | None = None) -> Any:
         if factory is not None:
             return self._submit(
                 lambda p: p.app.push_screen(factory())
@@ -93,17 +89,17 @@ class PilotDriver:
                 lambda p: p.app.push_screen(screen)
             )
 
-    def pop_screen(self):
+    def pop_screen(self) -> Any:
         return self._submit(lambda p: p.app.pop_screen())
 
-    def exit_app(self):
-        def _do(pilot):
+    def exit_app(self) -> Any:
+        def _do(pilot: Any) -> Any:
             pilot.app.exit()
             return asyncio.sleep(0)
         return self._submit(_do)
 
-    def set_value(self, selector: str, value, timeout: float = 5):
-        async def _do(pilot):
+    def set_value(self, selector: str, value: str, timeout: float = 5) -> Any:
+        async def _do(pilot: Any) -> None:
             import time
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
@@ -121,8 +117,8 @@ class PilotDriver:
             raise AssertionError(f"Timed out waiting for {selector!r}")
         return self._submit(_do)
 
-    def click(self, selector: str, timeout: float = 5):
-        async def _do(pilot):
+    def click(self, selector: str, timeout: float = 5) -> Any:
+        async def _do(pilot: Any) -> None:
             import time
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
@@ -144,7 +140,7 @@ class PilotDriver:
             raise AssertionError(f"Timed out clicking {selector!r}")
         return self._submit(_do)
 
-    def wait_until_screen(self, screen_type, timeout: float = 5):
+    def wait_until_screen(self, screen_type: type, timeout: float = 5) -> None:
         """Block until the current screen is an instance of *screen_type*."""
         import time
         deadline = time.monotonic() + timeout
@@ -184,7 +180,7 @@ class PilotDriver:
                     pass
                 await asyncio.sleep(0.05)
 
-    def _submit(self, make_coro):
+    def _submit(self, make_coro: Callable) -> Any:
         """Submit a command to be executed in the background thread.
 
         *make_coro* is a callable ``(Pilot) -> Awaitable`` that will be

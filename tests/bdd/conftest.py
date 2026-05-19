@@ -3,9 +3,13 @@ from __future__ import annotations
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Iterator
+from typing import TYPE_CHECKING, Any, Iterator
 
 import pytest
+
+if TYPE_CHECKING:
+    from termux_tasker.app import TermuxTaskerApp
+    from tests.bdd.pilot_driver import PilotDriver
 
 from termux_tasker.config import (
     RunnerMetadata,
@@ -281,7 +285,7 @@ def task_metadata(tmp_dir: Path) -> TaskMetadata:
 
 
 @pytest.fixture
-def app_state_fixture(tmp_dir: Path):
+def app_state_fixture(tmp_dir: Path) -> Any:
     _runners_dir = tmp_dir / "runners"
     _tmp_dir = tmp_dir / ".tmp"
 
@@ -305,7 +309,7 @@ def app_state_fixture(tmp_dir: Path):
 
 
 @pytest.fixture
-def app(tmp_dir: Path):
+def app(tmp_dir: Path) -> TermuxTaskerApp:
     """Create a TermuxTaskerApp configured with tmp_dir as work directory."""
     from termux_tasker.app import TermuxTaskerApp
 
@@ -401,7 +405,7 @@ def mock_external_ops(monkeypatch):
 
 
 @pytest.fixture
-def pilot(app, tmp_dir: Path):
+def pilot(app: TermuxTaskerApp, tmp_dir: Path) -> PilotDriver:
     """Start the app in headless mode and return a sync PilotDriver.
 
     Sets up a basic runner (sh_runner) on disk before launching so

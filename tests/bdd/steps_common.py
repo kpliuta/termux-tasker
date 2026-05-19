@@ -28,7 +28,10 @@ from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 from termux_tasker.ui.screens.task_type import TaskTypeScreen
 from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
 
-from tests.bdd.helpers import FileSystemHelper, SettingsHelper, UIHelper, ValidationHelper
+from tests.bdd.helpers import UIHelper
+from tests.bdd.helpers import file_helper as _fs
+from tests.bdd.helpers import settings_helper as _settings
+from tests.bdd.helpers import validation_helper as _val
 
 TEST_PROPERTIES = {"property-1": "value1", "property-2": "value2"}
 
@@ -37,13 +40,13 @@ def ui(pilot) -> UIHelper:
     return UIHelper(pilot)
 
 
-def settings() -> SettingsHelper:
-    return SettingsHelper()
+def settings() -> object:
+    return _settings
 
 
-def fs() -> FileSystemHelper:
-    return FileSystemHelper()
+def fs() -> object:
+    return _fs
 
 
-def val() -> ValidationHelper:
-    return ValidationHelper()
+def val() -> object:
+    return _val

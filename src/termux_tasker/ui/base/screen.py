@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Mapping, Sequence, Union
 
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll, Grid, Vertical, Horizontal
-from textual.events import ScreenResume
+from textual.events import Key, ScreenResume
 from textual.reactive import reactive
 from textual.screen import Screen, ModalScreen
 from textual.widgets import (
@@ -136,7 +138,7 @@ class MenuScreen(Screen):
         if self.show_back_button:
             self.app.pop_screen()
 
-    def on_key(self, event) -> None:
+    def on_key(self, event: Key) -> None:
         """Handle key presses for navigation."""
         if event.key == "up":
             event.stop()
@@ -162,25 +164,25 @@ class FileBrowserScreen(ModalScreen[Path]):
     button; file selection does not.  When False, file selection enables it.
     """
 
-    CSS_PATH = "file_browser_screen.tcss"
+    CSS_PATH = _HERE / "file_browser_screen.tcss"
     BINDINGS = [("escape", "cancel", "Cancel")]
 
     def __init__(
             self,
             select_folder: bool = False,
-            path: str = "./",
+            path: Path = Path("."),
             name: str | None = None,
             id: str | None = None,
             classes: str | None = None,
     ) -> None:
         super().__init__(name=name, id=id, classes=classes)
         self.select_folder = select_folder
-        self.path = path
+        self._start_path = path
         self._selected_path: Path | None = None
 
     def compose(self) -> ComposeResult:
         with Grid():
-            yield DirectoryTree(self.path)
+            yield DirectoryTree(str(self._start_path))
             yield Button("Cancel", id="cancel", variant="error")
             yield Button("Select", id="select", variant="primary", disabled=True)
 
@@ -220,7 +222,7 @@ class FileBrowserScreen(ModalScreen[Path]):
 class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
     """A modal screen for gathering user input via text, radio buttons, or checkboxes."""
 
-    CSS_PATH = "input_screen.tcss"
+    CSS_PATH = _HERE / "input_screen.tcss"
     BINDINGS = [("escape", "cancel", "Cancel")]
 
     def __init__(
@@ -319,7 +321,7 @@ class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
 class InfoScreen(ModalScreen[None]):
     """A modal screen for displaying messages with different severity levels."""
 
-    CSS_PATH = "info_screen.tcss"
+    CSS_PATH = _HERE / "info_screen.tcss"
     BINDINGS = [("escape", "dismiss", "Close")]
 
     def __init__(
@@ -358,7 +360,7 @@ class ConfirmationScreen(ModalScreen[Union[str, None]]):
     confirmation screens (e.g. "yes_exit" vs "yes_uninstall").
     """
 
-    CSS_PATH = "confirmation_screen.tcss"
+    CSS_PATH = _HERE / "confirmation_screen.tcss"
     BINDINGS = [("escape", "cancel", "Cancel")]
 
     def __init__(
@@ -400,7 +402,7 @@ class ConfirmationScreen(ModalScreen[Union[str, None]]):
 class LoadingScreen(ModalScreen[None]):
     """A modal screen with a loading indicator and a message."""
 
-    CSS_PATH = "loading_screen.tcss"
+    CSS_PATH = _HERE / "loading_screen.tcss"
 
     def __init__(
             self,
@@ -430,7 +432,7 @@ class LogScreen(ModalScreen[None]):
     Tracks ``_file_pos`` to read incrementally.
     """
 
-    CSS_PATH = "log_screen.tcss"
+    CSS_PATH = _HERE / "log_screen.tcss"
     BINDINGS = [("escape", "close", "Close")]
 
     def __init__(
