@@ -16,7 +16,15 @@ _HERE = Path(__file__).parent
 
 
 class MenuScreen(Screen):
-    """A screen with a menu of buttons."""
+    """A screen with a menu of buttons.
+
+    Uses Textual reactive attributes (menu_items, description) so that
+    subclasses can mutate them and the UI auto-updates via watchers.
+
+    ``init=False`` prevents watchers from firing during ``__init__``
+    (before the widget tree exists).  Watchers fire on subsequent
+    mutations only.
+    """
 
     CSS_PATH = _HERE / "menu_screen.tcss"
     BINDINGS = [("escape", "press_back", "Back")]
@@ -63,10 +71,16 @@ class MenuScreen(Screen):
         yield Footer()
 
     def watch_menu_items(self) -> None:
+        """Reactive watcher — called automatically when self.menu_items changes.
+
+        Optimization: if the set of button IDs is unchanged (same keys),
+        mutate labels in-place to preserve focus and avoid flicker.
+        Otherwise, tear down and rebuild the entire DOM.
+        """
         try:
             scroll = self.query_one(VerticalScroll)
         except Exception:
-            return
+            return  # widget tree may not exist yet (triggered via init=False)
         existing_ids = {btn.id for btn in scroll.query(Button) if btn.id}
         needed_ids = {v for v in self.menu_items.values() if v}
         action_btns = [b for b in scroll.query(Button) if b.id not in ("back", "exit")]
@@ -79,6 +93,11 @@ class MenuScreen(Screen):
             self.run_worker(self._rebuild_menu(scroll))
 
     async def _rebuild_menu(self, scroll: VerticalScroll) -> None:
+        """Full DOM teardown and rebuild of the button menu.
+
+        Used when the button structure has changed (different IDs),
+        since in-place label mutation is insufficient.
+        """
         await scroll.remove_children()
 
         desc = Static(self.description or "", id="description")
@@ -137,7 +156,11 @@ class MenuScreen(Screen):
 
 
 class FileBrowserScreen(ModalScreen[Path]):
-    """A modal screen for browsing and selecting files or folders."""
+    """A modal screen for browsing and selecting files or folders.
+
+    When *select_folder* is True, directory selection enables the "Select"
+    button; file selection does not.  When False, file selection enables it.
+    """
 
     CSS_PATH = "file_browser_screen.tcss"
     BINDINGS = [("escape", "cancel", "Cancel")]
@@ -328,7 +351,12 @@ class InfoScreen(ModalScreen[None]):
 
 
 class ConfirmationScreen(ModalScreen[Union[str, None]]):
-    """A modal screen for displaying a confirmation message with two action buttons."""
+    """A modal screen for displaying a confirmation message with two action buttons.
+
+    The return value is the *ok_button_id* string on confirm, or *None* on cancel.
+    Callers can pattern-match on the button ID to distinguish multiple
+    confirmation screens (e.g. "yes_exit" vs "yes_uninstall").
+    """
 
     CSS_PATH = "confirmation_screen.tcss"
     BINDINGS = [("escape", "cancel", "Cancel")]
@@ -338,20 +366,11 @@ class ConfirmationScreen(ModalScreen[Union[str, None]]):
             message: str,
             ok_button_text: str = "Ok",
             cancel_button_text: str = "Cancel",
-            ok_button_id: str = "ok_button",  # Renamed default ID
+            ok_button_id: str = "ok_button",
             name: str | None = None,
             id: str | None = None,
             classes: str | None = None,
     ) -> None:
-        """Initialize the confirmation screen.
-
-        Args:
-            message: The message to display to the user.
-            ok_button_text: The text for the 'Ok' button.
-            cancel_button_text: The text for the 'Cancel' button.
-            ok_button_id: The ID to use for the 'Ok' button, which is also the value
-                          dismissed with if 'Ok' is pressed.
-        """
         super().__init__(name=name, id=id, classes=classes)
         self.message = message
         self.ok_button_text = ok_button_text
@@ -404,7 +423,12 @@ class LoadingScreen(ModalScreen[None]):
 
 
 class LogScreen(ModalScreen[None]):
-    """A modal screen for displaying logs with an optional 'follow' feature."""
+    """A modal screen for displaying logs with an optional 'follow' feature.
+
+    When follow mode is enabled (via a Checkbox), a 1-second interval timer
+    polls the file for new content and appends it to the RichLog widget.
+    Tracks ``_file_pos`` to read incrementally.
+    """
 
     CSS_PATH = "log_screen.tcss"
     BINDINGS = [("escape", "close", "Close")]

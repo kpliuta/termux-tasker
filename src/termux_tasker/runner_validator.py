@@ -23,6 +23,15 @@ class RunnerValidatorException(Exception):
 
 
 class RunnerValidator:
+    """Validates a runner's metadata structure and app compatibility.
+
+    Pipeline (called in sequence by validate()):
+      1. validate_metadata_existed   — file existence
+      2. validate_metadata_structure  — field presence, format, consistency
+      3. validate_bundled_structure   — bundled.toml task URLs
+      4. check_app_compatibility      — app version meets runner_min_version
+    """
+
     def __init__(self, runner_dir: Path, app_version: str = "0.1.0") -> None:
         self.runner_dir = runner_dir
         self.app_version = app_version
@@ -58,6 +67,17 @@ class RunnerValidator:
         self._metadata = meta
 
     def validate_metadata_structure(self) -> None:
+        """Validate all required fields, formats, and consistency rules.
+
+        Key checks beyond simple field presence:
+        - If the runner is a git repo, version must be a valid PEP 440
+          semver AND match the git tag at HEAD.
+        - GitHub URL is required for git repos (needed for updates).
+        - ``{task_dir}`` placeholder must be present in task-exec and
+          all task-validator commands.
+        - Property definitions must use valid TOML key names and one
+          of the supported input types.
+        """
         path = self.runner_dir / "metadata.toml"
         meta = RunnerMetadata.load(path)
         self._metadata = meta
@@ -185,6 +205,11 @@ class RunnerValidator:
                 )
 
     def check_app_compatibility(self) -> None:
+        """Verify the termux-tasker app version satisfies the runner's requirement.
+
+        Uses packaging.specifiers.SpecifierSet so requirements like
+        ``>=1.0.0,<2.0.0`` work correctly.
+        """
         if self._metadata is None:
             self.validate_metadata_existed()
             self.validate_metadata_structure()

@@ -27,6 +27,15 @@ class TaskValidatorException(Exception):
 
 
 class TaskValidator:
+    """Validates a task's metadata and runs the runner's custom validators.
+
+    Pipeline (called in sequence by validate()):
+      1. validate_metadata_existed     — metadata.toml existence
+      2. validate_metadata_structure    — field presence, format, timeout format
+      3. check_runner_compatibility     — task's runner_id matches, version satisfies
+      4. execute_runner_validators      — run the runner's custom shell validators
+    """
+
     def __init__(self, runner_dir: Path, task_dir: Path, tmp_dir: Path) -> None:
         self.runner_dir = runner_dir
         self.task_dir = task_dir
@@ -200,6 +209,18 @@ class TaskValidator:
             )
 
     def execute_runner_validators(self) -> None:
+        """Run the runner's custom shell-based validators against the task.
+
+        These are arbitrary shell commands defined in the runner's
+        metadata.toml ([[task-validator]]).  Each command receives
+        ``{task_dir}`` substituted with the task's path.  The task is
+        considered invalid if any command returns a non-zero exit code.
+        Stderr is captured and truncated to the last 5 lines for error
+        reporting.
+
+        Security note: the validator commands come from the runner that
+        the user chose to install — they are not untrusted input.
+        """
         if self._metadata is None:
             self.validate_metadata_existed()
             self.validate_metadata_structure()

@@ -262,6 +262,12 @@ class InstallRunnerVersionScreen(MenuScreen):
     def _finish_install(
             self, meta: RunnerMetadata, target_dir: Path
     ) -> None:
+        """Finalise the runner installation: persist, clear caches, navigate.
+
+        Same pattern as InstallTaskVersionScreen._finish_install, but
+        navigates back to the RunnersScreen (list of runners) and then
+        pushes RunnerMenuScreen for the freshly installed runner.
+        """
         from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
         from termux_tasker.ui.screens.runners_screen import RunnersScreen
 

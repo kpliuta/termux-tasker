@@ -42,6 +42,15 @@ def _to_env_key(name: str) -> str:
 
 
 class RunnerProcess:
+    """Manages a single runner's asyncio execution lifecycle.
+
+    The runner follows the state machine:
+        initialization -> (before-exec -> [per-task: before-task -> task-exec -> after-task] -> after-exec -> idle)* -> termination -> off
+
+    The lifecycle repeats until shutdown() is called.  During idle, the
+    shutting_down flag is checked every second for responsive shutdown.
+    """
+
     def __init__(self, runner_dir: Path, session_id: str, tmp_dir: Path) -> None:
         self.runner_dir = runner_dir
         self.session_id = session_id
@@ -81,6 +90,16 @@ class RunnerProcess:
             self, cmd: str, error_context: str, task_dir: Path | None = None,
             extra_env: dict[str, str] | None = None,
     ) -> None:
+        """Execute a shell command and stream its output to the runner's stdout log.
+
+        - Commands are run via ``sh -c``.
+        - The ``{task_dir}`` placeholder is substituted before execution.
+        - Environment includes OS env + runner properties as ``VAR_<NAME>`` +
+          any extra_env (used for task-specific vars).
+        - Subprocess is tracked in self._processes for later termination.
+        - Stdout is streamed line-by-line with timestamps to the runner's
+          stdout file.
+        """
         if task_dir is not None:
             cmd = cmd.replace("{task_dir}", str(task_dir))
         self._log(f"Run: {cmd}")
@@ -111,6 +130,11 @@ class RunnerProcess:
             raise RunnerException(f"Error during command execution {error_context}")
 
     async def _run_task_cmd(self, cmd: str, task_dir: Path) -> None:
+        """Run a task-level command, injecting task properties as env vars.
+
+        Wraps _run_cmd with task-specific environment and converts errors
+        to TaskException (caught by _run_loop as non-fatal).
+        """
         cmd_with_placeholder = cmd.replace("{task_dir}", str(task_dir))
         task_settings = TaskSettings.load(task_dir / "settings.toml")
         task_env = {_to_env_key(k): v for k, v in task_settings.properties.items()}
@@ -123,6 +147,16 @@ class RunnerProcess:
             raise TaskException(str(e)) from e
 
     def _should_skip_task(self, task_settings: TaskSettings) -> bool:
+        """Determine if a task should be skipped during this run cycle.
+
+        A task is skipped if:
+        1. It is not enabled, OR
+        2. Its session_id matches the current session AND its last_run
+           elapsed time is less than its configured timeout (rate-limiting).
+
+        Tasks from a different session are always re-run (no cross-session
+        rate limiting).
+        """
         if not task_settings.general.enabled:
             return True
 
@@ -142,6 +176,24 @@ class RunnerProcess:
         return False
 
     async def _run_loop(self) -> None:
+        """Main execution loop — the runner's lifecycle state machine.
+
+        Phases (each is optional — only runs if defined in metadata.exec):
+          initialization
+          └─ loop until shutting_down ──────────────────────┐
+               ├─ before-exec                               │
+               ├─ for each enabled (non-rate-limited) task: │
+               │    ├─ before-task                          │
+               │    ├─ task-exec  ← runs the actual command │
+               │    └─ after-task                           │
+               ├─ after-exec                                │
+               └─ idle (sleep, check shutting_down each s)──┘
+          termination
+          off
+
+        Errors in task-exec are non-fatal (task marked "fail").
+        The loop always sets state to "off" and releases _run_lock.
+        """
         try:
             self._run_lock = True
 
@@ -159,6 +211,7 @@ class RunnerProcess:
                         self.metadata.exec.before_exec, self.metadata.exec.before_exec
                     )
 
+                # Tasks are processed in sorted directory order (by task id)
                 for task_dir in sorted(self._tasks_dir.iterdir()):
                     if not task_dir.is_dir():
                         continue
@@ -191,6 +244,7 @@ class RunnerProcess:
                             )
                         task_settings.session.last_run_status = "success"
                     except TaskException:
+                        # Task failure does not crash the whole runner
                         task_settings.session.last_run_status = "fail"
                     finally:
                         task_settings.session.session_id = self.session_id
@@ -216,6 +270,8 @@ class RunnerProcess:
                 if self.shutting_down:
                     break
 
+                # Idle phase: sleep in 1s increments so shutdown()
+                # does not have to wait for the full timeout to elapse
                 self._change_runner_state("idle")
                 timeout_sec = _parse_timeout(self.settings.general.timeout)
                 self._log(f"Sleep for {self.settings.general.timeout}")
@@ -240,6 +296,11 @@ class RunnerProcess:
             self._run_lock = False
 
     def run(self) -> None:
+        """Start the runner lifecycle as a background asyncio task.
+
+        Guarded by _run_lock — subsequent calls while the runner is
+        already starting/started are silently ignored.
+        """
         if self._run_lock:
             return
         self._task = asyncio.create_task(self._run_loop())
@@ -254,11 +315,22 @@ class RunnerProcess:
             pass
 
     async def shutdown(self) -> None:
+        """Request graceful shutdown and wait until the runner reaches "off".
+
+        Sets the shutting_down flag.  The _run_loop checks this flag
+        during the idle sleep loop and between state transitions.
+        This call blocks until the runner has fully stopped.
+        """
         self.shutting_down = True
         while self.settings.session.state != "off":
             await asyncio.sleep(0.5)
 
     def terminate(self) -> None:
+        """Hard-kill all tracked subprocesses (SIGTERM).
+
+        Does NOT set shutting_down — used as a last-resort cleanup
+        rather than a graceful stop.
+        """
         for proc in self._processes:
             try:
                 proc.terminate()

@@ -216,40 +216,44 @@ class InstallTaskVersionScreen(MenuScreen):
         return to_ask
 
     def _prompt_properties(
-        self,
-        props: list[PropertyDef],
-        index: int,
-        meta: TaskMetadata,
-        target_dir: Path,
-    ) -> None:
+            self, meta: TaskMetadata, properties: list[PropertyDef], index: int = 0
+    ) -> bool:
+        """Sequentially prompt the user for required / non-default properties.
+
+        Uses a recursive closure pattern: each prompt calls the function
+        again with index + 1 for the next property.  Cancellation (Esc)
+        skips to the next property.  Required properties with empty values
+        show a warning and re-prompt the same index.
+        When all properties are done, calls _finish_install.
+        """
+        props = [p for p in properties if not p.optional or p.default is None]
         if index >= len(props):
-            self._finish_install(meta, target_dir)
-            return
+            self._finish_install(meta, self._resolve_target_dir(meta))
+            return True
 
         prop = props[index]
+        raw = self.settings.properties.get(prop.name, "")
+        cur_val = parse_property_value(raw, prop.input_type)
 
-        def on_result(result: Any) -> None:
+        def _skip_or_next(result: Any) -> None:
             if result is None:
-                self._prompt_properties(props, index + 1, meta, target_dir)
+                self._prompt_properties(meta, properties, index + 1)
                 return
-            if is_property_value_empty(result, prop.input_type):
+            if not prop.optional and is_property_value_empty(result, prop.input_type):
                 self.app.push_screen(
                     InfoScreen(
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
                     ),
-                    lambda _: self._prompt_properties(props, index, meta, target_dir),
+                    lambda _: self._prompt_properties(meta, properties, index),
                 )
                 return
-            settings = TaskSettings.load(
-                self.tmp_task_folder / "settings.toml"
-            )
             if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
-                settings.properties[prop.name] = ",".join(str(v) for v in result)
+                self.settings.properties[prop.name] = ",".join(str(v) for v in result)
             else:
-                settings.properties[prop.name] = str(result)
-            settings.save(self.tmp_task_folder / "settings.toml")
-            self._prompt_properties(props, index + 1, meta, target_dir)
+                self.settings.properties[prop.name] = str(result)
+            self.settings.save(self.tmp_task_folder / "settings.toml")
+            self._prompt_properties(meta, properties, index + 1)
 
         self.app.push_screen(
             InputScreen(
@@ -258,12 +262,20 @@ class InstallTaskVersionScreen(MenuScreen):
                 input_type=prop.input_type,
                 options=prop.options or [],
             ),
-            on_result,
+            _skip_or_next,
         )
 
     def _finish_install(
             self, meta: TaskMetadata, target_dir: Path
     ) -> None:
+        """Finalise the task installation: persist, clear caches, navigate.
+
+        1. Fill default property values.
+        2. Replace the target directory with the temp copy.
+        3. Clear config caches so fresh files are loaded on next access.
+        4. Pop the screen stack back to the RunnerMenuScreen.
+        5. Push the TaskMenuScreen for the newly installed task.
+        """
         from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
         from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 

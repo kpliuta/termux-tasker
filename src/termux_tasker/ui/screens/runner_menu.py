@@ -74,6 +74,11 @@ class RunnerMenuScreen(MenuScreen):
                 btn.label = id_to_label[btn.id]
 
     def _fix_session(self, settings: RunnerSettings, runner_dir: Path) -> None:
+        """Reset stale session state (same pattern as TaskMenuScreen).
+
+        Runners are forced to "off" (vs tasks forced to "stopped")
+        because "off" is the runner's terminal state.
+        """
         app = termux_app(self) if hasattr(self, "app") else None
         if app and settings.session.session_id != app.state.session_id:
             settings.session.state = "off"
@@ -115,6 +120,13 @@ class RunnerMenuScreen(MenuScreen):
         self.run_worker(self._toggle())
 
     async def _toggle(self) -> None:
+        """Enable or disable the runner.
+
+        When disabling: shutdown the runner process and remove it from
+        app.state.runners.  When enabling: save settings first (so the
+        intent is persisted even if construction fails), create a new
+        RunnerProcess, and launch the asyncio lifecycle loop.
+        """
         app = termux_app(self)
         meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
         settings = RunnerSettings.load(self.runner_dir / "settings.toml")

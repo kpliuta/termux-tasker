@@ -66,6 +66,7 @@ class PropertyDef:
 
 
 def _parse_properties(items) -> list[PropertyDef]:
+    """Convert TOML [[property]] array items to PropertyDef dataclasses."""
     result = []
     for item in items:
         result.append(PropertyDef(
@@ -110,6 +111,13 @@ class RunnerGeneral:
 
 @dataclass
 class RunnerMetadata:
+    """Runner definition loaded from metadata.toml.
+
+    Uses class-level instance caching (_instances) keyed by file path.
+    Loading the same .toml multiple times returns the cached object,
+    avoiding repeated disk I/O. Explicitly call clear_cache(path) after
+    replacing the file on disk (e.g. after install/update).
+    """
     _instances: ClassVar[dict[Path, RunnerMetadata]] = {}
 
     general: RunnerGeneral = field(default_factory=RunnerGeneral)
@@ -206,6 +214,7 @@ class RunnerMetadata:
                 arr.append(t)
             doc["task-validator"] = arr
 
+        # Map Python snake_case attr names to TOML kebab-case keys
         exec_table = tomlkit.table()
         for attr, key in [
             ("initialization", "initialization"),
@@ -222,10 +231,18 @@ class RunnerMetadata:
         doc["exec"] = exec_table
 
         _write_toml(path, doc)
+        # Use type(self) instead of cls so that TaskSettings = RunnerSettings
+        # alias updates the correct shared _instances dict
         type(self)._instances[path] = self
 
     @classmethod
     def clear_cache(cls, path: Path) -> None:
+        """Explicitly evict a cached entry.
+
+        Must be called after replacing the file on disk
+        (e.g. after shutil.copytree in install flows), otherwise
+        load() will return the stale cached object.
+        """
         cls._instances.pop(path, None)
 
 
@@ -243,6 +260,11 @@ class TaskGeneral:
 
 @dataclass
 class TaskMetadata:
+    """Task definition loaded from metadata.toml.
+
+    Same class-level caching mechanism as RunnerMetadata.
+    """
+
     _instances: ClassVar[dict[Path, TaskMetadata]] = {}
 
     general: TaskGeneral = field(default_factory=TaskGeneral)
@@ -319,6 +341,7 @@ class TaskMetadata:
 
     @classmethod
     def clear_cache(cls, path: Path) -> None:
+        """Evict cached entry for *path* (same pattern as RunnerMetadata)."""
         cls._instances.pop(path, None)
 
 
@@ -340,6 +363,13 @@ class SessionInfo:
 
 @dataclass
 class RunnerSettings:
+    """Runner (or task) runtime settings loaded from settings.toml.
+
+    Same class-level caching as the metadata classes.  Unlike metadata,
+    load() returns a default instance when the file does not exist
+    (fresh install / first launch).
+    """
+
     _instances: ClassVar[dict[Path, RunnerSettings]] = {}
 
     general: RunnerSettingsGeneral = field(default_factory=RunnerSettingsGeneral)
@@ -390,6 +420,7 @@ class RunnerSettings:
         session = tomlkit.table()
         session["session_id"] = self.session.session_id
         session["state"] = self.session.state
+        # Only write non-default values to keep the file clean
         if self.session.last_run != "none":
             session["last_run"] = self.session.last_run
         if self.session.last_run_status != "none":
@@ -401,9 +432,13 @@ class RunnerSettings:
 
     @classmethod
     def clear_cache(cls, path: Path) -> None:
+        """Evict cached entry for *path*."""
         cls._instances.pop(path, None)
 
 
+# TaskSettings is an alias for RunnerSettings — same shape, different semantics.
+# Because it is a Python alias, the shared ClassVar _instances dict is also shared,
+# so RunnerSettings.clear_cache and TaskSettings.clear_cache operate on the same cache.
 TaskSettings = RunnerSettings
 TaskSettingsGeneral = RunnerSettingsGeneral
 

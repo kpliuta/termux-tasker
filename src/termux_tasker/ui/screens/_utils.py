@@ -29,7 +29,12 @@ VALID_ID_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_-]*$")
 
 
 def sanitize_id(name: str) -> str:
-    """Replace characters invalid for Textual widget IDs with underscores."""
+    """Sanitize an arbitrary string for use as a Textual widget ID.
+
+    Textual IDs must start with a letter or underscore and contain only
+    alphanumerics, underscores, or hyphens.  Invalid characters are
+    replaced with underscores.
+    """
     result = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
     if result and not result[0].isalpha() and result[0] != '_':
         result = '_' + result
@@ -140,6 +145,15 @@ def merge_runner_properties(
     old_properties: list[PropertyDef],
     new_properties: list[PropertyDef],
 ) -> RunnerSettings:
+    """Merge old property values into a new settings instance during version update.
+
+    A value is preserved only when the **full signature** of the property
+    (name + input_type + optional + options tuple) matches between the old
+    and new definitions.  This prevents carrying over stale values for
+    properties that changed type or options between versions.
+
+    The ``general`` and ``session`` fields are carried over wholesale.
+    """
     old_sigs = {
         (p.name, p.input_type, p.optional, tuple(p.options or []))
         for p in old_properties
@@ -160,6 +174,11 @@ def fill_default_properties(
     settings_path: Path,
     properties: list[PropertyDef],
 ) -> None:
+    """Fill in default values for properties that are missing from the settings.
+
+    Only writes to disk if at least one property was actually filled
+    (avoids unnecessary I/O on every install/update).
+    """
     settings = RunnerSettings.load(settings_path)
     changed = False
     for prop in properties:
@@ -171,6 +190,12 @@ def fill_default_properties(
 
 
 def parse_property_value(raw: str, input_type: str) -> Any:
+    """Deserialize a stored property value for the InputScreen.
+
+    For checkboxes, tries ast.literal_eval first (supports Python list
+    repr from ``str(result)``), then falls back to comma-splitting.
+    Returns the raw string for text/radio inputs.
+    """
     if input_type == "checkbox" and raw:
         try:
             parsed = ast.literal_eval(raw)
@@ -183,6 +208,11 @@ def parse_property_value(raw: str, input_type: str) -> Any:
 
 
 def is_property_value_empty(result: Any, input_type: str) -> bool:
+    """Check whether a property value is considered "empty".
+
+    For checkboxes: an empty list/tuple.
+    For text/radio: a blank string.
+    """
     if input_type == "checkbox":
         return isinstance(result, (list, tuple)) and not result
     return isinstance(result, str) and not result.strip()

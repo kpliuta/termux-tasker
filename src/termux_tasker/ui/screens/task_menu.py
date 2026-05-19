@@ -78,6 +78,12 @@ class TaskMenuScreen(MenuScreen):
                 btn.label = id_to_label[btn.id]
 
     def _fix_session(self, settings: TaskSettings, task_dir: Path) -> None:
+        """Reset stale session state on app restart.
+
+        If the recorded session_id doesn't match the current app session,
+        force the task to "stopped".  This prevents tasks from being stuck
+        in a "running" state after an app restart or crash.
+        """
         app = termux_app(self) if hasattr(self, "app") else None
         if app and settings.session.session_id != app.state.session_id:
             settings.session.state = "stopped"
@@ -143,6 +149,17 @@ class TaskMenuScreen(MenuScreen):
 
     @on(Button.Pressed, "#set_timeout")
     def on_set_timeout(self, event: Button.Pressed) -> None:
+        """Open timeout input with interactive validation.
+
+        Uses a closure chain to create a multi-step dialog:
+          _show_input → InputScreen[1] ─(on result)─→ _on_result
+               ↑                                            │
+               └──── _warn_xxx ─→ InfoScreen ───────────────┘
+
+        [1] Shows the current value as prefill.
+        On empty or invalid format: warning InfoScreen → re-prompt.
+        On valid format: save and refresh.
+        """
 
         def _show_input() -> None:
             settings = TaskSettings.load(self.task_dir / "settings.toml")
