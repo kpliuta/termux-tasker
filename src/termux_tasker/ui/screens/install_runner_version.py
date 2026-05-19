@@ -64,7 +64,7 @@ class InstallRunnerVersionScreen(MenuScreen):
 
         if is_git:
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
-            self.app.push_screen(loading)
+            termux_app(self).push_screen(loading)
             await asyncio.sleep(0)
 
             tags, main_branch = fetch_git_tags(tmp_folder)
@@ -114,13 +114,13 @@ class InstallRunnerVersionScreen(MenuScreen):
         loading = LoadingScreen(
             f"Validating {tag} version of {meta.general.name} runner"
         )
-        self.app.push_screen(loading)
+        termux_app(self).push_screen(loading)
         await asyncio.sleep(0)
 
         if is_git and tag not in ("main", "master"):
             if not git_checkout(tmp_folder, tag):
                 loading.dismiss(None)
-                self.app.push_screen(
+                termux_app(self).push_screen(
                     InfoScreen(
                         message=f"Failed to checkout tag '{tag}'",
                         severity="error",
@@ -135,7 +135,7 @@ class InstallRunnerVersionScreen(MenuScreen):
             validator.validate()
         except RunnerValidatorException as e:
             loading.dismiss(None)
-            self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
             return
 
         loading.dismiss(None)
@@ -148,7 +148,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                     self._finalize_install(meta.general.id, tag, install_state)
                 )
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             ConfirmationScreen(
                 message=(
                     f"Are you sure you want to {install_state} "
@@ -231,7 +231,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                 if prop.optional:
                     self._prompt_properties(props, index + 1, meta, target_dir)
                     return
-                self.app.push_screen(
+                termux_app(self).push_screen(
                     InfoScreen(
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
@@ -240,7 +240,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                 )
                 return
             if not prop.optional and is_property_value_empty(result, prop.input_type):
-                self.app.push_screen(
+                termux_app(self).push_screen(
                     InfoScreen(
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
@@ -258,7 +258,7 @@ class InstallRunnerVersionScreen(MenuScreen):
             settings.save(self.tmp_runner_folder / "settings.toml")
             self._prompt_properties(props, index + 1, meta, target_dir)
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             InputScreen(
                 title=prop.name,
                 description=prop.description or "",
@@ -291,7 +291,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         RunnerSettings.clear_cache(target_dir / "settings.toml")
         RunnerMetadata.clear_cache(target_dir / "metadata.toml")
 
-        while not isinstance(self.app.screen, RunnersScreen):
-            self.app.pop_screen()
+        while not isinstance(termux_app(self).screen, RunnersScreen):
+            termux_app(self).pop_screen()
 
-        self.app.push_screen(RunnerMenuScreen(target_dir))
+        termux_app(self).push_screen(RunnerMenuScreen(target_dir))

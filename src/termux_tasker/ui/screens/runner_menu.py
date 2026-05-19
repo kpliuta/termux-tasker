@@ -133,7 +133,7 @@ class RunnerMenuScreen(MenuScreen):
 
         if settings.general.enabled:
             loading = LoadingScreen("Runner shutting down")
-            self.app.push_screen(loading)
+            termux_app(self).push_screen(loading)
             runner_proc = app.state.runners.get(meta.general.id)
             if runner_proc:
                 await runner_proc.shutdown()
@@ -149,7 +149,7 @@ class RunnerMenuScreen(MenuScreen):
             )
             app.state.runners[meta.general.id] = runner_proc
             loading = LoadingScreen("Runner starting up")
-            self.app.push_screen(loading)
+            termux_app(self).push_screen(loading)
             runner_proc.run()
             loading.dismiss(None)
 
@@ -165,26 +165,26 @@ class RunnerMenuScreen(MenuScreen):
     @on(Button.Pressed, "#show_tasks")
     def on_show_tasks(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(TasksMenuScreen(self.runner_dir))
+        termux_app(self).push_screen(TasksMenuScreen(self.runner_dir))
 
     @on(Button.Pressed, "#show_logs")
     def on_show_logs(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(
+        termux_app(self).push_screen(
             LogScreen(content=self.runner_dir / "stdout", show_follow=True)
         )
 
     @on(Button.Pressed, "#show_metadata")
     def on_show_metadata(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(
+        termux_app(self).push_screen(
             LogScreen(content=self.runner_dir / "metadata.toml", show_follow=False)
         )
 
     @on(Button.Pressed, "#show_settings")
     def on_show_settings(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(
+        termux_app(self).push_screen(
             LogScreen(content=self.runner_dir / "settings.toml", show_follow=False)
         )
 
@@ -195,7 +195,7 @@ class RunnerMenuScreen(MenuScreen):
         app = termux_app(self)
         tmp_folder = copy_to_tmp(self.runner_dir, app.state.tmp_dir, "runner")
         app.state.register_tmp_folder(tmp_folder)
-        self.app.push_screen(InstallRunnerVersionScreen(tmp_folder))
+        termux_app(self).push_screen(InstallRunnerVersionScreen(tmp_folder))
 
     @on(Button.Pressed, "#uninstall")
     def on_uninstall(self, event: Button.Pressed) -> None:
@@ -206,7 +206,7 @@ class RunnerMenuScreen(MenuScreen):
             if result is not None:
                 self.run_worker(self._do_uninstall())
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             ConfirmationScreen(
                 message=f"Are you sure you want to uninstall {meta.general.name} runner?",
                 ok_button_text="Yes",
@@ -223,7 +223,7 @@ class RunnerMenuScreen(MenuScreen):
 
         if settings.session.state != "off":
             loading = LoadingScreen("Runner shutting down")
-            self.app.push_screen(loading)
+            termux_app(self).push_screen(loading)
             runner_proc = app.state.runners.get(meta.general.id)
             if runner_proc:
                 await runner_proc.shutdown()
@@ -235,7 +235,7 @@ class RunnerMenuScreen(MenuScreen):
         import shutil
         shutil.rmtree(self.runner_dir, ignore_errors=True)
 
-        self.app.pop_screen()
+        termux_app(self).pop_screen()
 
     @on(Button.Pressed)
     def on_set_property(self, event: Button.Pressed) -> None:
@@ -256,7 +256,7 @@ class RunnerMenuScreen(MenuScreen):
         cur_val = parse_property_value(raw, prop.input_type)
 
         def _show_input() -> None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InputScreen(
                     title=prop.name,
                     description=prop.description or "",
@@ -268,7 +268,7 @@ class RunnerMenuScreen(MenuScreen):
             )
 
         def _warn_and_retry() -> None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(
                     message=f"'{prop.name}' is required and must have a value.",
                     severity="warning",

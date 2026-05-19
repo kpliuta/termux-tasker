@@ -24,14 +24,14 @@ class MainMenuScreen(MenuScreen):
     @on(Button.Pressed, "#show_runners")
     def on_show_runners(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(RunnersScreen())
+        termux_app(self).push_screen(RunnersScreen())
 
     @on(Button.Pressed, "#settings")
     def on_settings(self, event: Button.Pressed) -> None:
         event.stop()
         app = termux_app(self)
         cfg = AppConfig.load(app.state.app_config_file)
-        self.app.push_screen(
+        termux_app(self).push_screen(
             SettingsScreen(app.state.app_version, app.state.session_id, cfg.settings.upgrade_on_startup)
         )
 

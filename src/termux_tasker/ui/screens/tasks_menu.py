@@ -7,9 +7,9 @@ from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, TaskSettings
 from termux_tasker.ui.base.screen import MenuScreen
+from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.task_type import TaskTypeScreen
 from termux_tasker.ui.screens.task_menu import TaskMenuScreen
-
 
 class TasksMenuScreen(MenuScreen):
     def __init__(self, runner_dir: Path) -> None:
@@ -40,7 +40,7 @@ class TasksMenuScreen(MenuScreen):
     @on(Button.Pressed, "#install_task")
     def on_install(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(TaskTypeScreen(self.runner_dir))
+        termux_app(self).push_screen(TaskTypeScreen(self.runner_dir))
 
     @on(Button.Pressed)
     def on_open(self, event: Button.Pressed) -> None:
@@ -58,5 +58,5 @@ class TasksMenuScreen(MenuScreen):
                 if meta_path.exists():
                     meta = TaskMetadata.load(meta_path)
                     if meta.general.id == task_id:
-                        self.app.push_screen(TaskMenuScreen(task_dir))
+                        termux_app(self).push_screen(TaskMenuScreen(task_dir))
                         return

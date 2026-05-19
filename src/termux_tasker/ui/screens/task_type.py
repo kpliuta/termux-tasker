@@ -31,7 +31,7 @@ class TaskTypeScreen(MenuScreen):
     def on_bundled(self, event: Button.Pressed) -> None:
         event.stop()
         from termux_tasker.ui.screens.bundled_task import BundledTaskScreen
-        self.app.push_screen(BundledTaskScreen(self.runner_dir))
+        termux_app(self).push_screen(BundledTaskScreen(self.runner_dir))
 
     @on(Button.Pressed, "#github_url")
     def on_github(self, event: Button.Pressed) -> None:
@@ -41,7 +41,7 @@ class TaskTypeScreen(MenuScreen):
             if result is not None:
                 self._process_github_url(result)
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             InputScreen(
                 title="GitHub URL",
                 input_type="text",
@@ -65,19 +65,19 @@ class TaskTypeScreen(MenuScreen):
                     validator.validate_metadata_existed()
                     validator.validate_metadata_essentials()
                 except TaskValidatorException as e:
-                    self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+                    termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
                     return
                 from termux_tasker.ui.screens.install_task import InstallTaskScreen
-                self.app.push_screen(InstallTaskScreen(self.runner_dir, tmp_folder))
+                termux_app(self).push_screen(InstallTaskScreen(self.runner_dir, tmp_folder))
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             FileBrowserScreen(select_folder=True, path=Path.home()),
             on_folder,
         )
 
     def _process_github_url(self, url: str) -> None:
         if not GITHUB_URL_RE.match(url):
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(message=f"Invalid GitHub URL: {url}", severity="error")
             )
             return
@@ -85,7 +85,7 @@ class TaskTypeScreen(MenuScreen):
         app = termux_app(self)
         folder = clone_repo(url, app.state.tmp_dir, "task")
         if folder is None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(
                     message=f"Repository not found or inaccessible: {url}",
                     severity="error",
@@ -99,7 +99,7 @@ class TaskTypeScreen(MenuScreen):
             validator.validate_metadata_existed()
             validator.validate_metadata_essentials()
         except TaskValidatorException as e:
-            self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
             return
         from termux_tasker.ui.screens.install_task import InstallTaskScreen
-        self.app.push_screen(InstallTaskScreen(self.runner_dir, folder))
+        termux_app(self).push_screen(InstallTaskScreen(self.runner_dir, folder))

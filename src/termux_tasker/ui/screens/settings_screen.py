@@ -38,7 +38,7 @@ class SettingsScreen(MenuScreen):
                     rf"Termux upgrade on startup \[{cfg.settings.upgrade_on_startup}]": "upgrade_on_startup",
                 }
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             InputScreen(
                 title="Termux upgrade on startup",
                 input_type="radio",

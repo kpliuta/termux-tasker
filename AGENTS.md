@@ -29,7 +29,7 @@
 
 - Subclass `MenuScreen` for feature screens; pass `menu_items: dict[str, str]` (label→button_id).
 - Handle button events with `@on(Button.Pressed, "#button_id")` — always `event.stop()`.
-- Use `termux_app(self)` from `_utils.py` for typed app access.
+- Use `termux_app(self)` from `_utils.py` for typed app access — prefer over `self.app` everywhere in feature screens (but `self.app` is fine in base screens in `ui/base/`).
 - `BINDINGS` list for keyboard shortcuts: `[("escape", "press_back", "Back")]`.
 - `push_screen(screen, callback)` for modals; callback receives dismissed screen's result.
 - `self.run_worker(self._async_method())` for async work from sync contexts.

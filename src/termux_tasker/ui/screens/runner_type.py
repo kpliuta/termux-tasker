@@ -30,7 +30,7 @@ class RunnerTypeScreen(MenuScreen):
     def on_bundled(self, event: Button.Pressed) -> None:
         event.stop()
         from termux_tasker.ui.screens.bundled_runner import BundledRunnerScreen
-        self.app.push_screen(BundledRunnerScreen())
+        termux_app(self).push_screen(BundledRunnerScreen())
 
     @on(Button.Pressed, "#github_url")
     def on_github(self, event: Button.Pressed) -> None:
@@ -40,7 +40,7 @@ class RunnerTypeScreen(MenuScreen):
             if result is not None:
                 self._process_github_url(result)
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             InputScreen(
                 title="GitHub URL",
                 input_type="text",
@@ -64,19 +64,19 @@ class RunnerTypeScreen(MenuScreen):
                     validator.validate_metadata_existed()
                     validator.validate_metadata_essentials()
                 except RunnerValidatorException as e:
-                    self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+                    termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
                     return
                 from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-                self.app.push_screen(InstallRunnerScreen(tmp_folder))
+                termux_app(self).push_screen(InstallRunnerScreen(tmp_folder))
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             FileBrowserScreen(select_folder=True, path=Path.home()),
             on_folder,
         )
 
     def _process_github_url(self, url: str) -> None:
         if not GITHUB_URL_RE.match(url):
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(message=f"Invalid GitHub URL: {url}", severity="error")
             )
             return
@@ -84,7 +84,7 @@ class RunnerTypeScreen(MenuScreen):
         app = termux_app(self)
         folder = clone_repo(url, app.state.tmp_dir, "runner")
         if folder is None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(
                     message=f"Repository not found or inaccessible: {url}",
                     severity="error",
@@ -98,7 +98,7 @@ class RunnerTypeScreen(MenuScreen):
             validator.validate_metadata_existed()
             validator.validate_metadata_essentials()
         except RunnerValidatorException as e:
-            self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
             return
         from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-        self.app.push_screen(InstallRunnerScreen(folder))
+        termux_app(self).push_screen(InstallRunnerScreen(folder))

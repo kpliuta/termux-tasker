@@ -26,7 +26,7 @@ class BundledTaskScreen(MenuScreen):
 
     async def _load(self) -> None:
         loading = LoadingScreen("Fetching tasks")
-        self.app.push_screen(loading)
+        termux_app(self).push_screen(loading)
         bundled = BundledTasks.load(self.runner_dir / "bundled.toml")
         self._tmp_folders.clear()
 
@@ -88,10 +88,10 @@ class BundledTaskScreen(MenuScreen):
                             validator.validate_metadata_existed()
                             validator.validate_metadata_essentials()
                         except TaskValidatorException as e:
-                            self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+                            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
                             return
                         from termux_tasker.ui.screens.install_task import InstallTaskScreen
-                        self.app.push_screen(
+                        termux_app(self).push_screen(
                             InstallTaskScreen(self.runner_dir, tmp_folder)
                         )
                         return

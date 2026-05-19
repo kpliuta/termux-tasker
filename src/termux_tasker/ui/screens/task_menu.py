@@ -136,14 +136,14 @@ class TaskMenuScreen(MenuScreen):
     @on(Button.Pressed, "#show_metadata")
     def on_show_metadata(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(
+        termux_app(self).push_screen(
             LogScreen(content=self.task_dir / "metadata.toml", show_follow=False)
         )
 
     @on(Button.Pressed, "#show_settings")
     def on_show_settings(self, event: Button.Pressed) -> None:
         event.stop()
-        self.app.push_screen(
+        termux_app(self).push_screen(
             LogScreen(content=self.task_dir / "settings.toml", show_follow=False)
         )
 
@@ -164,7 +164,7 @@ class TaskMenuScreen(MenuScreen):
 
         def _show_input() -> None:
             settings = TaskSettings.load(self.task_dir / "settings.toml")
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InputScreen(
                     title="Timeout",
                     input_type="text",
@@ -174,7 +174,7 @@ class TaskMenuScreen(MenuScreen):
             )
 
         def _warn_empty() -> None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(
                     message="Timeout is required and must have a value.",
                     severity="warning",
@@ -183,7 +183,7 @@ class TaskMenuScreen(MenuScreen):
             )
 
         def _warn_format() -> None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(
                     message="Invalid timeout format. Use e.g. 30s, 5m, 1h.",
                     severity="warning",
@@ -217,7 +217,7 @@ class TaskMenuScreen(MenuScreen):
         app = termux_app(self)
         tmp_folder = copy_to_tmp(self.task_dir, app.state.tmp_dir, "task")
         app.state.register_tmp_task_folder(tmp_folder)
-        self.app.push_screen(
+        termux_app(self).push_screen(
             InstallTaskVersionScreen(self.runner_dir, tmp_folder)
         )
 
@@ -230,7 +230,7 @@ class TaskMenuScreen(MenuScreen):
             if result is not None:
                 self.run_worker(self._do_uninstall())
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             ConfirmationScreen(
                 message=(
                     f"Are you sure you want to uninstall {meta.general.name} task?"
@@ -244,7 +244,7 @@ class TaskMenuScreen(MenuScreen):
 
     async def _do_uninstall(self) -> None:
         loading = LoadingScreen("Awaiting task termination")
-        self.app.push_screen(loading)
+        termux_app(self).push_screen(loading)
 
         settings = TaskSettings.load(self.task_dir / "settings.toml")
         while settings.session.state != "stopped":
@@ -254,7 +254,7 @@ class TaskMenuScreen(MenuScreen):
         loading.dismiss(None)
 
         shutil.rmtree(self.task_dir, ignore_errors=True)
-        self.app.pop_screen()
+        termux_app(self).pop_screen()
 
     @on(Button.Pressed)
     def on_set_property(self, event: Button.Pressed) -> None:
@@ -275,7 +275,7 @@ class TaskMenuScreen(MenuScreen):
         cur_val = parse_property_value(raw, prop.input_type)
 
         def _show_input() -> None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InputScreen(
                     title=prop.name,
                     description=prop.description or "",
@@ -287,7 +287,7 @@ class TaskMenuScreen(MenuScreen):
             )
 
         def _warn_and_retry() -> None:
-            self.app.push_screen(
+            termux_app(self).push_screen(
                 InfoScreen(
                     message=f"'{prop.name}' is required and must have a value.",
                     severity="warning",

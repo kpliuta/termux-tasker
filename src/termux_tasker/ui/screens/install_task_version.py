@@ -64,7 +64,7 @@ class InstallTaskVersionScreen(MenuScreen):
 
         if is_git:
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
-            self.app.push_screen(loading)
+            termux_app(self).push_screen(loading)
             await asyncio.sleep(0)
 
             tags, main_branch = fetch_git_tags(tmp_folder)
@@ -114,13 +114,13 @@ class InstallTaskVersionScreen(MenuScreen):
         loading = LoadingScreen(
             f"Validating {tag} version of {meta.general.name} task"
         )
-        self.app.push_screen(loading)
+        termux_app(self).push_screen(loading)
         await asyncio.sleep(0)
 
         if is_git and tag not in ("main", "master"):
             if not git_checkout(tmp_folder, tag):
                 loading.dismiss(None)
-                self.app.push_screen(
+                termux_app(self).push_screen(
                     InfoScreen(
                         message=f"Failed to checkout tag '{tag}'",
                         severity="error",
@@ -137,7 +137,7 @@ class InstallTaskVersionScreen(MenuScreen):
             validator.validate()
         except TaskValidatorException as e:
             loading.dismiss(None)
-            self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
             return
 
         loading.dismiss(None)
@@ -150,7 +150,7 @@ class InstallTaskVersionScreen(MenuScreen):
                     self._finalize_install(meta.general.id, tag, install_state)
                 )
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             ConfirmationScreen(
                 message=(
                     f"Are you sure you want to {install_state} "
@@ -245,7 +245,7 @@ class InstallTaskVersionScreen(MenuScreen):
                 if prop.optional:
                     asyncio.get_event_loop().call_soon(_next, index + 1)
                     return
-                self.app.push_screen(
+                termux_app(self).push_screen(
                     InfoScreen(
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
@@ -254,7 +254,7 @@ class InstallTaskVersionScreen(MenuScreen):
                 )
                 return
             if not prop.optional and is_property_value_empty(result, prop.input_type):
-                self.app.push_screen(
+                termux_app(self).push_screen(
                     InfoScreen(
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
@@ -270,7 +270,7 @@ class InstallTaskVersionScreen(MenuScreen):
             settings.save(self.tmp_task_folder / "settings.toml")
             asyncio.get_event_loop().call_soon(_next, index + 1)
 
-        self.app.push_screen(
+        termux_app(self).push_screen(
             InputScreen(
                 title=prop.name,
                 description=prop.description or "",
@@ -305,7 +305,7 @@ class InstallTaskVersionScreen(MenuScreen):
         TaskSettings.clear_cache(target_dir / "settings.toml")
         TaskMetadata.clear_cache(target_dir / "metadata.toml")
 
-        while not isinstance(self.app.screen, RunnerMenuScreen):
-            self.app.pop_screen()
+        while not isinstance(termux_app(self).screen, RunnerMenuScreen):
+            termux_app(self).pop_screen()
 
-        self.app.push_screen(TaskMenuScreen(target_dir))
+        termux_app(self).push_screen(TaskMenuScreen(target_dir))

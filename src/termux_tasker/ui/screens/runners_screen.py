@@ -65,7 +65,7 @@ class RunnersScreen(MenuScreen):
         if btn_id == "install_runner":
             event.stop()
             from termux_tasker.ui.screens.runner_type import RunnerTypeScreen
-            self.app.push_screen(RunnerTypeScreen())
+            termux_app(self).push_screen(RunnerTypeScreen())
         elif btn_id.startswith("open_"):
             event.stop()
             runner_id = btn_id[5:]
@@ -77,5 +77,5 @@ class RunnersScreen(MenuScreen):
                 if meta_path.exists():
                     meta = RunnerMetadata.load(meta_path)
                     if meta.general.id == runner_id:
-                        self.app.push_screen(RunnerMenuScreen(runner_dir))
+                        termux_app(self).push_screen(RunnerMenuScreen(runner_dir))
                         return

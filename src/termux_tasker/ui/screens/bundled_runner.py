@@ -22,7 +22,7 @@ class BundledRunnerScreen(MenuScreen):
         if not self._loaded:
             self._loaded = True
             self._loading = LoadingScreen("Fetching runners")
-            self.app.push_screen(self._loading)
+            termux_app(self).push_screen(self._loading)
             self.run_worker(self._load())
 
     async def _load(self) -> None:
@@ -83,8 +83,8 @@ class BundledRunnerScreen(MenuScreen):
                             validator.validate_metadata_existed()
                             validator.validate_metadata_essentials()
                         except RunnerValidatorException as e:
-                            self.app.push_screen(InfoScreen(message=e.message, severity="error"))
+                            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
                             return
                         from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-                        self.app.push_screen(InstallRunnerScreen(tmp_folder))
+                        termux_app(self).push_screen(InstallRunnerScreen(tmp_folder))
                         return

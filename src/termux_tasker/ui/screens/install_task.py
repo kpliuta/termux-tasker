@@ -7,6 +7,7 @@ from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata
 from termux_tasker.ui.base.screen import MenuScreen
+from termux_tasker.ui.screens._utils import termux_app
 
 
 class InstallTaskScreen(MenuScreen):
@@ -27,6 +28,6 @@ class InstallTaskScreen(MenuScreen):
     def on_install(self, event: Button.Pressed) -> None:
         event.stop()
         from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
-        self.app.push_screen(
+        termux_app(self).push_screen(
             InstallTaskVersionScreen(self.runner_dir, self.tmp_task_folder)
         )
