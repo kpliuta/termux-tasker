@@ -228,9 +228,18 @@ class InstallRunnerVersionScreen(MenuScreen):
 
         def on_result(result: Any) -> None:
             if result is None:
-                self._prompt_properties(props, index + 1, meta, target_dir)
+                if prop.optional:
+                    self._prompt_properties(props, index + 1, meta, target_dir)
+                    return
+                self.app.push_screen(
+                    InfoScreen(
+                        message=f"'{prop.name}' is required and must have a value.",
+                        severity="warning",
+                    ),
+                    lambda _: self._prompt_properties(props, index, meta, target_dir),
+                )
                 return
-            if is_property_value_empty(result, prop.input_type):
+            if not prop.optional and is_property_value_empty(result, prop.input_type):
                 self.app.push_screen(
                     InfoScreen(
                         message=f"'{prop.name}' is required and must have a value.",

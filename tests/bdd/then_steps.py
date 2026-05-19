@@ -636,6 +636,50 @@ def then_timeout_required_msg(pilot) -> None:
         assert "Timeout is required" in content
 
 
+@then("a warning InfoScreen is shown that the property is required")
+def then_warning_required(pilot) -> None:
+    ui(pilot).assert_screen(InfoScreen)
+    screen = ui(pilot).app.screen
+    msg = screen.query_one("#info_message")
+    content = (
+        msg._content if hasattr(msg, "_content") else str(msg.render())
+    )
+    assert "required and must have a value" in content
+
+
+@then("the same property InputScreen is shown again")
+def then_same_input_shown(pilot) -> None:
+    import time
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if isinstance(ui(pilot).app.screen, InputScreen):
+            return
+        ui(pilot).pause(0.05)
+    raise AssertionError("Expected InputScreen to reappear after dismiss")
+
+
+@then("the next property is prompted")
+def then_next_property_shown(pilot) -> None:
+    import time
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        screen = ui(pilot).app.screen
+        if isinstance(screen, InputScreen):
+            return
+        if isinstance(screen, InfoScreen):
+            ui(pilot).pause(0.5)
+            # Check again after more processing
+            screen2 = ui(pilot).app.screen
+            if isinstance(screen2, InputScreen):
+                return
+            ui(pilot).pause(0.05)
+            continue
+        ui(pilot).pause(0.05)
+    raise AssertionError(
+        f"Expected next property InputScreen, got {type(ui(pilot).app.screen).__name__}"
+    )
+
+
 @then("it says \"'<property>' is required and must have a value.\"")
 def then_required_warning(pilot) -> None:
     screen = ui(pilot).app.screen

@@ -260,6 +260,20 @@ def when_append_content(pilot) -> None:
     fs().append_text(log_file, "new content\n")
 
 
+@when("I cancel the property prompt")
+def when_cancel_property(pilot) -> None:
+    ui(pilot).press("escape")
+    ui(pilot).pause(0.2)
+
+
+@when("I provide a valid value and press Ok")
+def when_provide_valid_value(pilot) -> None:
+    ui(pilot).set_value("#input_field", "test_value")
+    ui(pilot).pause()
+    ui(pilot).click_id("#ok")
+    ui(pilot).pause(0.2)
+
+
 @when("I confirm the installation")
 @when("the install finalizes")
 @when("properties are prompted one by one via InputScreen")

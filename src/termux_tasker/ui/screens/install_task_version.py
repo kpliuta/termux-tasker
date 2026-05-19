@@ -216,28 +216,39 @@ class InstallTaskVersionScreen(MenuScreen):
         return to_ask
 
     def _prompt_properties(
-            self, meta: TaskMetadata, properties: list[PropertyDef], index: int = 0
-    ) -> bool:
+        self,
+        props: list[PropertyDef],
+        index: int,
+        meta: TaskMetadata,
+        target_dir: Path,
+    ) -> None:
         """Sequentially prompt the user for required / non-default properties.
 
-        Uses a recursive closure pattern: each prompt calls the function
-        again with index + 1 for the next property.  Cancellation (Esc)
-        skips to the next property.  Required properties with empty values
-        show a warning and re-prompt the same index.
-        When all properties are done, calls _finish_install.
+        Recursively prompts each property; cancellation (Esc) skips to the
+        next.  Required properties with empty values show a warning and
+        re-prompt.  When all properties are done, calls _finish_install.
         """
-        props = [p for p in properties if not p.optional or p.default is None]
         if index >= len(props):
-            self._finish_install(meta, self._resolve_target_dir(meta))
-            return True
+            self._finish_install(meta, target_dir)
+            return
 
         prop = props[index]
-        raw = self.settings.properties.get(prop.name, "")
-        cur_val = parse_property_value(raw, prop.input_type)
+
+        def _next(index: int = index) -> None:
+            self._prompt_properties(props, index, meta, target_dir)
 
         def _skip_or_next(result: Any) -> None:
             if result is None:
-                self._prompt_properties(meta, properties, index + 1)
+                if prop.optional:
+                    asyncio.get_event_loop().call_soon(_next, index + 1)
+                    return
+                self.app.push_screen(
+                    InfoScreen(
+                        message=f"'{prop.name}' is required and must have a value.",
+                        severity="warning",
+                    ),
+                    lambda _: asyncio.get_event_loop().call_soon(_next, index),
+                )
                 return
             if not prop.optional and is_property_value_empty(result, prop.input_type):
                 self.app.push_screen(
@@ -245,15 +256,16 @@ class InstallTaskVersionScreen(MenuScreen):
                         message=f"'{prop.name}' is required and must have a value.",
                         severity="warning",
                     ),
-                    lambda _: self._prompt_properties(meta, properties, index),
+                    lambda _: asyncio.get_event_loop().call_soon(_next, index),
                 )
                 return
+            settings = TaskSettings.load(self.tmp_task_folder / "settings.toml")
             if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
-                self.settings.properties[prop.name] = ",".join(str(v) for v in result)
+                settings.properties[prop.name] = ",".join(str(v) for v in result)
             else:
-                self.settings.properties[prop.name] = str(result)
-            self.settings.save(self.tmp_task_folder / "settings.toml")
-            self._prompt_properties(meta, properties, index + 1)
+                settings.properties[prop.name] = str(result)
+            settings.save(self.tmp_task_folder / "settings.toml")
+            asyncio.get_event_loop().call_soon(_next, index + 1)
 
         self.app.push_screen(
             InputScreen(

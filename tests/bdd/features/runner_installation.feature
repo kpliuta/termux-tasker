@@ -82,3 +82,14 @@ Feature: Runner Installation
     When I press "Back" button (or Escape)
     Then I am returned to the previous screen
     And no installation occurs
+
+  Scenario: Cancel required property during runner install re-prompts
+    Given I am installing a runner with non-optional properties without defaults
+    When I cancel the property prompt
+    Then a warning InfoScreen is shown that the property is required
+    When I dismiss the warning
+    Then the same property InputScreen is shown again
+    When I provide a valid value and press Ok
+    Then the next property is prompted
+
+

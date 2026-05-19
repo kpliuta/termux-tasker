@@ -359,11 +359,45 @@ def given_task_no_required_file(pilot, app_state_fixture) -> Path:
     return _fixture
 
 
-@given("I am installing a runner with non-optional properties without defaults")
 @given("I am installing a runner where all properties have defaults or are optional")
 @given("the property is non-optional")
 def given_property_meta(pilot) -> None:
     ui(pilot).pause(0.1)
+
+
+@given("I am installing a runner with non-optional properties without defaults")
+def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
+    """Jump to property prompt state for a runner install with 2 required properties."""
+    from tests.bdd.conftest import RUNNER_REQUIRED_META, _write_runner
+    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
+    from termux_tasker.ui.base.screen import InputScreen
+    import uuid
+
+    folder = _write_runner(tmp_dir / f"_test_{uuid.uuid4().hex}", RUNNER_REQUIRED_META)
+    screen = InstallRunnerVersionScreen(folder)
+    pilot.push_screen(screen)
+    pilot.pause(0.3)
+
+    pilot._submit(lambda p: screen._finalize_install("test_runner", "1.0.0", "install"))
+    pilot.wait_until_screen(InputScreen, timeout=5)
+
+
+@given("I am installing a task with non-optional properties without defaults")
+def given_task_non_optional(pilot, tmp_dir: Path) -> None:
+    """Jump to property prompt state for a task install with 2 required properties."""
+    from tests.bdd.conftest import TASK_REQUIRED_META, _write_task
+    from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
+    from termux_tasker.ui.base.screen import InputScreen
+    import uuid
+
+    folder = _write_task(tmp_dir / f"_test_{uuid.uuid4().hex}", TASK_REQUIRED_META)
+    runner_dir = pilot.app.state.runners_dir / "sh_runner"
+    screen = InstallTaskVersionScreen(runner_dir, folder)
+    pilot.push_screen(screen)
+    pilot.pause(0.3)
+
+    pilot._submit(lambda p: screen._finalize_install("test_task", "1.0.0", "install"))
+    pilot.wait_until_screen(InputScreen, timeout=5)
 
 
 @given("a LogScreen is opened with a file path")

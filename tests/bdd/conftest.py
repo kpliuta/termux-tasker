@@ -123,6 +123,51 @@ optional = false
 
 REQUIRED_FILE_CONTENT = '#!/bin/sh\necho "Success"\n'
 
+RUNNER_REQUIRED_META = """\
+[general]
+id = "test_runner"
+name = "Test Runner"
+version = "1.0.0"
+app_min_version = ">=0.1.0"
+
+[[property]]
+name = "prop-1"
+description = "First required property"
+input-type = "text"
+optional = false
+
+[[property]]
+name = "prop-2"
+description = "Second required property"
+input-type = "text"
+optional = false
+
+[exec]
+task-exec = 'echo test'
+"""
+
+TASK_REQUIRED_META = """\
+[general]
+id = "test_task"
+name = "Test Task"
+version = "1.0.0"
+runner_id = "sh_runner"
+runner_min_version = ">=0.1.0"
+default_timeout = "1m"
+
+[[property]]
+name = "task-prop-1"
+description = "First required property"
+input-type = "text"
+optional = false
+
+[[property]]
+name = "task-prop-2"
+description = "Second required property"
+input-type = "text"
+optional = false
+"""
+
 
 def _write_runner(dir_path: Path, metadata: str) -> Path:
     dir_path.mkdir(parents=True, exist_ok=True)
