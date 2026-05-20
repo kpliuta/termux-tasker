@@ -198,6 +198,6 @@ class UIHelper:
         content = (
             str(msg.render())
             if hasattr(msg, "render")
-            else str(msg._content)
+            else str(msg._content)  # noqa
         )
         assert text in content

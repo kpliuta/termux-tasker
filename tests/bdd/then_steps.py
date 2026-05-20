@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from tests.bdd.steps_common import *  # noqa: F403, F401
-from termux_tasker.runner_process import _parse_timeout
+from tests.bdd.steps_common import *  # noqa
+from termux_tasker.runner_process import _parse_timeout # noqa
 
 
 @then("the main menu screen is shown")
@@ -440,7 +440,7 @@ def then_app_exits(pilot) -> None:
 
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
-        if ui(pilot).app._exit:
+        if ui(pilot).app._exit: # noqa
             return
         ui(pilot).pause(0.2)
     raise AssertionError("App did not exit within 10s")
@@ -452,7 +452,7 @@ def then_app_quit(pilot) -> None:
 
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
-        if ui(pilot).app._exit:
+        if ui(pilot).app._exit: # noqa
             return
         ui(pilot).pause(0.2)
     raise AssertionError("App did not exit within 10s")
@@ -464,7 +464,7 @@ def then_all_runners_shutdown(pilot) -> None:
 
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
-        if ui(pilot).app._exit:
+        if ui(pilot).app._exit: # noqa
             return
         ui(pilot).pause(0.2)
     raise AssertionError("App did not exit within 10s")
@@ -477,7 +477,7 @@ def then_same_exit_flow(pilot) -> None:
     while time.monotonic() < deadline:
         if ui(pilot).screen_is((ConfirmationScreen, MainMenuScreen)):
             return
-        if ui(pilot).app._exit:
+        if ui(pilot).app._exit: # noqa
             return
         ui(pilot).pause(0.05)
 
@@ -532,7 +532,7 @@ def then_awaiting_termination(pilot) -> None:
 
 
 @then('a loading screen "Fetching <name> versions" is shown')
-def then_fetching_versions(pilot) -> None:
+def then_fetching_versions() -> None:
     pass
 
 
@@ -543,7 +543,7 @@ def then_settings_saved(pilot) -> None:
 
 
 @then("the setting is saved to `app.toml`")
-def then_setting_saved_apptoml(pilot) -> None:
+def then_setting_saved_app_toml(pilot) -> None:
     from termux_tasker.config import AppConfig
 
     cfg = AppConfig.load(ui(pilot).app.state.app_config_file)
@@ -622,7 +622,7 @@ def then_invalid_timeout_format_msg(pilot) -> None:
     if isinstance(screen, InfoScreen):
         msg = screen.query_one("#info_message")
         content = (
-            msg._content if hasattr(msg, "_content") else str(msg.render())
+            msg._content if hasattr(msg, "_content") else str(msg.render()) # noqa
         )
         assert "Invalid timeout format" in content
 
@@ -633,7 +633,7 @@ def then_timeout_required_msg(pilot) -> None:
     if isinstance(screen, InfoScreen):
         msg = screen.query_one("#info_message")
         content = (
-            msg._content if hasattr(msg, "_content") else str(msg.render())
+            msg._content if hasattr(msg, "_content") else str(msg.render()) # noqa
         )
         assert "Timeout is required" in content
 
@@ -644,7 +644,7 @@ def then_warning_required(pilot) -> None:
     screen = ui(pilot).app.screen
     msg = screen.query_one("#info_message")
     content = (
-        msg._content if hasattr(msg, "_content") else str(msg.render())
+        msg._content if hasattr(msg, "_content") else str(msg.render()) # noqa
     )
     assert "required and must have a value" in content
 
@@ -688,7 +688,7 @@ def then_required_warning(pilot) -> None:
     if isinstance(screen, InfoScreen):
         msg = screen.query_one("#info_message")
         content = (
-            msg._content if hasattr(msg, "_content") else str(msg.render())
+            msg._content if hasattr(msg, "_content") else str(msg.render()) # noqa
         )
         assert "required and must have a value" in content
 
@@ -764,7 +764,7 @@ def then_richlog_cleared(pilot) -> None:
 def then_file_pos_moved(pilot) -> None:
     screen = ui(pilot).app.screen
     if hasattr(screen, "_file_pos"):
-        assert screen._file_pos > 0
+        assert screen._file_pos > 0 # noqa
 
 
 @then("only the new content appears (old content is not re-displayed)")
@@ -777,14 +777,14 @@ def then_only_new_content(pilot) -> None:
 def then_timer_stopped(pilot) -> None:
     screen = ui(pilot).app.screen
     if hasattr(screen, "_timer"):
-        assert screen._timer is None
+        assert screen._timer is None    # noqa
 
 
 @then("the follow timer is started (1 second interval)")
 def then_timer_started(pilot) -> None:
     screen = ui(pilot).app.screen
     if hasattr(screen, "_timer"):
-        assert screen._timer is not None
+        assert screen._timer is not None    # noqa
 
 
 @then("the square brackets are displayed literally")
@@ -890,7 +890,7 @@ def then_runner_removed(pilot) -> None:
 @then("validation fails, an error InfoScreen is shown")
 @then("validation passes, the install proceeds")
 @then('"[Installed]" suffix shown if already installed')
-def then_placeholder_stub(pilot) -> None:
+def then_placeholder_stub() -> None:
     pass
 
 
@@ -919,7 +919,7 @@ def then_state_off(pilot) -> None:
 
 
 @then("validation passes")
-def then_validation_passes(pilot, app_state_fixture) -> None:
+def then_validation_passes(app_state_fixture) -> None:
     runner_dir = app_state_fixture.runners_dir / "sh_runner"
     task_dir = app_state_fixture.tmp_dir / "task"
     fs().ensure_directory(task_dir)
@@ -938,7 +938,7 @@ def then_validation_passes(pilot, app_state_fixture) -> None:
 
 
 @then("validation fails because the runner version is incompatible")
-def then_validation_fails_incompatible(pilot, app_state_fixture) -> None:
+def then_validation_fails_incompatible(app_state_fixture) -> None:
     runner_dir = app_state_fixture.runners_dir / "sh_runner"
     task_dir = app_state_fixture.tmp_dir / "task_incompatible"
     fs().ensure_directory(task_dir)
@@ -962,7 +962,7 @@ def then_validation_fails_incompatible(pilot, app_state_fixture) -> None:
 
 
 @then("validation fails with an appropriate error")
-def then_runner_validation_fails(pilot, app_state_fixture) -> None:
+def then_runner_validation_fails(app_state_fixture) -> None:
     val().validate_runner_expect_fail(
         app_state_fixture.runners_dir / "sh_runner_malformed_no_exec",
         app_version="0.1.0",
@@ -972,7 +972,7 @@ def then_runner_validation_fails(pilot, app_state_fixture) -> None:
 @then(
     "validation fails because `test -f {task_dir}/required_file` returns non-zero"
 )
-def then_validation_fails_no_file(pilot) -> None:
+def then_validation_fails_no_file() -> None:
     validator = val().retrieve("task_validator")
     with pytest.raises(
         TaskValidatorException,
@@ -982,7 +982,7 @@ def then_validation_fails_no_file(pilot) -> None:
 
 
 @then("validation fails with a version compatibility error")
-def then_version_compat_error(pilot) -> None:
+def then_version_compatibility_error() -> None:
     validator = val().retrieve("task_validator")
     with pytest.raises(
         TaskValidatorException,
@@ -1061,17 +1061,17 @@ def then_run_lock_ignores(pilot) -> None:
     proc = RunnerProcess(runner_dir, "test-session", ui(pilot).app.state.tmp_dir)
     proc._run_lock = True
     result = proc.run()
-    assert result is None
+    assert result is False
 
 
 @then("it sleeps for 30 seconds before the next iteration")
-def then_sleep_30s(pilot) -> None:
+def then_sleep_30s() -> None:
     assert _parse_timeout("30s") == 30
 
 
 @then("property names are converted to uppercase with non-alphanumeric chars replaced by underscores")
-def then_prop_name_conversion(pilot) -> None:
-    from termux_tasker.runner_process import _to_env_key
+def then_prop_name_conversion() -> None:
+    from termux_tasker.runner_process import _to_env_key    # noqa
 
     assert _to_env_key("property-1") == "VAR_PROPERTY_1"
     assert _to_env_key("my property") == "VAR_MY_PROPERTY"
@@ -1079,7 +1079,7 @@ def then_prop_name_conversion(pilot) -> None:
 
 
 @then("a unique session ID (UUID4) is generated")
-def then_session_id_generated(pilot) -> None:
+def then_session_id_generated() -> None:
     from termux_tasker.app_state import AppState
 
     state = AppState("0.1.0")

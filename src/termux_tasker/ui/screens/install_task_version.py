@@ -64,8 +64,7 @@ class InstallTaskVersionScreen(MenuScreen):
 
         if is_git:
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
-            termux_app(self).push_screen(loading)
-            await asyncio.sleep(0)
+            await termux_app(self).push_screen(loading)
 
             tags, main_branch = fetch_git_tags(tmp_folder)
 
@@ -84,7 +83,7 @@ class InstallTaskVersionScreen(MenuScreen):
                 self._id_to_tag[safe] = tag
                 items[label] = f"version_{safe}"
 
-            loading.dismiss(None)
+            await loading.dismiss(None)
         else:
             tag = meta.general.version
             label = tag
@@ -114,13 +113,12 @@ class InstallTaskVersionScreen(MenuScreen):
         loading = LoadingScreen(
             f"Validating {tag} version of {meta.general.name} task"
         )
-        termux_app(self).push_screen(loading)
-        await asyncio.sleep(0)
+        await termux_app(self).push_screen(loading)
 
         if is_git and tag not in ("main", "master"):
             if not git_checkout(tmp_folder, tag):
-                loading.dismiss(None)
-                termux_app(self).push_screen(
+                await loading.dismiss(None)
+                await termux_app(self).push_screen(
                     InfoScreen(
                         message=f"Failed to checkout tag '{tag}'",
                         severity="error",
@@ -136,11 +134,11 @@ class InstallTaskVersionScreen(MenuScreen):
             )
             validator.validate()
         except TaskValidatorException as e:
-            loading.dismiss(None)
-            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
+            await loading.dismiss(None)
+            await termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
             return
 
-        loading.dismiss(None)
+        await loading.dismiss(None)
 
         install_state = self._check_install_state(meta.general.id, tag)
 
@@ -150,7 +148,7 @@ class InstallTaskVersionScreen(MenuScreen):
                     self._finalize_install(meta.general.id, tag, install_state)
                 )
 
-        termux_app(self).push_screen(
+        await termux_app(self).push_screen(
             ConfirmationScreen(
                 message=(
                     f"Are you sure you want to {install_state} "
@@ -180,7 +178,7 @@ class InstallTaskVersionScreen(MenuScreen):
         return "install"
 
     async def _finalize_install(
-        self, task_id: str, tag: str, install_state: str
+        self, task_id: str, _tag: str, install_state: str
     ) -> None:
         target_dir = self.runner_dir / "tasks" / task_id
         meta = self._task_meta
@@ -234,8 +232,8 @@ class InstallTaskVersionScreen(MenuScreen):
 
         prop = props[index]
 
-        def _next(index: int = index) -> None:
-            self._prompt_properties(props, index, meta, target_dir)
+        def _next(idx: int = index) -> None:
+            self._prompt_properties(props, idx, meta, target_dir)
 
         def _schedule_retry(_: object = None) -> None:
             asyncio.get_event_loop().call_soon(_next, index)
@@ -283,7 +281,7 @@ class InstallTaskVersionScreen(MenuScreen):
     def _finish_install(
             self, meta: TaskMetadata, target_dir: Path
     ) -> None:
-        """Finalise the task installation: persist, clear caches, navigate.
+        """Finalize the task installation: persist, clear caches, navigate.
 
         1. Fill default property values.
         2. Replace the target directory with the temp copy.

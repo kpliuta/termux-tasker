@@ -74,8 +74,9 @@ class TaskMenuScreen(MenuScreen):
         self.description = self._build_description(meta, settings)
         id_to_label = {v: k for k, v in self.menu_items.items()}
         for btn in self.query(Button):
-            if btn.id in id_to_label:
-                btn.label = id_to_label[btn.id]
+            btn_id = btn.id
+            if btn_id is not None and btn_id in id_to_label:
+                btn.label = id_to_label[btn_id]
 
     def _fix_session(self, settings: TaskSettings, task_dir: Path) -> None:
         """Reset stale session state on app restart.
@@ -91,8 +92,9 @@ class TaskMenuScreen(MenuScreen):
             settings.session.session_id = app.state.session_id
             settings.save(task_dir / "settings.toml")
 
+    @staticmethod
     def _build_description(
-        self, meta: TaskMetadata, settings: TaskSettings
+        meta: TaskMetadata, settings: TaskSettings
     ) -> str:
         parts = [
             f"Version: {meta.general.version}",
@@ -104,8 +106,9 @@ class TaskMenuScreen(MenuScreen):
             parts.append(f"{prop_name}: {prop_val}")
         return "\n".join(parts)
 
+    @staticmethod
     def _build_items(
-        self, meta: TaskMetadata, settings: TaskSettings
+        meta: TaskMetadata, settings: TaskSettings
     ) -> dict[str, str]:
         items: dict[str, str] = {}
         toggle_label = "Disable" if settings.general.enabled else "Enable"
@@ -151,7 +154,7 @@ class TaskMenuScreen(MenuScreen):
     def on_set_timeout(self, event: Button.Pressed) -> None:
         """Open timeout input with interactive validation.
 
-        Uses a closure chain to create a multi-step dialog:
+        Uses a closure chain to create a multistep dialog:
           _show_input → InputScreen[1] ─(on result)─→ _on_result
                ↑                                            │
                └──── _warn_xxx ─→ InfoScreen ───────────────┘
@@ -226,9 +229,9 @@ class TaskMenuScreen(MenuScreen):
         event.stop()
         meta = TaskMetadata.load(self.task_dir / "metadata.toml")
 
-        def on_confirm(result: str | None) -> None:
+        async def on_confirm(result: str | None) -> None:
             if result is not None:
-                self.run_worker(self._do_uninstall())
+                await self._do_uninstall()
 
         termux_app(self).push_screen(
             ConfirmationScreen(
@@ -244,17 +247,18 @@ class TaskMenuScreen(MenuScreen):
 
     async def _do_uninstall(self) -> None:
         loading = LoadingScreen("Awaiting task termination")
-        termux_app(self).push_screen(loading)
+        await termux_app(self).push_screen(loading)
 
-        settings = TaskSettings.load(self.task_dir / "settings.toml")
-        while settings.session.state != "stopped":
-            await asyncio.sleep(0.5)
+        while True:
             settings = TaskSettings.load(self.task_dir / "settings.toml")
+            if settings.session.state == "stopped":
+                break
+            await asyncio.sleep(0.5)
 
-        loading.dismiss(None)
+        await loading.dismiss(None)
 
         shutil.rmtree(self.task_dir, ignore_errors=True)
-        termux_app(self).pop_screen()
+        termux_app(self).pop_screen()   # noqa
 
     @on(Button.Pressed)
     def on_set_property(self, event: Button.Pressed) -> None:
@@ -267,8 +271,9 @@ class TaskMenuScreen(MenuScreen):
     def _set_property(self, prop_name: str) -> None:
         meta = TaskMetadata.load(self.task_dir / "metadata.toml")
         settings = TaskSettings.load(self.task_dir / "settings.toml")
-        prop = next((p for p in meta.properties if p.name == prop_name), None)
-        if prop is None:
+        try:
+            prop = next(p for p in meta.properties if p.name == prop_name)
+        except StopIteration:
             return
 
         raw = settings.properties.get(prop.name, "")
@@ -301,14 +306,14 @@ class TaskMenuScreen(MenuScreen):
             if not prop.optional and is_property_value_empty(result, prop.input_type):
                 _warn_and_retry()
                 return
-            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            current_settings = TaskSettings.load(self.task_dir / "settings.toml")
             if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
-                settings.properties[prop.name] = ",".join(str(v) for v in result)
+                current_settings.properties[prop.name] = ",".join(str(v) for v in result)
             else:
-                settings.properties[prop.name] = str(result)
-            settings.save(self.task_dir / "settings.toml")
-            meta = TaskMetadata.load(self.task_dir / "metadata.toml")
-            settings = TaskSettings.load(self.task_dir / "settings.toml")
-            self._refresh_ui(meta, settings)
+                current_settings.properties[prop.name] = str(result)
+            current_settings.save(self.task_dir / "settings.toml")
+            current_meta = TaskMetadata.load(self.task_dir / "metadata.toml")
+            current_settings = TaskSettings.load(self.task_dir / "settings.toml")
+            self._refresh_ui(current_meta, current_settings)
 
         _show_input()

@@ -43,10 +43,10 @@
 [//]: # (testing — BDD)
 
 - BDD tests: `tests/bdd/features/*.feature` + step definitions in `tests/bdd/{given,thens,when}_steps.py`.
-- Step definitions import: `from tests.bdd.steps_common import *  # noqa: F403, F401`.
+- Step definitions import: `from tests.bdd.steps_common import *  # noqa`.
 - `pilot` fixture → `PilotDriver`; use `ui(pilot)` helper for all interactions.
 - Keep feature files minimal; Gherkin steps should be reusable (parameterized).
-- External operations (git, network) mocked in `conftest.py` via `mock_external_ops` autouse fixture.
+- External operations (git, network) mocked in `conftest.py` via `mock_external_ops` auto use fixture.
 
 [//]: # (testing — pilot interactions)
 

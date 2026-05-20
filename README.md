@@ -89,7 +89,7 @@ Runner processes are managed via `RunnerProcess` (asyncio). Each runs shell comm
 poetry install
 
 # Development
-poetry install --with dev
+poetry install --extras dev
 ```
 
 Requires **Python ≥3.13** and dependencies: `textual`, `tomlkit`, `packaging`.

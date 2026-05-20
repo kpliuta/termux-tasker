@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from pytest_bdd import scenarios
 
-from tests.bdd.given_steps import *  # noqa: F403, F401
-from tests.bdd.when_steps import *  # noqa: F403, F401
-from tests.bdd.then_steps import *  # noqa: F403, F401
+from tests.bdd.given_steps import *  # noqa
+from tests.bdd.when_steps import *  # noqa
+from tests.bdd.then_steps import *  # noqa
 
-scenarios(Path(__file__).resolve().parent / "features")
+scenarios(str(Path(__file__).resolve().parent / "features"))

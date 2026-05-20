@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tests.bdd.steps_common import *  # noqa: F403, F401
+from tests.bdd.steps_common import *  # noqa
 
 
 @when('I press "Show Runners" button')
@@ -228,7 +228,7 @@ def when_select_folder(pilot) -> None:
     def _do_select():
         screen = ui(pilot).app.screen
         screen._selected_path = ui(pilot).app.state.runners_dir / "sh_runner"
-        screen.dismiss(screen._selected_path)
+        screen.dismiss(screen._selected_path)   # noqa
 
     ui(pilot).app.call_from_thread(_do_select)
     ui(pilot).pause(0.3)
@@ -338,7 +338,7 @@ def when_app_restarted(pilot) -> None:
 
 
 @when("`run()` is called again before the previous start completes")
-def when_run_called_twice(pilot, app_state_fixture) -> RunnerProcess:
+def when_run_called_twice(app_state_fixture) -> RunnerProcess:
     proc = RunnerProcess(
         app_state_fixture.runners_dir / "sh_runner",
         "test-session",
@@ -360,7 +360,7 @@ def when_runner_run(pilot) -> RunnerProcess:
 
 
 @when("`shutdown()` is called")
-async def when_shutdown_called(pilot, app_state_fixture) -> RunnerProcess:
+async def when_shutdown_called(app_state_fixture) -> RunnerProcess:
     with patch(
         "termux_tasker.runner_process.asyncio.create_subprocess_exec",
         return_value=AsyncMock(wait=AsyncMock(return_value=0)),
@@ -376,7 +376,7 @@ async def when_shutdown_called(pilot, app_state_fixture) -> RunnerProcess:
 
 
 @when("`terminate()` is called")
-def when_terminate_called(pilot, app_state_fixture) -> RunnerProcess:
+def when_terminate_called(app_state_fixture) -> RunnerProcess:
     proc = RunnerProcess(
         app_state_fixture.runners_dir / "sh_runner",
         "test-session",
@@ -387,7 +387,7 @@ def when_terminate_called(pilot, app_state_fixture) -> RunnerProcess:
 
 
 @when("the task validator runs")
-def when_task_validator_runs(pilot, app_state_fixture) -> TaskValidator:
+def when_task_validator_runs(app_state_fixture) -> TaskValidator:
     validator = TaskValidator(
         app_state_fixture.runners_dir / "sh_runner",
         app_state_fixture.tmp_dir / "task",
@@ -397,7 +397,7 @@ def when_task_validator_runs(pilot, app_state_fixture) -> TaskValidator:
 
 
 @when("the runner is validated")
-def when_runner_validated(pilot, app_state_fixture) -> RunnerValidator:
+def when_runner_validated(app_state_fixture) -> RunnerValidator:
     validator = val().create_runner_validator(
         app_state_fixture.runners_dir / "sh_runner_malformed_no_exec",
         app_version="0.1.0",
@@ -407,7 +407,7 @@ def when_runner_validated(pilot, app_state_fixture) -> RunnerValidator:
 
 @when("the task is validated by the sh_runner's task validator")
 def when_task_validated_by_sh_runner(
-    pilot, app_state_fixture, sh_runner_task_no_required_file_dir,
+        app_state_fixture, sh_runner_task_no_required_file_dir,
 ) -> TaskValidator:
     validate_dir = app_state_fixture.tmp_dir / "validate_task"
     fs().copy_directory(sh_runner_task_no_required_file_dir, validate_dir)
@@ -422,7 +422,7 @@ def when_task_validated_by_sh_runner(
 
 @when("the task is validated")
 def when_task_validated(
-    pilot, app_state_fixture, sh_runner_task_wrong_version_dir,
+        app_state_fixture, sh_runner_task_wrong_version_dir,
 ) -> TaskValidator:
     validate_dir = app_state_fixture.tmp_dir / "validate_task"
     fs().copy_directory(sh_runner_task_wrong_version_dir, validate_dir)

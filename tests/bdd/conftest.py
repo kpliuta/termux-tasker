@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -351,10 +352,10 @@ def mock_external_ops(monkeypatch):
             shutil.copytree(src, tmp_folder, dirs_exist_ok=True)
         return tmp_folder
 
-    def _mock_fetch_git_tags(repo_path: Path) -> tuple[list[str], str]:
-        return (["v1.0.0"], "main")
+    def _mock_fetch_git_tags(_repo_path: Path) -> tuple[list[str], str]:
+        return ["v1.0.0"], "main"
 
-    def _mock_git_checkout(repo_path: Path, tag: str) -> bool:
+    def _mock_git_checkout(_repo_path: Path, _tag: str) -> bool:
         return True
 
     _CLONE_MODULES = [
@@ -367,7 +368,7 @@ def mock_external_ops(monkeypatch):
     for mod_name in _CLONE_MODULES:
         try:
             monkeypatch.setattr(f"{mod_name}.clone_repo", _mock_clone_repo)
-        except Exception:
+        except AttributeError:
             pass
 
     _COPY_MODULES = [
@@ -378,7 +379,7 @@ def mock_external_ops(monkeypatch):
     for mod_name in _COPY_MODULES:
         try:
             monkeypatch.setattr(f"{mod_name}.copy_to_tmp", _mock_copy_to_tmp)
-        except Exception:
+        except AttributeError:
             pass
 
     _TAG_MODULES = [
@@ -389,7 +390,7 @@ def mock_external_ops(monkeypatch):
     for mod_name in _TAG_MODULES:
         try:
             monkeypatch.setattr(f"{mod_name}.fetch_git_tags", _mock_fetch_git_tags)
-        except Exception:
+        except AttributeError:
             pass
 
     _CHECKOUT_MODULES = [
@@ -400,16 +401,16 @@ def mock_external_ops(monkeypatch):
     for mod_name in _CHECKOUT_MODULES:
         try:
             monkeypatch.setattr(f"{mod_name}.git_checkout", _mock_git_checkout)
-        except Exception:
+        except AttributeError:
             pass
 
 
 @pytest.fixture
-def pilot(app: TermuxTaskerApp, tmp_dir: Path) -> PilotDriver:
+def pilot(app: TermuxTaskerApp, tmp_dir: Path) -> Iterator[PilotDriver]:
     """Start the app in headless mode and return a sync PilotDriver.
 
     Sets up a basic runner (sh_runner) on disk before launching so
-    that the app finds it when it reads the runners directory.
+    that the app finds it when it reads the runner's directory.
     """
     from termux_tasker.config import RunnerSettings, TaskSettings
 

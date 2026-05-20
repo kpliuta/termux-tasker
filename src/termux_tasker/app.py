@@ -38,13 +38,13 @@ class TermuxTaskerApp(App[None]):
 
     async def _do_shutdown_exit(self) -> None:
         loading = LoadingScreen("Runners shutting down")
-        self.push_screen(loading)
+        await self.push_screen(loading)
         for runner_proc in self.state.runners.values():
             await runner_proc.shutdown()
             settings = RunnerSettings.load(runner_proc.runner_dir / "settings.toml")
             settings.general.enabled = False
             settings.save(runner_proc.runner_dir / "settings.toml")
-        loading.dismiss(None)
+        await loading.dismiss(None)
         self.exit()
 
     def on_mount(self) -> None:

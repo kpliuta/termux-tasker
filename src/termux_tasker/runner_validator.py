@@ -161,7 +161,8 @@ class RunnerValidator:
                 "metadata.toml: [exec].task-exec must contain {task_dir} placeholder"
             )
 
-    def _validate_properties(self, properties: list[PropertyDef]) -> None:
+    @staticmethod
+    def _validate_properties(properties: list[PropertyDef]) -> None:
         for i, p in enumerate(properties):
             if not p.name:
                 raise RunnerValidatorException(

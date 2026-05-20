@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tests.bdd.steps_common import *  # noqa: F403, F401
+from tests.bdd.steps_common import *  # noqa
 
 
 @given("the app is launched with a given app version")
@@ -211,15 +211,13 @@ def given_runner_with_procs(pilot) -> RunnerProcess:
         ui(pilot).app.state.tmp_dir,
     )
     proc.shutting_down = False
-    proc._processes = [asyncio.create_subprocess_exec("true")]
+    proc._processes = [AsyncMock(spec=asyncio.subprocess.Process)]
     return proc
 
 
 @given("the runner `sh_runner_malformed_no_exec` which has no `[exec]` section")
-def given_malformed_runner_no_exec(pilot, app_state_fixture) -> Path:
-    from tests.bdd.conftest import sh_runner_malformed_no_exec_dir as _fixture
-
-    return _fixture
+def given_malformed_runner_no_exec(pilot, sh_runner_malformed_no_exec_dir: Path) -> Path:
+    return sh_runner_malformed_no_exec_dir
 
 
 @given("there is at least one task installed")
@@ -345,20 +343,16 @@ def given_version_selected(pilot) -> None:
     "the task `sh_runner_task_malformed_wrong_runner_version` "
     'with `runner_min_version = ">=10.1.0"`'
 )
-def given_task_wrong_version(pilot, app_state_fixture) -> Path:
-    from tests.bdd.conftest import sh_runner_task_wrong_version_dir as _fixture
-
-    return _fixture
+def given_task_wrong_version(pilot, sh_runner_task_wrong_version_dir: Path) -> Path:
+    return sh_runner_task_wrong_version_dir
 
 
 @given(
     "the task `sh_runner_task_malformed_no_required_file` "
     "which has no `required_file`"
 )
-def given_task_no_required_file(pilot, app_state_fixture) -> Path:
-    from tests.bdd.conftest import sh_runner_task_no_required_file_dir as _fixture
-
-    return _fixture
+def given_task_no_required_file(pilot, sh_runner_task_no_required_file_dir: Path) -> Path:
+    return sh_runner_task_no_required_file_dir
 
 
 @given("I am installing a runner where all properties have defaults or are optional")
@@ -380,8 +374,8 @@ def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.3)
 
-    ui(pilot).pilot_driver._submit(
-        lambda p: screen._finalize_install("test_runner", "1.0.0", "install")
+    ui(pilot).pilot_driver.run_on_pilot(
+        lambda p: screen._finalize_install("test_runner", "1.0.0", "install")   # noqa
     )
     ui(pilot).wait_until_screen(InputScreen, timeout=5)
 
@@ -400,8 +394,8 @@ def given_task_non_optional(pilot, tmp_dir: Path) -> None:
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.3)
 
-    ui(pilot).pilot_driver._submit(
-        lambda p: screen._finalize_install("test_task", "1.0.0", "install")
+    ui(pilot).pilot_driver.run_on_pilot(
+        lambda p: screen._finalize_install("test_task", "1.0.0", "install") # noqa
     )
     ui(pilot).wait_until_screen(InputScreen, timeout=5)
 

@@ -45,7 +45,8 @@ class LogTestApp(App):
 
         self.run_worker(self.append_to_file(log_file))
 
-    async def append_to_file(self, path: Path):
+    @staticmethod
+    async def append_to_file(path: Path):
         import asyncio
         for i in range(5):
             await asyncio.sleep(2)

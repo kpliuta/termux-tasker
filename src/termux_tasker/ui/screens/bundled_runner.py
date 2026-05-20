@@ -17,12 +17,14 @@ class BundledRunnerScreen(MenuScreen):
         self.title = "Bundled Runner"
         self._tmp_folders: list[Path] = []
         self._loaded = False
+        self._loading: LoadingScreen | None = None
 
     def on_mount(self) -> None:
         if not self._loaded:
             self._loaded = True
-            self._loading = LoadingScreen("Fetching runners")
-            termux_app(self).push_screen(self._loading)
+            loading = LoadingScreen("Fetching runners")
+            self._loading = loading
+            termux_app(self).push_screen(loading)
             self.run_worker(self._load())
 
     async def _load(self) -> None:
@@ -63,7 +65,8 @@ class BundledRunnerScreen(MenuScreen):
                 btn_id = f"install_{meta.general.id}"
             items[label] = btn_id
 
-        self._loading.dismiss(None)
+        if self._loading is not None:
+            await self._loading.dismiss(None)
         self.menu_items = items
 
     @on(Button.Pressed)

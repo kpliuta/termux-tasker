@@ -124,9 +124,9 @@ class RunnerProcess:
             self._stdout_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self._stdout_path, "a") as f:
                 f.write(f"{timestamp} {line.decode(errors='replace').rstrip()}\n")
-        returncode = await proc.wait()
+        return_code = await proc.wait()
         self._processes.remove(proc)
-        if returncode != 0:
+        if return_code != 0:
             raise RunnerException(f"Error during command execution {error_context}")
 
     async def _run_task_cmd(self, cmd: str, task_dir: Path) -> None:
@@ -295,16 +295,18 @@ class RunnerProcess:
             self._change_runner_state("off")
             self._run_lock = False
 
-    def run(self) -> None:
+    def run(self) -> bool:
         """Start the runner lifecycle as a background asyncio task.
 
         Guarded by _run_lock — subsequent calls while the runner is
         already starting/started are silently ignored.
         """
         if self._run_lock:
-            return
-        self._task = asyncio.create_task(self._run_loop())
-        self._task.add_done_callback(self._on_run_done)
+            return False
+        task = asyncio.create_task(self._run_loop())
+        task.add_done_callback(self._on_run_done)
+        self._task = task
+        return True
 
     def _on_run_done(self, task: asyncio.Task[None]) -> None:
         try:
@@ -334,6 +336,6 @@ class RunnerProcess:
         for proc in self._processes:
             try:
                 proc.terminate()
-            except Exception:
+            except Exception:   # noqa
                 pass
         self._processes.clear()

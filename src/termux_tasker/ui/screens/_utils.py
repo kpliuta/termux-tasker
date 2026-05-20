@@ -153,7 +153,7 @@ def merge_runner_properties(
 
     The ``general`` and ``session`` fields are carried over wholesale.
     """
-    old_sigs = {
+    old_signatures = {
         (p.name, p.input_type, p.optional, tuple(p.options or []))
         for p in old_properties
     }
@@ -163,7 +163,7 @@ def merge_runner_properties(
 
     for p in new_properties:
         sig = (p.name, p.input_type, p.optional, tuple(p.options or []))
-        if sig in old_sigs and p.name in old_settings.properties:
+        if sig in old_signatures and p.name in old_settings.properties:
             new_settings.properties[p.name] = old_settings.properties[p.name]
 
     return new_settings

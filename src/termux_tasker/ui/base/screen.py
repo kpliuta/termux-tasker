@@ -6,6 +6,7 @@ from typing import Any, Sequence, Union
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll, Grid, Vertical, Horizontal
+from textual.css.query import NoMatches
 from textual.events import Key, ScreenResume
 from textual.reactive import reactive
 from textual.screen import Screen, ModalScreen
@@ -81,14 +82,14 @@ class MenuScreen(Screen[None]):
         """
         try:
             scroll = self.query_one(VerticalScroll)
-        except Exception:
+        except NoMatches:
             return  # widget tree may not exist yet (triggered via init=False)
         existing_ids = {btn.id for btn in scroll.query(Button) if btn.id}
         needed_ids = {v for v in self.menu_items.values() if v}
-        action_btns = [b for b in scroll.query(Button) if b.id not in ("back", "exit")]
-        if needed_ids == existing_ids - {"back", "exit"} and len(self.menu_items) == len(action_btns):
+        action_buttons = [b for b in scroll.query(Button) if b.id not in ("back", "exit")]
+        if needed_ids == existing_ids - {"back", "exit"} and len(self.menu_items) == len(action_buttons):
             id_to_label = {v: k for k, v in self.menu_items.items()}
-            for btn in action_btns:
+            for btn in action_buttons:
                 if btn.id in id_to_label:
                     btn.label = id_to_label[btn.id]
         else:
@@ -104,27 +105,27 @@ class MenuScreen(Screen[None]):
 
         desc = Static(self.description or "", id="description")
         desc.display = bool(self.description)
-        scroll.mount(desc)
+        await scroll.mount(desc)
 
         for label, btn_id in self.menu_items.items():
             if btn_id:
                 btn = Button(label, id=btn_id, variant="default")
             else:
                 btn = Button(label, variant="default", disabled=True)
-            scroll.mount(btn)
+            await scroll.mount(btn)
 
-        scroll.mount(Static(classes="spacer"))
+        await scroll.mount(Static(classes="spacer"))
         if self.show_back_button:
-            scroll.mount(Button("Back", id="back", variant="error"))
+            await scroll.mount(Button("Back", id="back", variant="error"))
         if self.show_exit_button:
-            scroll.mount(Button("Exit", id="exit", variant="error"))
+            await scroll.mount(Button("Exit", id="exit", variant="error"))
 
     def watch_description(self, description: str | None) -> None:
         try:
             desc = self.query_one("#description", Static)
             desc.update(description or "")
             desc.display = bool(description)
-        except Exception:
+        except NoMatches:
             pass
 
     @on(Button.Pressed, "#back")
@@ -150,7 +151,7 @@ class MenuScreen(Screen[None]):
     def on_mount(self) -> None:
         pass
 
-    def on_screen_resume(self, event: ScreenResume) -> None:
+    def on_screen_resume(self, _event: ScreenResume) -> None:
         self._refresh()
 
     def _refresh(self) -> None:
@@ -298,8 +299,9 @@ class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
             self.dismiss(self.query_one(Input).value)
         elif self.input_type == "radio":
             radio_set = self.query_one(RadioSet)
-            if radio_set.pressed_button:
-                self.dismiss(str(radio_set.pressed_button.label))
+            pressed = radio_set.pressed_button
+            if pressed is not None:
+                self.dismiss(str(pressed.label))
             else:
                 self.dismiss(None)
         elif self.input_type == "checkbox":

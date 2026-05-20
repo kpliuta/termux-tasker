@@ -43,10 +43,12 @@ class TaskValidator:
         self._metadata: Optional[TaskMetadata] = None
         self._runner_metadata: Optional[RunnerMetadata] = None
 
-    def _is_git_repo(self, directory: Path) -> bool:
+    @staticmethod
+    def _is_git_repo(directory: Path) -> bool:
         return (directory / ".git").exists()
 
-    def _get_git_tag(self, directory: Path) -> Optional[str]:
+    @staticmethod
+    def _get_git_tag(directory: Path) -> Optional[str]:
         try:
             result = subprocess.run(
                 ["git", "tag", "--points-at", "HEAD"],
@@ -143,7 +145,8 @@ class TaskValidator:
 
         self._validate_properties(meta.properties)
 
-    def _validate_properties(self, properties: list[PropertyDef]) -> None:
+    @staticmethod
+    def _validate_properties(properties: list[PropertyDef]) -> None:
         for i, p in enumerate(properties):
             if not p.name:
                 raise TaskValidatorException(
@@ -274,7 +277,8 @@ class TaskValidator:
                     cause=str(e),
                 )
 
-    def _read_cause(self, stderr_file: Path) -> str:
+    @staticmethod
+    def _read_cause(stderr_file: Path) -> str:
         if not stderr_file.exists():
             return ""
         lines = stderr_file.read_text().splitlines()

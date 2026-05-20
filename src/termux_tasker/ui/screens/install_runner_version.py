@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import shutil
 from pathlib import Path
 from typing import Any
@@ -64,8 +63,7 @@ class InstallRunnerVersionScreen(MenuScreen):
 
         if is_git:
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
-            termux_app(self).push_screen(loading)
-            await asyncio.sleep(0)
+            await termux_app(self).push_screen(loading)
 
             tags, main_branch = fetch_git_tags(tmp_folder)
 
@@ -84,7 +82,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                 self._id_to_tag[safe] = tag
                 items[label] = f"version_{safe}"
 
-            loading.dismiss(None)
+            await loading.dismiss(None)
         else:
             tag = meta.general.version
             label = tag
@@ -114,13 +112,12 @@ class InstallRunnerVersionScreen(MenuScreen):
         loading = LoadingScreen(
             f"Validating {tag} version of {meta.general.name} runner"
         )
-        termux_app(self).push_screen(loading)
-        await asyncio.sleep(0)
+        await termux_app(self).push_screen(loading)
 
         if is_git and tag not in ("main", "master"):
             if not git_checkout(tmp_folder, tag):
-                loading.dismiss(None)
-                termux_app(self).push_screen(
+                await loading.dismiss(None)
+                await termux_app(self).push_screen(
                     InfoScreen(
                         message=f"Failed to checkout tag '{tag}'",
                         severity="error",
@@ -134,11 +131,11 @@ class InstallRunnerVersionScreen(MenuScreen):
             validator = RunnerValidator(tmp_folder, app_version=app.state.app_version)
             validator.validate()
         except RunnerValidatorException as e:
-            loading.dismiss(None)
-            termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
+            await loading.dismiss(None)
+            await termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
             return
 
-        loading.dismiss(None)
+        await loading.dismiss(None)
 
         install_state = self._check_install_state(meta.general.id, tag)
 
@@ -148,7 +145,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                     self._finalize_install(meta.general.id, tag, install_state)
                 )
 
-        termux_app(self).push_screen(
+        await termux_app(self).push_screen(
             ConfirmationScreen(
                 message=(
                     f"Are you sure you want to {install_state} "
@@ -176,7 +173,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         return "install"
 
     async def _finalize_install(
-        self, runner_id: str, tag: str, install_state: str
+        self, runner_id: str, _tag: str, install_state: str
     ) -> None:
         app = termux_app(self)
         target_dir = app.state.runners_dir / runner_id
@@ -271,7 +268,7 @@ class InstallRunnerVersionScreen(MenuScreen):
     def _finish_install(
             self, meta: RunnerMetadata, target_dir: Path
     ) -> None:
-        """Finalise the runner installation: persist, clear caches, navigate.
+        """Finalize the runner installation: persist, clear caches, navigate.
 
         Same pattern as InstallTaskVersionScreen._finish_install, but
         navigates back to the RunnersScreen (list of runners) and then

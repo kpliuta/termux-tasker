@@ -9,7 +9,8 @@ from concurrent.futures import Future
 from typing import Any, Callable
 
 from textual.app import App
-from textual.pilot import Pilot
+from textual.css.query import NoMatches, TooManyMatches
+from textual.pilot import Pilot, OutOfBounds
 from textual.widgets import Button, Checkbox
 
 
@@ -35,7 +36,7 @@ class PilotDriver:
         self._stop_flag = False
         self._exception: BaseException | None = None
         # Queue of (async_callable, Future) pairs
-        self._cmd_queue: queue.SimpleQueue[tuple[callable, Future]] = (
+        self._cmd_queue: queue.SimpleQueue[tuple[Callable, Future]] = (
             queue.SimpleQueue()
         )
 
@@ -53,6 +54,7 @@ class PilotDriver:
     def start(self, timeout: float = 10) -> PilotDriver:
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._run, daemon=True)
+        assert self._thread is not None
         self._thread.start()
         if not self._ready.wait(timeout):
             raise RuntimeError("Timed out waiting for the app to start")
@@ -70,7 +72,7 @@ class PilotDriver:
     def press(self, *keys: str) -> Any:
         return self._submit(lambda p: p.press(*keys))
 
-    def pause(self, delay: float = 0.1) -> Any:
+    def pause(self, delay: float = 0.02) -> Any:
         return self._submit(lambda p: p.pause(delay))
 
     def resize_terminal(self, width: int, height: int) -> Any:
@@ -92,6 +94,14 @@ class PilotDriver:
     def pop_screen(self) -> Any:
         return self._submit(lambda p: p.app.pop_screen())
 
+    def run_on_pilot(self, make_coro: Callable) -> Any:
+        """Submit a callable ``(Pilot) -> Awaitable`` and block until done.
+
+        Allows external callers to execute arbitrary async code on the
+        background thread's event loop, bypassing the public action methods.
+        """
+        return self._submit(make_coro)
+
     def exit_app(self) -> Any:
         def _do(pilot: Any) -> Any:
             pilot.app.exit()
@@ -105,15 +115,15 @@ class PilotDriver:
             while time.monotonic() < deadline:
                 try:
                     widget = pilot.app.screen.query_one(selector)
-                except Exception:
-                    await pilot.pause(0.05)
+                except (NoMatches, TooManyMatches):
+                    await pilot.pause(0.02)
                     continue
                 try:
                     widget.value = value
                     await asyncio.sleep(0)
                     return
-                except Exception:
-                    await pilot.pause(0.05)
+                except (AttributeError, TypeError, AssertionError):
+                    await pilot.pause(0.02)
             raise AssertionError(f"Timed out waiting for {selector!r}")
         return self._submit(_do)
 
@@ -135,8 +145,8 @@ class PilotDriver:
                     else:
                         await pilot.click(widget)
                     return
-                except Exception:
-                    await pilot.pause(0.05)
+                except (AttributeError, TypeError, AssertionError, OutOfBounds):
+                    await pilot.pause(0.02)
             raise AssertionError(f"Timed out clicking {selector!r}")
         return self._submit(_do)
 
@@ -145,7 +155,7 @@ class PilotDriver:
         import time
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            self.pause(0.05)
+            self.pause(0.01)
             if isinstance(self.app.screen, screen_type):
                 return
         raise AssertionError(
@@ -155,6 +165,7 @@ class PilotDriver:
     # -- internals ------------------------------------------------------------
 
     def _run(self) -> None:
+        assert self._loop is not None
         asyncio.set_event_loop(self._loop)
         try:
             self._loop.run_until_complete(self._main())

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from textual import on
@@ -39,7 +40,8 @@ class RunnersScreen(MenuScreen):
         app = termux_app(self)
         items: dict[str, str] = {}
         runners_dir = app.state.runners_dir
-        for runner_dir in sorted(runners_dir.iterdir()):
+        runner_dirs: list[Path] = sorted(runners_dir.iterdir())
+        for runner_dir in runner_dirs:
             if not runner_dir.is_dir():
                 continue
             meta_path = runner_dir / "metadata.toml"

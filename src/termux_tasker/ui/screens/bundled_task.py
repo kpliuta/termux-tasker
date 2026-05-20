@@ -26,7 +26,7 @@ class BundledTaskScreen(MenuScreen):
 
     async def _load(self) -> None:
         loading = LoadingScreen("Fetching tasks")
-        termux_app(self).push_screen(loading)
+        await termux_app(self).push_screen(loading)
         bundled = BundledTasks.load(self.runner_dir / "bundled.toml")
         self._tmp_folders.clear()
 

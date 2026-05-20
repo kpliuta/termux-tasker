@@ -7,7 +7,7 @@ import pytest
 
 from termux_tasker.runner_process import (
     RunnerProcess,
-    _parse_timeout,
+    _parse_timeout, # noqa
 )
 
 
