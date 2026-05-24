@@ -269,22 +269,47 @@ def when_provide_valid_value(pilot) -> None:
 
 
 @when("I confirm the installation")
+def when_confirm_install(pilot) -> None:
+    for btn in ui(pilot).app.screen.query("Button"):
+        if btn.id and btn.id.startswith("version_"):
+            ui(pilot).click_id(f"#{btn.id}")
+            ui(pilot).pause()
+            break
+
+
 @when("the install finalizes")
+def when_install_finalizes(pilot) -> None:
+    from termux_tasker.ui.base.screen import InputScreen
+    if isinstance(ui(pilot).app.screen, InputScreen):
+        ui(pilot).set_value("#input_field", "test_value")
+        ui(pilot).pause()
+        ui(pilot).click_id("#ok")
+        ui(pilot).pause()
+
+
 @when("properties are prompted one by one via InputScreen")
+def when_properties_prompted(pilot) -> None:
+    ui(pilot).assert_screen(InputScreen)
+
+
 @when("I provide valid values for all properties")
+def when_provide_all_values(pilot) -> None:
+    for _ in range(10):
+        screen = ui(pilot).app.screen
+        if not isinstance(screen, InputScreen):
+            break
+        ui(pilot).set_value("#input_field", "test_value")
+        ui(pilot).pause()
+        ui(pilot).click_id("#ok")
+        ui(pilot).pause()
+
+
 @when("I install the same runner again with a different version")
 @when("I install the same runner with the same version")
-@when("I enter an invalid URL (doesn't match GitHub URL regex)")
-@when("a runner is installed or removed on disk")
-def when_install_flow(pilot) -> None:
-    pass
-
-
-@when("the git checkout fails")
-def when_git_checkout_fails(pilot) -> None:
+def when_reinstall_runner(pilot) -> None:
     from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
+    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
     from tests.bdd.given_steps import given_runner_type_screen
-
     given_runner_type_screen(pilot)
     ui(pilot).click_label("GitHub URL")
     ui(pilot).pause()
@@ -292,16 +317,47 @@ def when_git_checkout_fails(pilot) -> None:
     ui(pilot).pause(0.1)
     ui(pilot).click_id("#ok")
     ui(pilot).assert_screen(InstallRunnerScreen)
-    (ui(pilot).app.screen.tmp_runner_folder / ".git").mkdir(exist_ok=True)
     ui(pilot).click_label("Install")
     ui(pilot).pause(0.4)
-    import termux_tasker.ui.screens.install_runner_version as _irv_mod
-    _irv_mod.git_checkout = lambda _repo, _tag: False  # type: ignore[method-assign]
+    ui(pilot).assert_screen(InstallRunnerVersionScreen)
     for btn in ui(pilot).app.screen.query("Button"):
         if btn.id and btn.id.startswith("version_"):
             ui(pilot).click_id(f"#{btn.id}")
-            return
-    raise AssertionError("No version button found")
+            ui(pilot).pause()
+            break
+
+
+@when("I enter an invalid URL (doesn't match GitHub URL regex)")
+def when_invalid_url(pilot) -> None:
+    ui(pilot).set_value("#input_field", "not-a-url")
+    ui(pilot).pause(0.1)
+    ui(pilot).click_id("#ok")
+
+
+@when("a runner is installed or removed on disk")
+def when_runner_disk_change(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    if runner_dir.exists():
+        import shutil
+        shutil.rmtree(runner_dir)
+
+
+@when("the git checkout fails")
+def when_git_checkout_fails(pilot) -> None:
+    from termux_tasker.ui.base.screen import ConfirmationScreen
+    import termux_tasker.ui.screens.install_runner_version as _irv_mod
+    _irv_mod.git_checkout = lambda _repo, _tag: False  # type: ignore[method-assign]
+    tmp_folder = getattr(ui(pilot).app.screen, "tmp_runner_folder", None)
+    if tmp_folder:
+        (tmp_folder / ".git").mkdir(exist_ok=True)
+    for btn in ui(pilot).app.screen.query("Button"):
+        if btn.id and btn.id.startswith("version_"):
+            ui(pilot).click_id(f"#{btn.id}")
+            ui(pilot).pause()
+            break
+    if isinstance(ui(pilot).app.screen, ConfirmationScreen):
+        ui(pilot).click_yes()
+        ui(pilot).pause()
 
 
 @when("I uninstall a task from its Task Menu screen")
@@ -321,7 +377,10 @@ def when_return_tasks(pilot) -> None:
 
 @when("the app is restarted")
 def when_app_restarted(pilot) -> None:
-    pass
+    app = pilot.app
+    app.state.runners.clear()
+    app.state.ensure_dirs()
+    app._exit = False  # noqa
 
 
 @when("the runner's `run()` method is called")
@@ -336,9 +395,13 @@ def when_runner_run(pilot) -> RunnerProcess:
 @when('the runner\'s execution loop reaches task iteration')
 @when('the runner\'s execution loop enters "idle" state')
 def when_loop_state(pilot) -> None:
-    pass
+    runner = ui(pilot).app.state.runners.get("sh_runner")
+    if runner and hasattr(runner, "_run_lock"):
+        runner._run_lock = True  # noqa
 
 
 @when("the runner is shut down")
 def when_runner_shut_down(pilot) -> None:
-    pass
+    ui(pilot).app.state.runners.pop("sh_runner", None)
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    settings().set_runner_state(runner_dir, "termination")

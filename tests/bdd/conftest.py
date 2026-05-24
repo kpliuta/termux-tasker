@@ -126,6 +126,30 @@ optional = false
 
 REQUIRED_FILE_CONTENT = '#!/bin/sh\necho "Success"\n'
 
+OPTIONAL_RUNNER_METADATA = """\
+[general]
+id = "optional_runner"
+name = "Optional Runner"
+version = "1.0.0"
+app_min_version = ">=0.1.0"
+
+[[property]]
+name = "prop-1"
+description = "Optional property"
+input-type = "text"
+optional = true
+
+[[property]]
+name = "prop-2"
+description = "Property with default"
+input-type = "text"
+optional = false
+default = "default_value"
+
+[exec]
+task-exec = "echo test"
+"""
+
 RUNNER_REQUIRED_META = """\
 [general]
 id = "test_runner"
@@ -242,6 +266,32 @@ def sh_runner_task_enabled(sh_runner_task_dir: Path) -> Path:
 
 
 # ── Metadata fixtures ────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def optional_runner_dir(tmp_dir: Path) -> Path:
+    dst = tmp_dir / "runners" / "optional_runner"
+    _write_runner(dst, OPTIONAL_RUNNER_METADATA)
+    settings = RunnerSettings()
+    settings.general.enabled = False
+    settings.session.session_id = "test-session"
+    settings.session.state = "off"
+    settings.save(dst / "settings.toml")
+    return dst
+
+
+@pytest.fixture
+def runner_required_dir(tmp_dir: Path) -> Path:
+    dst = tmp_dir / f"runner_required_{len(list(tmp_dir.iterdir()))}"
+    _write_runner(dst, RUNNER_REQUIRED_META)
+    return dst
+
+
+@pytest.fixture
+def task_required_dir(tmp_dir: Path) -> Path:
+    dst = tmp_dir / f"task_required_{len(list(tmp_dir.iterdir()))}"
+    _write_task(dst, TASK_REQUIRED_META)
+    return dst
 
 
 # ── Pilot-driven fixtures ─────────────────────────────────────────────────

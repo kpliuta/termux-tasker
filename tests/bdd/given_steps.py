@@ -5,7 +5,11 @@ from tests.bdd.steps_common import *  # noqa
 
 @given("the app is launched for the first time")
 def given_app_launched(pilot) -> None:
-    pass
+    app = pilot.app
+    assert app.state.work_dir.exists()
+    assert app.state.runners_dir.exists()
+    assert app.state.tmp_dir.exists()
+    assert app.state.app_config_file.exists()
 
 
 @given("the main menu screen is shown")
@@ -16,7 +20,7 @@ def given_main_menu(pilot) -> None:
 
 @given("any screen is shown")
 def given_any_screen(pilot) -> None:
-    pass
+    ui(pilot).assert_screen(MainMenuScreen)
 
 
 @given("the Runners screen is shown")
@@ -110,7 +114,7 @@ def given_menu_with_buttons(pilot) -> None:
 
 @given("no runners are running")
 def given_no_runners(pilot) -> None:
-    pass
+    assert len(ui(pilot).app.state.runners) == 0
 
 
 @given("at least one runner is running")
@@ -284,24 +288,44 @@ def given_mixed_tasks(pilot) -> None:
 @given("I selected a git tag to install")
 @given("the Install Runner Version screen is shown")
 def given_version_selected(pilot) -> None:
-    pass
+    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
+    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
+    given_runner_type_screen(pilot)
+    ui(pilot).click_label("GitHub URL")
+    ui(pilot).pause()
+    ui(pilot).set_value("#input_field", "https://github.com/test/test-runner.git")
+    ui(pilot).pause(0.1)
+    ui(pilot).click_id("#ok")
+    ui(pilot).assert_screen(InstallRunnerScreen)
+    ui(pilot).click_label("Install")
+    ui(pilot).pause(0.4)
+    ui(pilot).assert_screen(InstallRunnerVersionScreen)
 
 
 @given("I am installing a runner where all properties have defaults or are optional")
+def given_runner_optional_properties(pilot, optional_runner_dir: Path) -> None:
+    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
+
+    screen = InstallRunnerVersionScreen(optional_runner_dir)
+    ui(pilot).push_screen(screen)
+    ui(pilot).pause(0.1)
+
+
 @given("the property is non-optional")
-def given_property_meta(pilot) -> None:
-    pass
+def given_property_non_optional(pilot) -> None:
+    meta = settings().load_runner_metadata(
+        ui(pilot).app.state.runners_dir / "sh_runner"
+    )
+    non_optional = [p for p in meta.properties if not p.optional]
+    assert len(non_optional) > 0
 
 
 @given("I am installing a runner with non-optional properties without defaults")
-def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
-    from tests.bdd.conftest import RUNNER_REQUIRED_META, _write_runner
+def given_runner_non_optional(pilot, runner_required_dir: Path) -> None:
     from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
     from termux_tasker.ui.base.screen import InputScreen
-    import uuid
 
-    folder = _write_runner(tmp_dir / f"_test_{uuid.uuid4().hex}", RUNNER_REQUIRED_META)
-    screen = InstallRunnerVersionScreen(folder)
+    screen = InstallRunnerVersionScreen(runner_required_dir)
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.1)
 
@@ -312,15 +336,12 @@ def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
 
 
 @given("I am installing a task with non-optional properties without defaults")
-def given_task_non_optional(pilot, tmp_dir: Path) -> None:
-    from tests.bdd.conftest import TASK_REQUIRED_META, _write_task
+def given_task_non_optional(pilot, task_required_dir: Path) -> None:
     from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
     from termux_tasker.ui.base.screen import InputScreen
-    import uuid
 
-    folder = _write_task(tmp_dir / f"_test_{uuid.uuid4().hex}", TASK_REQUIRED_META)
     runner_dir = pilot.app.state.runners_dir / "sh_runner"
-    screen = InstallTaskVersionScreen(runner_dir, folder)
+    screen = InstallTaskVersionScreen(runner_dir, task_required_dir)
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.1)
 

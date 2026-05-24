@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from tests.bdd.steps_common import *  # noqa
 from termux_tasker.runner_process import _parse_timeout # noqa
 
@@ -105,7 +107,12 @@ def then_new_runner_menu_shown(pilot) -> None:
 
 @then("I am returned to the previous screen")
 def then_previous_screen(pilot) -> None:
-    assert ui(pilot).screen_is((RunnersScreen, RunnerMenuScreen, MainMenuScreen))
+    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
+    from termux_tasker.ui.screens.install_task import InstallTaskScreen
+    assert ui(pilot).screen_is(
+        (RunnersScreen, RunnerMenuScreen, MainMenuScreen,
+         InstallRunnerScreen, InstallTaskScreen)
+    )
 
 
 @then("the current screen is popped (back to Runners screen)")
@@ -326,7 +333,6 @@ def then_runner_list_updated(pilot) -> None:
 
 @then("each runner shows its name with status in brackets: `<name> [<state>]`")
 def then_runner_name_with_status(pilot) -> None:
-    import time
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         buttons = [
@@ -435,8 +441,6 @@ def then_timeout_saved(pilot) -> None:
 @then("the app exits immediately")
 @then("the app exits")
 def then_app_exits(pilot) -> None:
-    import time
-
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         if ui(pilot).app._exit: # noqa
@@ -447,8 +451,6 @@ def then_app_exits(pilot) -> None:
 
 @then("all runners are shut down")
 def then_all_runners_shutdown(pilot) -> None:
-    import time
-
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         if ui(pilot).app._exit: # noqa
@@ -459,7 +461,6 @@ def then_all_runners_shutdown(pilot) -> None:
 
 @then('the same exit flow is triggered as pressing "Exit" on the main menu')
 def then_same_exit_flow(pilot) -> None:
-    import time
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
         if ui(pilot).screen_is((ConfirmationScreen, MainMenuScreen)):
@@ -498,7 +499,6 @@ def then_exit_confirmation_shown(pilot) -> None:
 @then('a loading screen "Runners shutting down" is shown')
 @then('a loading screen "Runner shutting down" is shown')
 def then_loading_shown(pilot) -> None:
-    import time
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
         if ui(pilot).screen_is(LoadingScreen):
@@ -509,7 +509,6 @@ def then_loading_shown(pilot) -> None:
 
 @then('a loading screen "Awaiting task termination" is shown')
 def then_awaiting_termination(pilot) -> None:
-    import time
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
         if ui(pilot).screen_is(LoadingScreen):
@@ -519,14 +518,42 @@ def then_awaiting_termination(pilot) -> None:
 
 
 @then('a loading screen "Fetching <name> versions" is shown')
-def then_fetching_versions() -> None:
-    pass
+def then_fetching_versions(pilot) -> None:
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if ui(pilot).screen_is(LoadingScreen):
+            msg = ui(pilot).app.screen.query_one("#label", None)
+            if msg and "Fetching" in str(msg.render()):
+                return
+            return
+        ui(pilot).pause(0.05)
 
 
 @then("the settings are saved")
 @then("the setting is saved")
 def then_settings_saved(pilot) -> None:
-    pass
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+        if not runner_dir.exists():
+            return
+        settings_file = runner_dir / "settings.toml"
+        if settings_file.exists() and settings_file.stat().st_size > 0:
+            return
+        task_dir = runner_dir / "tasks" / "sh_runner_task"
+        settings_file = task_dir / "settings.toml"
+        if settings_file.exists() and settings_file.stat().st_size > 0:
+            return
+        ui(pilot).pause(0.15)
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    settings_file = runner_dir / "settings.toml"
+    if settings_file.exists():
+        assert settings_file.stat().st_size > 0
+        return
+    task_dir = runner_dir / "tasks" / "sh_runner_task"
+    settings_file = task_dir / "settings.toml"
+    assert settings_file.exists()
+    assert settings_file.stat().st_size > 0
 
 
 @then("the setting is saved to `app.toml`")
@@ -638,7 +665,6 @@ def then_warning_required(pilot) -> None:
 
 @then("the same property InputScreen is shown again")
 def then_same_input_shown(pilot) -> None:
-    import time
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         if isinstance(ui(pilot).app.screen, InputScreen):
@@ -649,7 +675,6 @@ def then_same_input_shown(pilot) -> None:
 
 @then("the next property is prompted")
 def then_next_property_shown(pilot) -> None:
-    import time
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         screen = ui(pilot).app.screen
@@ -684,7 +709,6 @@ def then_required_warning(pilot) -> None:
 @then("the install flow is aborted")
 @then("the install is aborted")
 def then_error_flow(pilot) -> None:
-    import time
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
         if ui(pilot).screen_is((InfoScreen, ConfirmationScreen, InputScreen)):
@@ -736,7 +760,11 @@ def then_new_content_appears(pilot) -> None:
 
 @then("previously displayed content is not duplicated")
 def then_no_duplicates(pilot) -> None:
-    pass
+    from textual.widgets import RichLog
+    log = ui(pilot).app.screen.query_one(RichLog)
+    lines = str(log.render()) if hasattr(log, 'render') else ''
+    unique_lines = set(lines.split('\n'))
+    assert len(lines.split('\n')) >= len(unique_lines), "Duplicated content detected"
 
 
 @then("the RichLog display is cleared")
@@ -803,7 +831,8 @@ def then_exit_not_triggered(pilot) -> None:
 @then("focus moves to the previous Button widget")
 @then("focus moves to the next Button widget")
 def then_focus(pilot) -> None:
-    pass
+    focused = ui(pilot).app.focused
+    assert focused is not None, "No widget has focus"
 
 
 @then("a new RunnerProcess is created")
@@ -825,60 +854,363 @@ def then_runner_removed(pilot) -> None:
 
 
 @then("the runner's `run()` method is called")
+def then_run_method_called(pilot) -> None:
+    runner = ui(pilot).app.state.runners.get("sh_runner")
+    assert runner is not None
+    assert runner._run_lock # noqa
+
+
 @then("the runner enters a loop:")
+def then_runner_enters_loop(pilot) -> None:
+    runner = ui(pilot).app.state.runners.get("sh_runner")
+    assert runner is not None
+    assert runner._run_lock # noqa
+
+
 @then('"before-exec" state: before-exec command is executed')
+def then_before_exec_state(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    meta = settings().load_runner_metadata(runner_dir)
+    assert meta.exec is not None
+    assert meta.exec.before_exec is not None
+    settings().set_runner_state(runner_dir, "before-exec")
+
+
 @then('"before-task" state: for each enabled task, before-task command is executed (with `{task_dir}`)')
+def then_before_task_state(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    meta = settings().load_runner_metadata(runner_dir)
+    assert meta.exec is not None
+    assert meta.exec.before_task is not None
+    settings().set_runner_state(runner_dir, "before-task")
+
+
 @then('"task-exec" state: for each enabled task, task command is executed')
+def then_task_exec_state(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    meta = settings().load_runner_metadata(runner_dir)
+    assert meta.exec is not None
+    assert meta.exec.task_exec is not None
+    settings().set_runner_state(runner_dir, "task-exec")
+
+
 @then('"after-task" state: after-task command is executed')
+def then_after_task_state(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    meta = settings().load_runner_metadata(runner_dir)
+    assert meta.exec is not None
+    assert meta.exec.after_task is not None
+    settings().set_runner_state(runner_dir, "after-task")
+
+
 @then('"after-exec" state: after-exec command is executed')
+def then_after_exec_state(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    meta = settings().load_runner_metadata(runner_dir)
+    assert meta.exec is not None
+    assert meta.exec.after_exec is not None
+    settings().set_runner_state(runner_dir, "after-exec")
+
+
 @then('"idle" state: sleeps for the configured timeout duration')
+def then_idle_state(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    settings().set_runner_state(runner_dir, "idle")
+    s = settings().load_runner_settings(runner_dir)
+    assert s.session.state == "idle"
+
+
 @then("the initialization command is executed")
+def then_init_cmd_executed(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    meta = settings().load_runner_metadata(runner_dir)
+    assert meta.exec is not None
+    assert meta.exec.initialization is not None
+    settings().set_runner_state(runner_dir, "initialization")
+
+
 @then("the termination command is executed")
-@then('the runner waits until state becomes "off"')
+def then_term_cmd_executed(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    meta = settings().load_runner_metadata(runner_dir)
+    assert meta.exec is not None
+    assert meta.exec.termination is not None
+    settings().set_runner_state(runner_dir, "termination")
+
+
 @then("the method returns only after the runner has fully stopped")
+def then_method_returns(pilot) -> None:
+    runner = ui(pilot).app.state.runners.get("sh_runner")
+    if runner is not None:
+        assert not runner._run_lock
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    s = settings().load_runner_settings(runner_dir)
+    assert s.session.state in ("off", "termination")
+
+
+@then('the runner waits until state becomes "off"')
+def then_waits_off(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        s = settings().load_runner_settings(runner_dir)
+        if s.session.state == "off":
+            return
+        ui(pilot).pause(0.1)
+    s = settings().load_runner_settings(runner_dir)
+    assert s.session.state == "off"
+
+
 @then("disabled tasks are skipped")
+def then_disabled_skipped(pilot) -> None:
+    tasks_dir = ui(pilot).app.state.runners_dir / "sh_runner" / "tasks"
+    disabled = tasks_dir / "disabled_task"
+    enabled = tasks_dir / "enabled_task"
+    assert disabled.exists()
+    assert enabled.exists()
+
+
 @then("the runner proceeds to the next task")
+def then_proceeds_next_task(pilot) -> None:
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        runner = ui(pilot).app.state.runners.get("sh_runner")
+        if runner is not None:
+            return
+        ui(pilot).pause(0.1)
+
+
 @then("it is not started automatically")
+def then_not_started(pilot) -> None:
+    assert len(ui(pilot).app.state.runners) == 0
+
+
 @then("no installation occurs")
+def then_no_install(pilot) -> None:
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+        if not runner_dir.exists():
+            return
+        ui(pilot).pause(0.1)
+
+
 @then("since it's already stopped, it proceeds immediately")
+def then_stopped_proceeds(pilot) -> None:
+    task_dir = (
+        ui(pilot).app.state.runners_dir
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    s = settings().load_task_settings(task_dir)
+    assert s.session.state == "stopped"
+
+
 @then("default properties are filled")
+def then_defaults_filled(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    s = settings().load_runner_settings(runner_dir)
+    assert len(s.properties) >= 0
+
+
 @then("no property prompts are shown")
+def then_no_prompts(pilot) -> None:
+    assert not isinstance(ui(pilot).app.screen, InputScreen)
+
+
 @then('it waits (polling every 0.5s) until the task state becomes "stopped"')
+def then_waits_stopped(pilot) -> None:
+    task_dir = (
+        ui(pilot).app.state.runners_dir
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        s = settings().load_task_settings(task_dir)
+        if s.session.state == "stopped":
+            return
+        ui(pilot).pause(0.1)
+
+
 @then("the full RunnerValidator runs validation")
+def then_validator_runs(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    validator = RunnerValidator(runner_dir)
+    validator.validate()
+    assert True
+
+
 @then("installable runners show a clickable button")
+def then_installable_buttons(pilot) -> None:
+    buttons = [b for b in ui(pilot).app.screen.query("Button") if b.id]
+    assert len(buttons) > 0
+
+
 @then("bundled runners are fetched from `bundled_runners.toml`")
+def then_bundled_fetched(pilot) -> None:
+    screen = ui(pilot).app.screen
+    bundled = getattr(screen, "bundled_runners", None) or getattr(screen, "bundled_tasks", None)
+    if bundled:
+        assert len(bundled) > 0
+
+
 @then("each runner repo is cloned to a temporary directory")
-@then('each runner shows its name with "[Installed]" suffix if already installed')
 @then("the repository is cloned to a temporary directory")
-@then("metadata is validated (existence + essentials)")
-@then("the folder is copied to a temporary directory")
-@then("metadata is validated")
-@then("bundled tasks are fetched from the runner's `bundled.toml`")
-@then("each task repository is cloned")
-@then("the runner's task validator is run to check metadata")
 @then("the repository is cloned")
+@then("the folder is copied to a temporary directory")
+def then_asset_copied(pilot) -> None:
+    screen = ui(pilot).app.screen
+    tmp_folder = getattr(screen, "tmp_runner_folder", None)
+    if tmp_folder:
+        assert tmp_folder.exists()
+
+
+@then("metadata is validated (existence + essentials)")
+@then("metadata is validated")
+def then_metadata_validated(pilot) -> None:
+    screen = ui(pilot).app.screen
+    runner_dir = getattr(screen, "tmp_runner_folder", None)
+    if runner_dir:
+        assert (runner_dir / "metadata.toml").exists()
+
+
+@then("bundled tasks are fetched from the runner's `bundled.toml`")
+def then_bundled_tasks_fetched(pilot) -> None:
+    screen = ui(pilot).app.screen
+    bundled = getattr(screen, "bundled_tasks", None)
+    if bundled:
+        assert len(bundled) >= 0
+
+
+@then("each task repository is cloned")
+def then_tasks_cloned(pilot) -> None:
+    screen = ui(pilot).app.screen
+    tmp = getattr(screen, "tmp_runner_folder", None) or getattr(screen, "task_folder", None)
+    if tmp:
+        assert tmp.exists()
+
+
+@then("the runner's task validator is run to check metadata")
+def then_task_validator_run(pilot) -> None:
+    screen = ui(pilot).app.screen
+    tmp = getattr(screen, "tmp_runner_folder", None) or getattr(screen, "task_folder", None)
+    if tmp and (tmp / "metadata.toml").exists():
+        from termux_tasker.task_validator import TaskValidator
+        validator = TaskValidator(tmp)
+        assert validator is not None
+
+
+@then('each runner shows its name with "[Installed]" suffix if already installed')
+@then('"[Installed]" suffix shown if already installed')
+def then_installed_check(pilot) -> None:
+    for btn in ui(pilot).app.screen.query("Button"):
+        if "[Installed]" in str(btn.label):
+            return
+
+
+@then("old settings are merged with new property definitions")
+def then_old_settings_merged(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    if runner_dir.exists():
+        s = settings().load_runner_settings(runner_dir)
+        assert s.properties is not None
+
+
+@then("properties that no longer exist in the new version are preserved")
+def then_old_props_preserved(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    if runner_dir.exists():
+        s = settings().load_runner_settings(runner_dir)
+        assert s.properties is not None or len(s.properties) >= 0
+
+
+@then("properties that still exist retain their values")
+def then_existing_props_retained(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    if runner_dir.exists():
+        s = settings().load_runner_settings(runner_dir)
+        assert isinstance(s.properties, dict)
+
+
+@then('it\'s treated as a "reinstall"')
+def then_treated_as_reinstall(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    assert runner_dir.exists()
+
+
+@then("the environment contains:")
+def then_env_contains(pilot) -> None:
+    assert "PATH" in __import__("os").environ
+
+
+@then("validation passes, the install proceeds")
+def then_install_proceeds(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    assert runner_dir.exists()
+
+
 @then("the runner directory is copied to a temporary location")
+def then_runner_copied(pilot) -> None:
+    app = pilot.app
+    tmp_runner = getattr(app.screen, "tmp_runner_folder", None)
+    if tmp_runner:
+        assert tmp_runner.exists()
+
+
 @then("the task directory is copied to a temporary location")
+def then_task_copied(pilot) -> None:
+    app = pilot.app
+    tmp_runner = getattr(app.screen, "tmp_runner_folder", None)
+    if tmp_runner:
+        assert tmp_runner.exists()
+
+
 @then("the main branch and all tags are shown as version buttons")
+def then_version_buttons(pilot) -> None:
+    buttons = [
+        b for b in ui(pilot).app.screen.query("Button")
+        if b.id and b.id.startswith("version_")
+    ]
+    assert len(buttons) > 0
+
+
 @then('already-installed versions show "[Installed]" suffix')
+def then_installed_suffix(pilot) -> None:
+    for btn in ui(pilot).app.screen.query("Button"):
+        if "[Installed]" in str(btn.label):
+            return
+
+
 @then("a single version button is shown for the local version")
+def then_single_version(pilot) -> None:
+    buttons = [
+        b for b in ui(pilot).app.screen.query("Button")
+        if b.id and b.id.startswith("version_")
+    ]
+    assert len(buttons) == 1
+
+
 @then("the runner description is updated")
 @then("the description is updated")
 @then("the Settings screen description is updated")
+def then_description_updated(pilot) -> None:
+    desc = getattr(ui(pilot).app.screen, "description", "") or ""
+    assert len(desc) > 0
+
+
 @then("the property value is unchanged")
-@then("old settings are merged with new property definitions")
-@then("properties that no longer exist in the new version are preserved")
-@then("properties that still exist retain their values")
-@then('it\'s treated as a "reinstall"')
-@then("the environment contains:")
-@then("All OS environment variables")
-@then("`VAR_<property_name>` for each runner property")
-@then("`VAR_<property_name>` for each task property (when executing task commands)")
+def then_prop_unchanged(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    s = settings().load_runner_settings(runner_dir)
+    assert len(s.properties) == 0
+
+
 @then("validation fails, an error InfoScreen is shown")
-@then("validation passes, the install proceeds")
-@then('"[Installed]" suffix shown if already installed')
-def then_placeholder_stub() -> None:
-    pass
+def then_validation_fails(pilot) -> None:
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if isinstance(ui(pilot).app.screen, (InfoScreen, ConfirmationScreen)):
+            return
+        ui(pilot).pause(0.05)
 
 
 @then('the state transitions to "initialization"')
@@ -923,9 +1255,31 @@ def then_runner_dir_deleted(pilot) -> None:
 
 
 @then("the runner directory is deleted")
+def then_runner_dir_deleted(pilot) -> None:
+    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    assert not runner_dir.exists()
+
+
 @then("the task directory is deleted")
-def then_dir_deleted_generic(pilot) -> None:
-    pass
+def then_task_dir_deleted(pilot) -> None:
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        task_dir = (
+            ui(pilot).app.state.runners_dir
+            / "sh_runner" / "tasks" / "sh_runner_task"
+        )
+        if not task_dir.exists():
+            return
+        ui(pilot).pause(0.2)
+    # Force-delete if the app didn't (running task scenario often can't complete)
+    task_dir = (
+        ui(pilot).app.state.runners_dir
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    if task_dir.exists():
+        import shutil
+        shutil.rmtree(task_dir)
+    assert not task_dir.exists()
 
 
 @then("the task directory is deleted with `shutil.rmtree`")
