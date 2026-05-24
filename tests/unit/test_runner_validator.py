@@ -7,6 +7,8 @@ import pytest
 
 from termux_tasker.runner_validator import RunnerValidator, RunnerValidatorException
 
+from tests.bdd.conftest import SH_RUNNER_MALFORMED_NO_EXEC_METADATA
+
 
 VALID_METADATA = """\
 [general]
@@ -256,6 +258,14 @@ class TestRunnerValidatorAppCompatibility:
         validator.validate_metadata_structure()
         with pytest.raises(RunnerValidatorException, match="does not satisfy"):
             validator.check_app_compatibility()
+
+
+class TestRunnerValidatorNoExec:
+    def test_validate_fails_on_missing_exec_section(self, tmp_dir: Path) -> None:
+        (tmp_dir / "metadata.toml").write_text(SH_RUNNER_MALFORMED_NO_EXEC_METADATA)
+        validator = RunnerValidator(tmp_dir, app_version="0.1.0")
+        with pytest.raises(RunnerValidatorException, match="task-exec is required"):
+            validator.validate()
 
 
 class TestRunnerValidatorValidate:

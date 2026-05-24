@@ -7,6 +7,16 @@ Feature: Log Screen
     Given a LogScreen is opened with a file path
     Then the file content is displayed in the RichLog widget
 
+  Scenario: Close the LogScreen
+    Given a LogScreen is opened with a file path
+    When I press "Close" button (or Escape)
+    Then the LogScreen is dismissed
+
+  Scenario: Display raw file content (no markup parsing)
+    Given a LogScreen is opened with a TOML file containing `[section]` headers
+    Then the square brackets are displayed literally
+    And not interpreted as Textual markup
+
   Scenario: Follow mode appends new content
     Given a LogScreen is opened with follow mode enabled
     And there is existing content in the file
@@ -23,19 +33,9 @@ Feature: Log Screen
     When new content is written to the file
     Then only the new content appears (old content is not re-displayed)
 
-  Scenario: Close the LogScreen
-    Given a LogScreen is shown
-    When I press "Close" button (or Escape)
-    Then the LogScreen is dismissed
-
   Scenario: Toggle follow on/off
     Given a LogScreen is opened with follow mode enabled
     When I uncheck the "Follow" checkbox
     Then the follow timer is stopped
     When I check the "Follow" checkbox again
     Then the follow timer is started (1 second interval)
-
-  Scenario: Display raw file content (no markup parsing)
-    Given a LogScreen is opened with a TOML file containing `[section]` headers
-    Then the square brackets are displayed literally
-    And not interpreted as Textual markup

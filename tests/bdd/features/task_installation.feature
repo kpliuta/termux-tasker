@@ -49,5 +49,3 @@ Feature: Task Installation
     Then the same property InputScreen is shown again
     When I provide a valid value and press Ok
     Then the next property is prompted
-
-

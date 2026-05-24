@@ -138,6 +138,22 @@ class TestTaskValidatorMetadataStructure:
             validator.validate_metadata_structure()
 
 
+RUNNER_WITH_VALIDATOR = """\
+[general]
+id = "test-runner"
+name = "Test Runner"
+version = "0.1.0"
+url = "https://github.com/user/test-runner"
+app_min_version = ">=0.1.0"
+
+[exec]
+task-exec = "echo {task_dir}"
+
+[[task-validator]]
+command = "test -f {task_dir}/required_file"
+"""
+
+
 class TestTaskValidatorRunnerCompatibility:
     def test_compatible(self, tmp_dir: Path) -> None:
         runner_dir = tmp_dir / "runner"
@@ -181,3 +197,51 @@ class TestTaskValidatorRunnerCompatibility:
         validator.validate_metadata_structure()
         with pytest.raises(TaskValidatorException, match="does not satisfy"):
             validator.check_runner_compatibility()
+
+    def test_runner_version_compatible_with_spec(self, tmp_dir: Path) -> None:
+        runner_dir = tmp_dir / "runner"
+        runner_dir.mkdir()
+        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+
+        task_dir = tmp_dir / "task"
+        task_dir.mkdir()
+        content = VALID_TASK_METADATA.replace('runner_min_version = ">=0.1.0"', 'runner_min_version = ">=0.1.0,<2.0.0"')
+        (task_dir / "metadata.toml").write_text(content)
+
+        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator.validate_metadata_structure()
+        validator.check_runner_compatibility()
+
+
+class TestTaskValidatorRunnerValidators:
+    def test_missing_required_file_fails_validation(self, tmp_dir: Path) -> None:
+        runner_dir = tmp_dir / "runner"
+        runner_dir.mkdir()
+        (runner_dir / "metadata.toml").write_text(RUNNER_WITH_VALIDATOR)
+
+        task_dir = tmp_dir / "task"
+        task_dir.mkdir()
+        (task_dir / "metadata.toml").write_text(VALID_TASK_METADATA)
+
+        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator.validate_metadata_existed()
+        validator.validate_metadata_structure()
+        validator.check_runner_compatibility()
+        with pytest.raises(TaskValidatorException, match="Task validator command failed"):
+            validator.execute_runner_validators()
+
+    def test_required_file_present_passes_validation(self, tmp_dir: Path) -> None:
+        runner_dir = tmp_dir / "runner"
+        runner_dir.mkdir()
+        (runner_dir / "metadata.toml").write_text(RUNNER_WITH_VALIDATOR)
+
+        task_dir = tmp_dir / "task"
+        task_dir.mkdir()
+        (task_dir / "metadata.toml").write_text(VALID_TASK_METADATA)
+        (task_dir / "required_file").write_text("content")
+
+        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator.validate_metadata_existed()
+        validator.validate_metadata_structure()
+        validator.check_runner_compatibility()
+        validator.execute_runner_validators()

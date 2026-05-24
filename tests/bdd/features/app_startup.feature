@@ -3,21 +3,14 @@ Feature: App Startup
   I want the app to start correctly
   So that I can manage runners and tasks
 
-  Scenario: App starts and shows main menu
-    Given the app is launched with a given app version
+  Scenario: App starts and creates directories
+    Given the app is launched for the first time
     Then the main menu screen is shown
     And it contains "Show Runners" button
     And it contains "Settings" button
     And it contains "Exit" button
     And the title is "Main Menu"
-
-  Scenario: App creates directories on startup
-    Given the app is launched for the first time
-    Then the work directory `.termux-tasker` is created
+    And the work directory `.termux-tasker` is created
     And the runners directory `.termux-tasker/runners` is created
     And the tmp directory `.termux-tasker/.tmp` is created
     And the default app config is created at `.termux-tasker/app.toml`
-
-  Scenario: App generates unique session ID
-    Given the app is launched
-    Then a unique session ID (UUID4) is generated

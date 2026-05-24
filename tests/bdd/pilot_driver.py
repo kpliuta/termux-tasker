@@ -35,10 +35,10 @@ class PilotDriver:
         self._ready = threading.Event()
         self._stop_flag = False
         self._exception: BaseException | None = None
-        # Queue of (async_callable, Future) pairs
         self._cmd_queue: queue.SimpleQueue[tuple[Callable, Future]] = (
             queue.SimpleQueue()
         )
+        self._async_cmd_event: asyncio.Event | None = None
 
     # -- public helpers -------------------------------------------------------
 
@@ -135,12 +135,12 @@ class PilotDriver:
                 try:
                     widget = pilot.app.screen.query_one(selector)
                     if isinstance(widget, Button):
-                        widget.scroll_visible()
-                        await pilot.wait_for_animation()
+                        try:
+                            widget.scroll_visible()
+                        except Exception:
+                            pass
                         await pilot.click(widget)
                     elif isinstance(widget, Checkbox):
-                        widget.scroll_visible()
-                        await pilot.wait_for_animation()
                         widget.toggle()
                     else:
                         await pilot.click(widget)
@@ -172,14 +172,16 @@ class PilotDriver:
         except Exception as exc:
             self._exception = exc
             self._ready.set()
+        finally:
+            self._loop.close()
 
     async def _main(self) -> None:
         async with self._app.run_test(size=self._size) as pilot:
             self._pilot = pilot
+            self._async_cmd_event = asyncio.Event()
             self._ready.set()
             while not self._stop_flag:
-                # Drain submitted commands.
-                try:
+                while not self._cmd_queue.empty():
                     make_coro, future = self._cmd_queue.get_nowait()
                     try:
                         coro = make_coro(pilot)
@@ -187,9 +189,11 @@ class PilotDriver:
                         future.set_result(result)
                     except BaseException as exc:
                         future.set_exception(exc)
-                except queue.Empty:
+                self._async_cmd_event.clear()
+                try:
+                    await asyncio.wait_for(self._async_cmd_event.wait(), timeout=0.01)
+                except asyncio.TimeoutError:
                     pass
-                await asyncio.sleep(0.05)
 
     def _submit(self, make_coro: Callable) -> Any:
         """Submit a command to be executed in the background thread.
@@ -200,4 +204,6 @@ class PilotDriver:
         """
         future: Future = Future()
         self._cmd_queue.put((make_coro, future))
+        if self._async_cmd_event is not None and self._loop is not None:
+            self._loop.call_soon_threadsafe(self._async_cmd_event.set)
         return future.result()

@@ -42,15 +42,3 @@ Feature: Runner Execution Lifecycle
     Given a task is configured with `settings.general.timeout = "30s"`
     When the runner's execution loop enters "idle" state
     Then it sleeps for 30 seconds before the next iteration
-
-  Scenario: Runner shutdown waits for process completion
-    Given a runner is in "task-exec" state running a long task
-    When `shutdown()` is called
-    Then `shutting_down` flag is set to True
-    And the runner waits until state becomes "off"
-    And the method returns only after the runner has fully stopped
-
-  Scenario: Runner terminates subprocesses on error
-    Given a runner has running subprocesses
-    When `terminate()` is called
-    Then `proc.terminate()` is called on all tracked subprocesses

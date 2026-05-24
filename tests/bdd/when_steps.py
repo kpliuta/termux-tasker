@@ -66,7 +66,6 @@ def when_set_timeout(pilot) -> None:
 
 
 @when('I press "Set <property>" button')
-@when('I press "<prop>" button')
 def when_set_property(pilot) -> None:
     for btn in ui(pilot).app.screen.query("Button"):
         if btn.id and btn.id.startswith("set_"):
@@ -126,11 +125,6 @@ def when_show_logs(pilot) -> None:
 @when('I press "Show metadata.toml" button')
 def when_show_metadata(pilot) -> None:
     ui(pilot).click_label("Show metadata.toml")
-
-
-@when('I press "Show settings.toml" button')
-def when_show_settings(pilot) -> None:
-    ui(pilot).click_label("Show settings.toml")
 
 
 @when('I press "Update" button')
@@ -196,16 +190,15 @@ def when_enter_github_url(pilot) -> None:
 @when('I enter a new timeout (e.g. "30s", "5m", "1h") and press Ok')
 def when_enter_timeout(pilot) -> None:
     ui(pilot).set_value("#input_field", "30s")
-    ui(pilot).pause(0.2)
+    ui(pilot).pause()
     ui(pilot).click_id("#ok")
     ui(pilot).assert_screen(TaskMenuScreen)
-    ui(pilot).pause(0.1)
 
 
 @when("I enter an invalid timeout and press Ok")
 def when_enter_invalid_timeout(pilot) -> None:
     ui(pilot).set_value("#input_field", "abc")
-    ui(pilot).pause(0.2)
+    ui(pilot).pause()
     ui(pilot).click_id("#ok")
 
 
@@ -231,7 +224,7 @@ def when_select_folder(pilot) -> None:
         screen.dismiss(screen._selected_path)   # noqa
 
     ui(pilot).app.call_from_thread(_do_select)
-    ui(pilot).pause(0.3)
+    ui(pilot).pause(0.1)
 
 
 @when("I dismiss the warning")
@@ -265,7 +258,7 @@ def when_append_content(pilot) -> None:
 @when("I cancel the property prompt")
 def when_cancel_property(pilot) -> None:
     ui(pilot).press("escape")
-    ui(pilot).pause(0.2)
+    ui(pilot).pause()
 
 
 @when("I provide a valid value and press Ok")
@@ -273,7 +266,6 @@ def when_provide_valid_value(pilot) -> None:
     ui(pilot).set_value("#input_field", "test_value")
     ui(pilot).pause()
     ui(pilot).click_id("#ok")
-    ui(pilot).pause(0.2)
 
 
 @when("I confirm the installation")
@@ -285,7 +277,7 @@ def when_provide_valid_value(pilot) -> None:
 @when("I enter an invalid URL (doesn't match GitHub URL regex)")
 @when("a runner is installed or removed on disk")
 def when_install_flow(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @when("the git checkout fails")
@@ -312,11 +304,6 @@ def when_git_checkout_fails(pilot) -> None:
     raise AssertionError("No version button found")
 
 
-@when("I close the app")
-def when_close_app(pilot) -> None:
-    ui(pilot).pilot.exit_app()
-
-
 @when("I uninstall a task from its Task Menu screen")
 def when_uninstall_task(pilot) -> None:
     ui(pilot).nav_to_task_menu()
@@ -334,20 +321,7 @@ def when_return_tasks(pilot) -> None:
 
 @when("the app is restarted")
 def when_app_restarted(pilot) -> None:
-    ui(pilot).pause(0.1)
-
-
-@when("`run()` is called again before the previous start completes")
-def when_run_called_twice(app_state_fixture) -> RunnerProcess:
-    proc = RunnerProcess(
-        app_state_fixture.runners_dir / "sh_runner",
-        "test-session",
-        app_state_fixture.tmp_dir,
-    )
-    proc._run_lock = True
-    proc.run()
-    proc.run()
-    return proc
+    pass
 
 
 @when("the runner's `run()` method is called")
@@ -359,88 +333,12 @@ def when_runner_run(pilot) -> RunnerProcess:
     return proc
 
 
-@when("`shutdown()` is called")
-async def when_shutdown_called(app_state_fixture) -> RunnerProcess:
-    with patch(
-        "termux_tasker.runner_process.asyncio.create_subprocess_exec",
-        return_value=AsyncMock(wait=AsyncMock(return_value=0)),
-    ):
-        proc = RunnerProcess(
-            app_state_fixture.runners_dir / "sh_runner",
-            "test-session",
-            app_state_fixture.tmp_dir,
-        )
-        proc.shutting_down = True
-        await proc.shutdown()
-        return proc
-
-
-@when("`terminate()` is called")
-def when_terminate_called(app_state_fixture) -> RunnerProcess:
-    proc = RunnerProcess(
-        app_state_fixture.runners_dir / "sh_runner",
-        "test-session",
-        app_state_fixture.tmp_dir,
-    )
-    proc.terminate()
-    return proc
-
-
-@when("the task validator runs")
-def when_task_validator_runs(app_state_fixture) -> TaskValidator:
-    validator = TaskValidator(
-        app_state_fixture.runners_dir / "sh_runner",
-        app_state_fixture.tmp_dir / "task",
-        app_state_fixture.tmp_dir / ".tmp",
-    )
-    return validator
-
-
-@when("the runner is validated")
-def when_runner_validated(app_state_fixture) -> RunnerValidator:
-    validator = val().create_runner_validator(
-        app_state_fixture.runners_dir / "sh_runner_malformed_no_exec",
-        app_version="0.1.0",
-    )
-    return validator
-
-
-@when("the task is validated by the sh_runner's task validator")
-def when_task_validated_by_sh_runner(
-        app_state_fixture, sh_runner_task_no_required_file_dir,
-) -> TaskValidator:
-    validate_dir = app_state_fixture.tmp_dir / "validate_task"
-    fs().copy_directory(sh_runner_task_no_required_file_dir, validate_dir)
-    validator = TaskValidator(
-        app_state_fixture.runners_dir / "sh_runner",
-        validate_dir,
-        app_state_fixture.tmp_dir / ".tmp",
-    )
-    val().store("task_validator", validator)
-    return validator
-
-
-@when("the task is validated")
-def when_task_validated(
-        app_state_fixture, sh_runner_task_wrong_version_dir,
-) -> TaskValidator:
-    validate_dir = app_state_fixture.tmp_dir / "validate_task"
-    fs().copy_directory(sh_runner_task_wrong_version_dir, validate_dir)
-    validator = TaskValidator(
-        app_state_fixture.runners_dir / "sh_runner",
-        validate_dir,
-        app_state_fixture.tmp_dir / ".tmp",
-    )
-    val().store("task_validator", validator)
-    return validator
-
-
 @when('the runner\'s execution loop reaches task iteration')
 @when('the runner\'s execution loop enters "idle" state')
 def when_loop_state(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @when("the runner is shut down")
 def when_runner_shut_down(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass

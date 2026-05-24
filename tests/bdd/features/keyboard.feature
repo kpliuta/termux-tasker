@@ -7,7 +7,6 @@ Feature: Keyboard Shortcuts
     Given any screen with a "Back" button (or similar close action)
     When I press Escape
     Then the same action is triggered as pressing the "Back"/"Close"/"Cancel" button
-    # Exception: the "Exit" button on Main Menu is NOT triggered by Escape
 
   Scenario: Arrow keys navigate between buttons
     Given a MenuScreen with multiple buttons

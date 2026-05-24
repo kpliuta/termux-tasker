@@ -3,11 +3,9 @@ from __future__ import annotations
 from tests.bdd.steps_common import *  # noqa
 
 
-@given("the app is launched with a given app version")
 @given("the app is launched for the first time")
-@given("the app is launched")
 def given_app_launched(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @given("the main menu screen is shown")
@@ -18,14 +16,13 @@ def given_main_menu(pilot) -> None:
 
 @given("any screen is shown")
 def given_any_screen(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @given("the Runners screen is shown")
 def given_runners_screen(pilot) -> None:
     ui(pilot).nav_to_runners()
     ui(pilot).assert_screen(RunnersScreen)
-    ui(pilot).pause(0.3)
 
 
 @given("the Runner Type screen is shown")
@@ -113,7 +110,7 @@ def given_menu_with_buttons(pilot) -> None:
 
 @given("no runners are running")
 def given_no_runners(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @given("at least one runner is running")
@@ -174,50 +171,12 @@ def given_runner_was_disabled(pilot) -> None:
     settings().disable_runner(runner_dir)
 
 
-@given("a runner is starting up")
-def given_runner_starting(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().set_runner_state(runner_dir, "initialization")
-
-
 @given("the runner metadata defines a property")
 def given_runner_has_properties(pilot) -> None:
     meta = settings().load_runner_metadata(
         ui(pilot).app.state.runners_dir / "sh_runner"
     )
     assert len(meta.properties) > 0
-
-
-@given("defined properties exist on the runner")
-def given_runner_properties(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    for key, value in TEST_PROPERTIES.items():
-        settings().set_runner_property(runner_dir, key, value)
-
-
-@given('a runner is in "task-exec" state running a long task')
-def given_runner_task_exec(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().enable_runner(runner_dir)
-    settings().set_runner_state(runner_dir, "task-exec")
-
-
-@given("a runner has running subprocesses")
-def given_runner_with_procs(pilot) -> RunnerProcess:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    proc = RunnerProcess(
-        runner_dir,
-        "test-session",
-        ui(pilot).app.state.tmp_dir,
-    )
-    proc.shutting_down = False
-    proc._processes = [AsyncMock(spec=asyncio.subprocess.Process)]
-    return proc
-
-
-@given("the runner `sh_runner_malformed_no_exec` which has no `[exec]` section")
-def given_malformed_runner_no_exec(pilot, sh_runner_malformed_no_exec_dir: Path) -> Path:
-    return sh_runner_malformed_no_exec_dir
 
 
 @given("there is at least one task installed")
@@ -276,7 +235,7 @@ def given_task_installed(pilot) -> None:
         ui(pilot).app.push_screen(TaskMenuScreen(task_dir))
 
     ui(pilot).app.call_from_thread(_push)
-    ui(pilot).pause(0.3)
+    ui(pilot).pause(0.1)
 
 
 @given('a task is configured with `settings.general.timeout = "30s"`')
@@ -321,49 +280,21 @@ def given_mixed_tasks(pilot) -> None:
     settings().disable_task(disabled_dir)
 
 
-@given('a task specifies `runner_min_version = ">=10.1.0"`')
-def given_incompatible_version(pilot) -> None:
-    ui(pilot).pause(0.1)
-
-
-@given('a task specifies `runner_min_version = ">=1.1.0,<2.0.0"`')
-def given_compatible_version(pilot) -> None:
-    ui(pilot).pause(0.1)
-
-
-@given('the installed runner has version "1.1.0"')
 @given("I selected a runner version to install")
 @given("I selected a git tag to install")
 @given("the Install Runner Version screen is shown")
 def given_version_selected(pilot) -> None:
-    ui(pilot).pause(0.1)
-
-
-@given(
-    "the task `sh_runner_task_malformed_wrong_runner_version` "
-    'with `runner_min_version = ">=10.1.0"`'
-)
-def given_task_wrong_version(pilot, sh_runner_task_wrong_version_dir: Path) -> Path:
-    return sh_runner_task_wrong_version_dir
-
-
-@given(
-    "the task `sh_runner_task_malformed_no_required_file` "
-    "which has no `required_file`"
-)
-def given_task_no_required_file(pilot, sh_runner_task_no_required_file_dir: Path) -> Path:
-    return sh_runner_task_no_required_file_dir
+    pass
 
 
 @given("I am installing a runner where all properties have defaults or are optional")
 @given("the property is non-optional")
 def given_property_meta(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @given("I am installing a runner with non-optional properties without defaults")
 def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
-    """Jump to property prompt state for a runner install with 2 required properties."""
     from tests.bdd.conftest import RUNNER_REQUIRED_META, _write_runner
     from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
     from termux_tasker.ui.base.screen import InputScreen
@@ -372,7 +303,7 @@ def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
     folder = _write_runner(tmp_dir / f"_test_{uuid.uuid4().hex}", RUNNER_REQUIRED_META)
     screen = InstallRunnerVersionScreen(folder)
     ui(pilot).push_screen(screen)
-    ui(pilot).pause(0.3)
+    ui(pilot).pause(0.1)
 
     ui(pilot).pilot_driver.run_on_pilot(
         lambda p: screen._finalize_install("test_runner", "1.0.0", "install")   # noqa
@@ -382,7 +313,6 @@ def given_runner_non_optional(pilot, tmp_dir: Path) -> None:
 
 @given("I am installing a task with non-optional properties without defaults")
 def given_task_non_optional(pilot, tmp_dir: Path) -> None:
-    """Jump to property prompt state for a task install with 2 required properties."""
     from tests.bdd.conftest import TASK_REQUIRED_META, _write_task
     from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
     from termux_tasker.ui.base.screen import InputScreen
@@ -392,7 +322,7 @@ def given_task_non_optional(pilot, tmp_dir: Path) -> None:
     runner_dir = pilot.app.state.runners_dir / "sh_runner"
     screen = InstallTaskVersionScreen(runner_dir, folder)
     ui(pilot).push_screen(screen)
-    ui(pilot).pause(0.3)
+    ui(pilot).pause(0.1)
 
     ui(pilot).pilot_driver.run_on_pilot(
         lambda p: screen._finalize_install("test_task", "1.0.0", "install") # noqa
@@ -426,15 +356,6 @@ def given_existing_content(pilot) -> None:
 @given("content is displayed")
 def given_content_displayed(pilot) -> None:
     ui(pilot).assert_screen(LogScreen)
-
-
-@given("a LogScreen is shown")
-def given_log_screen_shown(pilot) -> None:
-    log_file = ui(pilot).app.state.work_dir / "simple.log"
-    fs().write_text(log_file, "content\n")
-    ui(pilot).push_log_screen(log_file, follow=False)
-    ui(pilot).assert_screen(LogScreen)
-
 
 @given("a LogScreen is opened with a TOML file containing `[section]` headers")
 def given_toml_log(pilot) -> None:

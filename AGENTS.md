@@ -10,7 +10,7 @@
 [//]: # (workflow)
 
 - Ask before starting if anything is unclear.
-- Cover new/modified logic with both BDD and unit tests; run after each change — must be green.
+- Cover new/modified logic with both BDD and unit tests; run after each change — must be green. Tests always run in parallel (`-n auto` default in pyproject.toml).
 - Delete all unused code (methods, classes, files, imports).
 - Run `poetry run mypy src/` and `poetry run autoflake --remove-all-unused-imports --ignore-init-module-imports --in-place --recursive src/` after every change — both must pass/be clean.
 - Update README.md for user-visible changes.
@@ -45,19 +45,21 @@
 - BDD tests: `tests/bdd/features/*.feature` + step definitions in `tests/bdd/{given,thens,when}_steps.py`.
 - Step definitions import: `from tests.bdd.steps_common import *  # noqa`.
 - `pilot` fixture → `PilotDriver`; use `ui(pilot)` helper for all interactions.
-- Keep feature files minimal; Gherkin steps should be reusable (parameterized).
+- Put pure-logic tests (no UI) as unit tests, not BDD. BDD is for UI flows only.
 - External operations (git, network) mocked in `conftest.py` via `mock_external_ops` auto use fixture.
+- Merging multiple Given-When-Then blocks in a single scenario doesn't work (state leaks). Instead, merge more `And` assertions into a single flow or keep scenarios separate.
 
 [//]: # (testing — pilot interactions)
 
 - `ui(pilot).click_id("#button_id")` for known IDs, `ui(pilot).click_label("Button Text")` for label lookup.
-- `ui(pilot).assert_screen(ScreenType)` and `ui(pilot).pause(0.1)` for navigation/assertions.
+- `ui(pilot).assert_screen(ScreenType)` and `ui(pilot).pause()` for navigation/assertions.
 - `ui(pilot).press("escape")` sends key event; use `pause()` between actions to drain event loop.
 - `ui(pilot).set_value("#input_field", value)` for text inputs.
-- `pilot.pause(0.2)` yields to event loop for UI updates.
+- `pilot.pause(0.02)` yields to event loop for UI updates. Avoid long fixed pauses — use short pause + assertion loops.
 
 [//]: # (testing — unit)
 
 - Unit tests in `tests/unit/` — plain pytest, no BDD.
 - Mock external dependencies; avoid `torch`.
+- All tests run in parallel by default (`-n auto`). For serial debugging: `pytest -n 0`.
 - Fixtures for runner/task directories defined in `tests/bdd/conftest.py`.

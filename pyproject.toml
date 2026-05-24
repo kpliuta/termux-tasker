@@ -1,7 +1,7 @@
 [project]
 name = "termux-tasker"
 version = "0.1.0"
-description = "A TUI tool for managing Termux automation tasks with Tasker integration"
+description = "A TUI tool for managing shell-based automation tasks on Termux (Android)"
 authors = [
     { name = "kpliuta", email = "9212935+kpliuta@users.noreply.github.com" }
 ]
@@ -23,6 +23,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "pytest-bdd>=8.0.0",
+    "pytest-xdist>=3.0.0",
     "autoflake>=2.3.3",
     "mypy>=1.0.0",
 ]
@@ -33,6 +34,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "-n auto"
+filterwarnings = [
+    "ignore:'asyncio.get_event_loop_policy' is deprecated:DeprecationWarning",
+    "ignore:'asyncio.set_event_loop_policy' is deprecated:DeprecationWarning",
+]
 
 [tool.poetry]
 packages = [{ include = "termux_tasker", from = "src" }]

@@ -3,7 +3,7 @@ Feature: Runner Menu
   I want to manage a specific runner from its menu
   So that I can toggle, configure, view logs, and uninstall it
 
-  Scenario: Runner menu shows runner details
+  Scenario: Runner menu displays correctly
     Given the Runner Menu screen is shown for a runner
     Then the description shows:
       """
@@ -12,10 +12,7 @@ Feature: Runner Menu
       - Session state
       - All configured properties with their values
       """
-
-  Scenario: Runner menu contains management buttons
-    Given the Runner Menu screen is shown
-    Then it contains "Enable"/"Disable" toggle button
+    And it contains "Enable"/"Disable" toggle button
     And it contains "Show Tasks" button
     And it contains "Show Runner Logs" button
     And it contains "Show metadata.toml" button
@@ -85,7 +82,7 @@ Feature: Runner Menu
     Then the property value is saved in settings.toml
     And the runner description is updated
 
-  Scenario: Set a required runner property with empty value shows warning
+  Scenario: Set required runner property with empty value shows warning
     Given the Runner Menu screen is shown
     And the property is non-optional
     When I press "Set <property>" button

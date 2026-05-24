@@ -47,7 +47,7 @@ Feature: Runner Installation
     And a single version button is shown for the local version
     And "[Installed]" suffix shown if already installed
 
-  Scenario: Install runner - validate full runner before install
+  Scenario: Install runner - validate before install
     Given I selected a runner version to install
     When I confirm the installation
     Then the full RunnerValidator runs validation
@@ -63,7 +63,7 @@ Feature: Runner Installation
     And the install screens are popped
     And the Runner Menu screen is shown for the newly installed runner
 
-  Scenario: Install runner - skip optional properties during install
+  Scenario: Install runner - skip optional properties
     Given I am installing a runner where all properties have defaults or are optional
     When the install finalizes
     Then default properties are filled
@@ -71,19 +71,13 @@ Feature: Runner Installation
     And no property prompts are shown
     And the Runner Menu screen is shown for the newly installed runner
 
-  Scenario: Git checkout failure during runner install
-    Given I selected a git tag to install
-    When the git checkout fails
-    Then an error InfoScreen is shown with "Failed to checkout tag '<tag>'"
-    And the install is aborted
-
   Scenario: Cancel runner version selection
     Given the Install Runner Version screen is shown
     When I press "Back" button (or Escape)
     Then I am returned to the previous screen
     And no installation occurs
 
-  Scenario: Cancel required property during runner install re-prompts
+  Scenario: Cancel required property during install re-prompts
     Given I am installing a runner with non-optional properties without defaults
     When I cancel the property prompt
     Then a warning InfoScreen is shown that the property is required
@@ -92,4 +86,8 @@ Feature: Runner Installation
     When I provide a valid value and press Ok
     Then the next property is prompted
 
-
+  Scenario: Git checkout failure during runner install
+    Given I selected a git tag to install
+    When the git checkout fails
+    Then an error InfoScreen is shown with "Failed to checkout tag '<tag>'"
+    And the install is aborted

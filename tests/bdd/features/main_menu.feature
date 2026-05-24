@@ -3,7 +3,7 @@ Feature: Main Menu Navigation
   I want to navigate the main menu
   So that I can access runners, settings, and exit
 
-  Scenario: Navigate to Runners screen from main menu
+  Scenario: Navigate to Runners screen
     Given the main menu screen is shown
     When I press "Show Runners" button
     Then the Runners screen is shown
@@ -11,7 +11,7 @@ Feature: Main Menu Navigation
     And it contains "Install Runner" button
     And it contains "Back" button
 
-  Scenario: Navigate to Settings screen from main menu
+  Scenario: Navigate to Settings screen
     Given the main menu screen is shown
     When I press "Settings" button
     Then the Settings screen is shown

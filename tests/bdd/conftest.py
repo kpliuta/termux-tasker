@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -13,9 +13,7 @@ if TYPE_CHECKING:
     from tests.bdd.pilot_driver import PilotDriver
 
 from termux_tasker.config import (
-    RunnerMetadata,
     RunnerSettings,
-    TaskMetadata,
     TaskSettings,
 )
 
@@ -220,14 +218,6 @@ def sh_runner_enabled(sh_runner_dir: Path) -> Path:
     return sh_runner_dir
 
 
-@pytest.fixture
-def sh_runner_malformed_no_exec_dir(tmp_dir: Path) -> Path:
-    return _write_runner(
-        tmp_dir / "runners" / "sh_runner_malformed_no_exec",
-        SH_RUNNER_MALFORMED_NO_EXEC_METADATA,
-    )
-
-
 # ── Task fixtures ───────────────────────────────────────────────────────
 
 
@@ -251,59 +241,7 @@ def sh_runner_task_enabled(sh_runner_task_dir: Path) -> Path:
     return sh_runner_task_dir
 
 
-@pytest.fixture
-def sh_runner_task_no_required_file_dir(tmp_dir: Path) -> Path:
-    return _write_runner(
-        tmp_dir / "tasks" / "sh_runner_task_malformed_no_required_file",
-        SH_RUNNER_TASK_NO_REQUIRED_FILE_METADATA,
-    )
-
-
-@pytest.fixture
-def sh_runner_task_wrong_version_dir(tmp_dir: Path) -> Path:
-    return _write_task(
-        tmp_dir / "tasks" / "sh_runner_task_malformed_wrong_runner_version",
-        SH_RUNNER_TASK_WRONG_VERSION_METADATA,
-    )
-
-
 # ── Metadata fixtures ────────────────────────────────────────────────────
-
-
-@pytest.fixture
-def runner_metadata(tmp_dir: Path) -> RunnerMetadata:
-    path = _write_runner(tmp_dir / "_meta_runner", SH_RUNNER_METADATA)
-    return RunnerMetadata.load(path / "metadata.toml")
-
-
-@pytest.fixture
-def task_metadata(tmp_dir: Path) -> TaskMetadata:
-    path = _write_task(tmp_dir / "_meta_task", SH_RUNNER_TASK_METADATA)
-    return TaskMetadata.load(path / "metadata.toml")
-
-
-# ── App state fixture (legacy) ────────────────────────────────────────────
-
-
-@pytest.fixture
-def app_state_fixture(tmp_dir: Path) -> Any:
-    _runners_dir = tmp_dir / "runners"
-    _tmp_dir = tmp_dir / ".tmp"
-
-    class FakeAppState:
-        runners_dir: Path = _runners_dir
-        tmp_dir: Path = _tmp_dir
-        runners: dict = {}
-        session_id = "test-session"
-        app_version = "0.1.0"
-
-        def ensure_dirs(self) -> None:
-            self.runners_dir.mkdir(parents=True, exist_ok=True)
-            self.tmp_dir.mkdir(parents=True, exist_ok=True)
-
-    state = FakeAppState()
-    state.ensure_dirs()
-    return state
 
 
 # ── Pilot-driven fixtures ─────────────────────────────────────────────────

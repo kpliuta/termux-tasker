@@ -100,7 +100,7 @@ def then_log_dismissed(pilot) -> None:
 
 @then("the Runner Menu screen is shown for the newly installed runner")
 def then_new_runner_menu_shown(pilot) -> None:
-    ui(pilot).pause(0.2)
+    ui(pilot).pause()
 
 
 @then("I am returned to the previous screen")
@@ -114,7 +114,7 @@ def then_previous_screen(pilot) -> None:
 @then("the install screens are popped")
 @then("the install screens are popped back to the Runner Menu screen")
 def then_screen_popped(pilot) -> None:
-    ui(pilot).pause(0.2)
+    ui(pilot).pause()
 
 
 @then("the newly installed task is visible in the list")
@@ -384,7 +384,6 @@ def then_task_not_in_list(pilot) -> None:
 
 @then("`settings.general.enabled` is set to True")
 def then_enabled_true(pilot) -> None:
-    ui(pilot).pause(0.2)
     desc = getattr(ui(pilot).app.screen, "description", "") or ""
     assert "Enabled: True" in desc, f"Description does not show Enabled: True: {desc}"
 
@@ -436,18 +435,6 @@ def then_timeout_saved(pilot) -> None:
 @then("the app exits immediately")
 @then("the app exits")
 def then_app_exits(pilot) -> None:
-    import time
-
-    deadline = time.monotonic() + 10
-    while time.monotonic() < deadline:
-        if ui(pilot).app._exit: # noqa
-            return
-        ui(pilot).pause(0.2)
-    raise AssertionError("App did not exit within 10s")
-
-
-@then("the app was quit")
-def then_app_quit(pilot) -> None:
     import time
 
     deadline = time.monotonic() + 10
@@ -539,7 +526,7 @@ def then_fetching_versions() -> None:
 @then("the settings are saved")
 @then("the setting is saved")
 def then_settings_saved(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @then("the setting is saved to `app.toml`")
@@ -749,7 +736,7 @@ def then_new_content_appears(pilot) -> None:
 
 @then("previously displayed content is not duplicated")
 def then_no_duplicates(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @then("the RichLog display is cleared")
@@ -805,7 +792,7 @@ def then_not_markup(pilot) -> None:
 
 @then('the same action is triggered as pressing the "Back"/"Close"/"Cancel" button')
 def then_same_action_triggered(pilot) -> None:
-    ui(pilot).pause(0.2)
+    ui(pilot).pause()
 
 
 @then('Exception: the "Exit" button on Main Menu is NOT triggered by Escape')
@@ -816,7 +803,7 @@ def then_exit_not_triggered(pilot) -> None:
 @then("focus moves to the previous Button widget")
 @then("focus moves to the next Button widget")
 def then_focus(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @then("a new RunnerProcess is created")
@@ -918,79 +905,6 @@ def then_state_off(pilot) -> None:
     assert s.session.state == "off"
 
 
-@then("validation passes")
-def then_validation_passes(app_state_fixture) -> None:
-    runner_dir = app_state_fixture.runners_dir / "sh_runner"
-    task_dir = app_state_fixture.tmp_dir / "task"
-    fs().ensure_directory(task_dir)
-    fs().write_text(
-        task_dir / "metadata.toml",
-        "[general]\n"
-        'id = "test-task"\n'
-        'name = "Test Task"\n'
-        'version = "0.1.0"\n'
-        'runner_id = "sh_runner"\n'
-        'runner_min_version = ">=1.1.0,<2.0.0"\n'
-        'default_timeout = "1m"\n',
-    )
-    fs().touch(task_dir / "required_file")
-    val().validate_task(runner_dir, task_dir, app_state_fixture.tmp_dir / ".tmp")
-
-
-@then("validation fails because the runner version is incompatible")
-def then_validation_fails_incompatible(app_state_fixture) -> None:
-    runner_dir = app_state_fixture.runners_dir / "sh_runner"
-    task_dir = app_state_fixture.tmp_dir / "task_incompatible"
-    fs().ensure_directory(task_dir)
-    fs().write_text(
-        task_dir / "metadata.toml",
-        "[general]\n"
-        'id = "test-task"\n'
-        'name = "Test Task"\n'
-        'version = "0.1.0"\n'
-        'runner_id = "sh_runner"\n'
-        'runner_min_version = ">=10.1.0"\n'
-        'default_timeout = "1m"\n',
-    )
-    fs().touch(task_dir / "required_file")
-    val().validate_task_expect_fail(
-        runner_dir,
-        task_dir,
-        app_state_fixture.tmp_dir / ".tmp",
-        match="does not satisfy",
-    )
-
-
-@then("validation fails with an appropriate error")
-def then_runner_validation_fails(app_state_fixture) -> None:
-    val().validate_runner_expect_fail(
-        app_state_fixture.runners_dir / "sh_runner_malformed_no_exec",
-        app_version="0.1.0",
-    )
-
-
-@then(
-    "validation fails because `test -f {task_dir}/required_file` returns non-zero"
-)
-def then_validation_fails_no_file() -> None:
-    validator = val().retrieve("task_validator")
-    with pytest.raises(
-        TaskValidatorException,
-        match="Task validator command failed|required_file",
-    ):
-        validator.validate()
-
-
-@then("validation fails with a version compatibility error")
-def then_version_compatibility_error() -> None:
-    validator = val().retrieve("task_validator")
-    with pytest.raises(
-        TaskValidatorException,
-        match="does not satisfy|incompatible",
-    ):
-        validator.validate()
-
-
 @then("the work directory `.termux-tasker` is created")
 @then("the runners directory `.termux-tasker/runners` is created")
 @then("the tmp directory `.termux-tasker/.tmp` is created")
@@ -1011,7 +925,7 @@ def then_runner_dir_deleted(pilot) -> None:
 @then("the runner directory is deleted")
 @then("the task directory is deleted")
 def then_dir_deleted_generic(pilot) -> None:
-    ui(pilot).pause(0.1)
+    pass
 
 
 @then("the task directory is deleted with `shutil.rmtree`")
@@ -1040,30 +954,6 @@ def then_file_browser_shown(pilot) -> None:
     ui(pilot).assert_screen(FileBrowserScreen)
 
 
-@then("`shutting_down` flag is set to True")
-def then_shutting_down_true(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    proc = RunnerProcess(runner_dir, "test-session", ui(pilot).app.state.tmp_dir)
-    proc.shutting_down = True
-    assert proc.shutting_down is True
-
-
-@then("`proc.terminate()` is called on all tracked subprocesses")
-def then_proc_terminate_called(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    proc = RunnerProcess(runner_dir, "test-session", ui(pilot).app.state.tmp_dir)
-    proc.terminate()
-
-
-@then("the second call is ignored (guarded by `_run_lock`)")
-def then_run_lock_ignores(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    proc = RunnerProcess(runner_dir, "test-session", ui(pilot).app.state.tmp_dir)
-    proc._run_lock = True
-    result = proc.run()
-    assert result is False
-
-
 @then("it sleeps for 30 seconds before the next iteration")
 def then_sleep_30s() -> None:
     assert _parse_timeout("30s") == 30
@@ -1076,15 +966,6 @@ def then_prop_name_conversion() -> None:
     assert _to_env_key("property-1") == "VAR_PROPERTY_1"
     assert _to_env_key("my property") == "VAR_MY_PROPERTY"
     assert _to_env_key("prop.name") == "VAR_PROP_NAME"
-
-
-@then("a unique session ID (UUID4) is generated")
-def then_session_id_generated() -> None:
-    from termux_tasker.app_state import AppState
-
-    state = AppState("0.1.0")
-    assert len(state.session_id) == 36
-    assert state.session_id.count("-") == 4
 
 
 @then("runners continue running")

@@ -154,18 +154,23 @@ tests/
 
 ### Running tests
 
+Tests run in parallel automatically (pytest-xdist). BDD suite: ~19s vs 99s serial.
+
 ```bash
+# All tests (parallel, default)
+poetry run pytest tests/
+
 # Unit tests
-poetry run python -m pytest tests/unit/ -v
+poetry run pytest tests/unit/
 
 # BDD tests
-poetry run python -m pytest tests/bdd/ -v
+poetry run pytest tests/bdd/
 
 # Run a specific BDD scenario by name
-poetry run python -m pytest tests/bdd/ -v -k "navigate_back_from_task_menu_to_tasks_menu"
+poetry run pytest tests/bdd/ -k "navigate_back_from_task_menu_to_tasks_menu"
 
-# All tests
-poetry run python -m pytest tests/ -v
+# Serial execution (for debugging)
+poetry run pytest tests/ -n 0
 ```
 
 ### Static analysis
@@ -191,8 +196,5 @@ poetry run python -m textual_dev run --dev tests/ui/base/file_browser_screen.py
 
 ### Key test fixtures (conftest.py)
 
-- `app_state_fixture` — bootstraps `~/.termux-tasker/` with a pre-installed `sh_runner` and `sh_runner_task`
 - `pilot` — Textual pilot for driving the TUI in tests
-- `sh_runner_dir`, `sh_runner_task_dir` — paths to test fixture runner/task directories
-- `sh_runner_malformed_no_exec_dir` — malformed runner fixture for validation tests
-- `sh_runner_task_no_required_file_dir`, `sh_runner_task_wrong_version_dir` — malformed task fixtures
+- `tmp_dir` — temporary workspace cleaned up after each test

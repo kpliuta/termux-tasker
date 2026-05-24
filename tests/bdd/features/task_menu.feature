@@ -3,7 +3,7 @@ Feature: Task Menu
   I want to manage a specific task from its menu
   So that I can toggle, configure, and uninstall it
 
-  Scenario: Task menu shows task details
+  Scenario: Task menu displays correctly
     Given the Task Menu screen is shown for a task
     Then the description shows:
       """
@@ -13,10 +13,7 @@ Feature: Task Menu
       - Timeout value
       - All configured properties with their values
       """
-
-  Scenario: Task menu contains management buttons
-    Given the Task Menu screen is shown
-    Then it contains "Enable"/"Disable" toggle button
+    And it contains "Enable"/"Disable" toggle button
     And it contains "Show metadata.toml" button
     And it contains "Show settings.toml" button
     And it contains "Set Timeout" button
@@ -39,31 +36,6 @@ Feature: Task Menu
     When I enter a new timeout (e.g. "30s", "5m", "1h") and press Ok
     Then the timeout value is saved in settings.toml
     And the description is updated
-
-  Scenario: Uninstall a task
-    Given the Task Menu screen is shown for a task
-    When I press "Uninstall" button
-    Then a confirmation dialog is shown
-    And the message says "Are you sure you want to uninstall <name> task?"
-    And it has "Yes" and "No" buttons
-
-  Scenario: Confirm uninstall of a stopped task
-    Given a task uninstall confirmation dialog is shown
-    And the task state is "stopped"
-    When I press "Yes" button
-    Then a loading screen "Awaiting task termination" is shown
-    And since it's already stopped, it proceeds immediately
-    Then the task directory is deleted with `shutil.rmtree`
-    And the screen is popped (back to Tasks screen)
-
-  Scenario: Confirm uninstall of a running task
-    Given a task uninstall confirmation dialog is shown
-    And the task state is not "stopped"
-    When I press "Yes" button
-    Then a loading screen "Awaiting task termination" is shown
-    And it waits (polling every 0.5s) until the task state becomes "stopped"
-    Then the task directory is deleted
-    And the screen is popped
 
   Scenario: Set task timeout with invalid format
     Given the Task Menu screen is shown
@@ -90,3 +62,28 @@ Feature: Task Menu
     When I press "Update" button
     Then the task directory is copied to a temporary location
     And the Install Task Version screen is shown
+
+  Scenario: Uninstall a task
+    Given the Task Menu screen is shown for a task
+    When I press "Uninstall" button
+    Then a confirmation dialog is shown
+    And the message says "Are you sure you want to uninstall <name> task?"
+    And it has "Yes" and "No" buttons
+
+  Scenario: Confirm uninstall of a stopped task
+    Given a task uninstall confirmation dialog is shown
+    And the task state is "stopped"
+    When I press "Yes" button
+    Then a loading screen "Awaiting task termination" is shown
+    And since it's already stopped, it proceeds immediately
+    Then the task directory is deleted with `shutil.rmtree`
+    And the screen is popped (back to Tasks screen)
+
+  Scenario: Confirm uninstall of a running task
+    Given a task uninstall confirmation dialog is shown
+    And the task state is not "stopped"
+    When I press "Yes" button
+    Then a loading screen "Awaiting task termination" is shown
+    And it waits (polling every 0.5s) until the task state becomes "stopped"
+    Then the task directory is deleted
+    And the screen is popped
