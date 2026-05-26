@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -9,7 +9,6 @@ from termux_tasker.runner_process import (
     RunnerProcess,
     _parse_timeout, # noqa
 )
-
 
 RUNNER_METADATA = """\
 [general]
@@ -19,8 +18,84 @@ version = "0.1.0"
 app_min_version = ">=0.1.0"
 
 [exec]
-task-exec = "echo {task_path}"
+initialization = "echo {runner_path}"
+task-exec = "echo {runner_path} {task_path}"
+termination = "echo {runner_path}"
 """
+
+SETTINGS = """\
+[general]
+enabled = true
+timeout = "1m"
+
+[properties]
+
+[session]
+session_id = "none"
+state = "off"
+"""
+
+TASK_METADATA = """\
+[general]
+id = "test-task"
+name = "Test Task"
+version = "1"
+runner_id = "test-runner"
+runner_min_version = ">=0.1.0"
+default_timeout = "1m"
+"""
+
+TASK_SETTINGS = """\
+[general]
+enabled = true
+timeout = "1m"
+
+[properties]
+
+[session]
+session_id = "none"
+state = "stopped"
+"""
+
+
+def _mock_proc(return_code: int = 0) -> AsyncMock:
+    mock_proc = AsyncMock()
+    mock_proc.wait.return_value = return_code
+    mock_proc.stdout = AsyncMock()
+    mock_proc.stdout.readline = AsyncMock(return_value=b"")
+    return mock_proc
+
+
+def _write_runner(tmp_dir: Path) -> Path:
+    runner_path = tmp_dir / "runner"
+    runner_path.mkdir()
+    (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
+    (runner_path / "settings.toml").write_text(SETTINGS)
+    (runner_path / "tasks").mkdir()
+    return runner_path
+
+
+def _write_task(runner_path: Path) -> Path:
+    task_path = runner_path / "tasks" / "test-task"
+    task_path.mkdir()
+    (task_path / "metadata.toml").write_text(TASK_METADATA)
+    (task_path / "settings.toml").write_text(TASK_SETTINGS)
+    return task_path
+
+
+def _create_proc(runner_path: Path, tmp_dir: Path) -> RunnerProcess:
+    proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+    proc.shutting_down = True
+    proc._run_lock = False
+    return proc
+
+
+def _assert_placeholder_substituted(cmd: str, runner_path: Path, task_path: Path | None = None) -> None:
+    assert str(runner_path) in cmd
+    assert "{runner_path}" not in cmd
+    if task_path:
+        assert str(task_path) in cmd
+        assert "{task_path}" not in cmd
 
 
 class TestParseTimeout:
@@ -39,9 +114,7 @@ class TestParseTimeout:
 
 class TestRunnerProcessInit:
     def test_init(self, tmp_dir: Path) -> None:
-        runner_path = tmp_dir / "runner"
-        runner_path.mkdir()
-        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = _write_runner(tmp_dir)
 
         proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         assert proc.runner_path == runner_path
@@ -52,93 +125,21 @@ class TestRunnerProcessInit:
 @pytest.mark.asyncio
 class TestRunnerProcessRun:
     @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
-    async def test_run_basic(self, mock_subprocess, tmp_dir: Path) -> None:
-        runner_path = tmp_dir / "runner"
-        runner_path.mkdir()
-        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
-        (runner_path / "settings.toml").write_text('''\
-[general]
-enabled = true
-timeout = "1m"
+    async def test_run_with_error(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        mock_subprocess.return_value = _mock_proc(return_code=1)
 
-[properties]
-
-[session]
-session_id = "none"
-state = "off"
-''')
-
-        tasks_path = runner_path / "tasks"
-        tasks_path.mkdir()
-
-        mock_proc = AsyncMock()
-        mock_proc.wait.return_value = 0
-        mock_subprocess.return_value = mock_proc
-
-        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
-        proc.shutting_down = True
-        proc._run_lock = False
-
+        proc = _create_proc(runner_path, tmp_dir)
         await proc._run_loop()
 
-        assert proc.settings.session.state == "off"
-
-    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
-    async def test_run_with_error(self, mock_subprocess, tmp_dir: Path) -> None:
-        runner_path = tmp_dir / "runner"
-        runner_path.mkdir()
-        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
-        (runner_path / "settings.toml").write_text('''\
-[general]
-enabled = true
-timeout = "1m"
-
-[properties]
-
-[session]
-session_id = "none"
-state = "off"
-''')
-
-        tasks_path = runner_path / "tasks"
-        tasks_path.mkdir()
-
-        mock_proc = AsyncMock()
-        mock_proc.wait.return_value = 1
-        mock_subprocess.return_value = mock_proc
-
-        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
-        proc.shutting_down = True
-        proc._run_lock = False
-
-        await proc._run_loop()
         assert proc.settings.session.state == "off"
 
 
 class TestRunnerProcessShutdown:
     @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
-    async def test_shutdown(self, mock_subprocess, tmp_dir: Path) -> None:
-        runner_path = tmp_dir / "runner"
-        runner_path.mkdir()
-        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
-        (runner_path / "settings.toml").write_text('''\
-[general]
-enabled = true
-timeout = "1m"
-
-[properties]
-
-[session]
-session_id = "none"
-state = "off"
-''')
-
-        tasks_path = runner_path / "tasks"
-        tasks_path.mkdir()
-
-        mock_proc = AsyncMock()
-        mock_proc.wait.return_value = 0
-        mock_subprocess.return_value = mock_proc
+    async def test_shutdown(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        mock_subprocess.return_value = _mock_proc()
 
         proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         proc.shutting_down = True
@@ -148,10 +149,7 @@ state = "off"
 
 class TestRunnerProcessRunLock:
     def test_run_lock_prevents_concurrent_starts(self, tmp_dir: Path) -> None:
-        runner_path = tmp_dir / "runner"
-        runner_path.mkdir()
-        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
-
+        runner_path = _write_runner(tmp_dir)
         proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         proc._run_lock = True
         result = proc.run()
@@ -159,21 +157,8 @@ class TestRunnerProcessRunLock:
 
 
 class TestRunnerProcessTerminate:
-    def test_terminate(self, tmp_dir: Path) -> None:
-        runner_path = tmp_dir / "runner"
-        runner_path.mkdir()
-        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
-
-        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
-        proc.terminate()
-
     def test_terminate_calls_on_all_tracked_subprocesses(self, tmp_dir: Path) -> None:
-        from unittest.mock import MagicMock
-
-        runner_path = tmp_dir / "runner"
-        runner_path.mkdir()
-        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
-
+        runner_path = _write_runner(tmp_dir)
         proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         mock_proc = MagicMock()
         proc._processes = [mock_proc]
@@ -197,3 +182,37 @@ class TestAppSessionId:
         state = AppState("0.1.0")
         assert len(state.session_id) == 36
         assert state.session_id.count("-") == 4
+
+
+@pytest.mark.asyncio
+class TestPlaceholderSubstitution:
+    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
+    async def test_runner_path_in_initialization(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        mock_subprocess.return_value = _mock_proc()
+
+        proc = _create_proc(runner_path, tmp_dir)
+        await proc._run_loop()
+
+        _assert_placeholder_substituted(mock_subprocess.call_args_list[0].args[2], runner_path)
+
+    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
+    async def test_runner_path_in_termination(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        mock_subprocess.return_value = _mock_proc()
+
+        proc = _create_proc(runner_path, tmp_dir)
+        await proc._run_loop()
+
+        _assert_placeholder_substituted(mock_subprocess.call_args_list[1].args[2], runner_path)
+
+    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
+    async def test_runner_and_task_path_in_task_exec(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        mock_subprocess.return_value = _mock_proc()
+
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        await proc._run_task_cmd("echo {runner_path} {task_path}", task_path)
+
+        _assert_placeholder_substituted(mock_subprocess.call_args.args[2], runner_path, task_path)

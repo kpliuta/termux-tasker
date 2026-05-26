@@ -71,6 +71,8 @@ Configuration use class-level instance caching (`_instances` dict) for performan
 
 ### Runner lifecycle
 
+Runner processes are managed via `RunnerProcess` (asyncio).
+
 ```
 initialization
      ↓
@@ -80,7 +82,20 @@ initialization
                       └─ after-task
 ```
 
-Runner processes are managed via `RunnerProcess` (asyncio). Each runs shell commands with environment variables `VAR_<PROPERTY_NAME>` for configured properties.
+### Placeholder interpolation in exec commands
+
+Placeholders are optional.
+
+| Placeholder | Description | Available in | Optional |
+|---|---|---|---|
+| `{runner_path}` | Absolute path of the runner's directory | All steps | Yes |
+| `{task_path}` | Absolute path of the current task's directory | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes |
+
+Runner-level steps (`initialization`, `before-exec`, `after-exec`, `termination`) run outside any task context — only `{runner_path}` is available there.
+
+Environment variables are injected alongside placeholders:
+- **Runner properties** → `VAR_<PROPERTY_NAME>` (all steps)
+- **Task properties** → `VAR_<PROPERTY_NAME>` (`before-task`, `task-exec`, `after-task` only)
 
 ## Installation
 

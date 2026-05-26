@@ -73,8 +73,6 @@ class RunnerValidator:
         - If the runner is a git repo, version must be a valid PEP 440
           semver AND match the git tag at HEAD.
         - GitHub URL is required for git repos (needed for updates).
-        - ``{task_path}`` placeholder must be present in task-exec and
-          all task-validator commands.
         - Property definitions must use valid TOML key names and one
           of the supported input types.
         """
@@ -145,20 +143,11 @@ class RunnerValidator:
                 raise RunnerValidatorException(
                     f"metadata.toml: [[task-validator]].{i}.command is required"
                 )
-            if "{task_path}" not in tv.command:
-                raise RunnerValidatorException(
-                    f"metadata.toml: [[task-validator]].{i}.command '{tv.command}' "
-                    f"must contain {{task_path}} placeholder"
-                )
 
         # [exec] validation
         if not meta.exec.task_exec:
             raise RunnerValidatorException(
                 "metadata.toml: [exec].task-exec is required"
-            )
-        if "{task_path}" not in meta.exec.task_exec:
-            raise RunnerValidatorException(
-                "metadata.toml: [exec].task-exec must contain {task_path} placeholder"
             )
 
     @staticmethod

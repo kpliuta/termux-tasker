@@ -216,10 +216,9 @@ class TaskValidator:
 
         These are arbitrary shell commands defined in the runner's
         metadata.toml ([[task-validator]]).  Each command receives
-        ``{task_path}`` substituted with the task's path.  The task is
-        considered invalid if any command returns a non-zero exit code.
-        Stderr is captured and truncated to the last 5 lines for error
-        reporting.
+        ``{task_path}`` substituted.  The task is considered invalid
+        if any command returns a non-zero exit code.  Stderr is captured
+        and truncated to the last 5 lines for error reporting.
 
         Security note: the validator commands come from the runner that
         the user chose to install — they are not untrusted input.

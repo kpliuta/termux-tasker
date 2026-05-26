@@ -104,13 +104,6 @@ class TestRunnerValidatorMetadataStructure:
         with pytest.raises(RunnerValidatorException, match="task-exec is required"):
             validator.validate_metadata_structure()
 
-    def test_invalid_task_exec_no_placeholder(self, tmp_dir: Path) -> None:
-        content = VALID_METADATA.replace('task-exec = "echo {task_path}"', 'task-exec = "echo hello"')
-        (tmp_dir / "metadata.toml").write_text(content)
-        validator = RunnerValidator(tmp_dir)
-        with pytest.raises(RunnerValidatorException, match="task_path"):
-            validator.validate_metadata_structure()
-
     def test_invalid_url(self, tmp_dir: Path) -> None:
         content = VALID_METADATA.replace(
             'url = "https://github.com/user/test-runner"',
