@@ -220,7 +220,7 @@ def when_select_version(pilot) -> None:
 def when_select_folder(pilot) -> None:
     def _do_select():
         screen = ui(pilot).app.screen
-        screen._selected_path = ui(pilot).app.state.runners_dir / "sh_runner"
+        screen._selected_path = ui(pilot).app.state.runners_path / "sh_runner"
         screen.dismiss(screen._selected_path)   # noqa
 
     ui(pilot).app.call_from_thread(_do_select)
@@ -336,10 +336,10 @@ def when_invalid_url(pilot) -> None:
 
 @when("a runner is installed or removed on disk")
 def when_runner_disk_change(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    if runner_dir.exists():
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    if runner_path.exists():
         import shutil
-        shutil.rmtree(runner_dir)
+        shutil.rmtree(runner_path)
 
 
 @when("the git checkout fails")
@@ -385,8 +385,8 @@ def when_app_restarted(pilot) -> None:
 
 @when("the runner's `run()` method is called")
 def when_runner_run(pilot) -> RunnerProcess:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    proc = RunnerProcess(runner_dir, "test-session", ui(pilot).app.state.tmp_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    proc = RunnerProcess(runner_path, "test-session", ui(pilot).app.state.tmp_dir)
     proc._run_lock = True
     proc.run()
     return proc
@@ -403,5 +403,5 @@ def when_loop_state(pilot) -> None:
 @when("the runner is shut down")
 def when_runner_shut_down(pilot) -> None:
     ui(pilot).app.state.runners.pop("sh_runner", None)
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().set_runner_state(runner_dir, "termination")
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().set_runner_state(runner_path, "termination")

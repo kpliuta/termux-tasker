@@ -396,8 +396,8 @@ def then_enabled_true(pilot) -> None:
 
 @then("`settings.general.enabled` is set to False")
 def then_enabled_false(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert s.general.enabled is False
 
 
@@ -409,32 +409,32 @@ def then_enabled_toggled(pilot) -> None:
 
 @then("each runner's settings have `enabled = False`")
 def then_runner_enabled_false(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert s.general.enabled is False
 
 
 @then("the runner's `settings.general.enabled` is still False")
 def then_enabled_still_false(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert s.general.enabled is False
 
 
 @then("the property value is saved in settings.toml")
 def then_property_saved(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert len(s.properties) > 0
 
 
 @then("the timeout value is saved in settings.toml")
 def then_timeout_saved(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    s = settings().load_task_settings(task_dir)
+    s = settings().load_task_settings(task_path)
     assert s.general.timeout is not None
 
 
@@ -534,24 +534,24 @@ def then_fetching_versions(pilot) -> None:
 def then_settings_saved(pilot) -> None:
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-        if not runner_dir.exists():
+        runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+        if not runner_path.exists():
             return
-        settings_file = runner_dir / "settings.toml"
+        settings_file = runner_path / "settings.toml"
         if settings_file.exists() and settings_file.stat().st_size > 0:
             return
-        task_dir = runner_dir / "tasks" / "sh_runner_task"
-        settings_file = task_dir / "settings.toml"
+        task_path = runner_path / "tasks" / "sh_runner_task"
+        settings_file = task_path / "settings.toml"
         if settings_file.exists() and settings_file.stat().st_size > 0:
             return
         ui(pilot).pause(0.15)
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings_file = runner_dir / "settings.toml"
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings_file = runner_path / "settings.toml"
     if settings_file.exists():
         assert settings_file.stat().st_size > 0
         return
-    task_dir = runner_dir / "tasks" / "sh_runner_task"
-    settings_file = task_dir / "settings.toml"
+    task_path = runner_path / "tasks" / "sh_runner_task"
+    settings_file = task_path / "settings.toml"
     assert settings_file.exists()
     assert settings_file.stat().st_size > 0
 
@@ -869,73 +869,73 @@ def then_runner_enters_loop(pilot) -> None:
 
 @then('"before-exec" state: before-exec command is executed')
 def then_before_exec_state(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    meta = settings().load_runner_metadata(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    meta = settings().load_runner_metadata(runner_path)
     assert meta.exec is not None
     assert meta.exec.before_exec is not None
-    settings().set_runner_state(runner_dir, "before-exec")
+    settings().set_runner_state(runner_path, "before-exec")
 
 
-@then('"before-task" state: for each enabled task, before-task command is executed (with `{task_dir}`)')
+@then('"before-task" state: for each enabled task, before-task command is executed (with `{task_path}`)')
 def then_before_task_state(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    meta = settings().load_runner_metadata(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    meta = settings().load_runner_metadata(runner_path)
     assert meta.exec is not None
     assert meta.exec.before_task is not None
-    settings().set_runner_state(runner_dir, "before-task")
+    settings().set_runner_state(runner_path, "before-task")
 
 
 @then('"task-exec" state: for each enabled task, task command is executed')
 def then_task_exec_state(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    meta = settings().load_runner_metadata(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    meta = settings().load_runner_metadata(runner_path)
     assert meta.exec is not None
     assert meta.exec.task_exec is not None
-    settings().set_runner_state(runner_dir, "task-exec")
+    settings().set_runner_state(runner_path, "task-exec")
 
 
 @then('"after-task" state: after-task command is executed')
 def then_after_task_state(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    meta = settings().load_runner_metadata(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    meta = settings().load_runner_metadata(runner_path)
     assert meta.exec is not None
     assert meta.exec.after_task is not None
-    settings().set_runner_state(runner_dir, "after-task")
+    settings().set_runner_state(runner_path, "after-task")
 
 
 @then('"after-exec" state: after-exec command is executed')
 def then_after_exec_state(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    meta = settings().load_runner_metadata(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    meta = settings().load_runner_metadata(runner_path)
     assert meta.exec is not None
     assert meta.exec.after_exec is not None
-    settings().set_runner_state(runner_dir, "after-exec")
+    settings().set_runner_state(runner_path, "after-exec")
 
 
 @then('"idle" state: sleeps for the configured timeout duration')
 def then_idle_state(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().set_runner_state(runner_dir, "idle")
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().set_runner_state(runner_path, "idle")
+    s = settings().load_runner_settings(runner_path)
     assert s.session.state == "idle"
 
 
 @then("the initialization command is executed")
 def then_init_cmd_executed(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    meta = settings().load_runner_metadata(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    meta = settings().load_runner_metadata(runner_path)
     assert meta.exec is not None
     assert meta.exec.initialization is not None
-    settings().set_runner_state(runner_dir, "initialization")
+    settings().set_runner_state(runner_path, "initialization")
 
 
 @then("the termination command is executed")
 def then_term_cmd_executed(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    meta = settings().load_runner_metadata(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    meta = settings().load_runner_metadata(runner_path)
     assert meta.exec is not None
     assert meta.exec.termination is not None
-    settings().set_runner_state(runner_dir, "termination")
+    settings().set_runner_state(runner_path, "termination")
 
 
 @then("the method returns only after the runner has fully stopped")
@@ -943,29 +943,29 @@ def then_method_returns(pilot) -> None:
     runner = ui(pilot).app.state.runners.get("sh_runner")
     if runner is not None:
         assert not runner._run_lock
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert s.session.state in ("off", "termination")
 
 
 @then('the runner waits until state becomes "off"')
 def then_waits_off(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        s = settings().load_runner_settings(runner_dir)
+        s = settings().load_runner_settings(runner_path)
         if s.session.state == "off":
             return
         ui(pilot).pause(0.1)
-    s = settings().load_runner_settings(runner_dir)
+    s = settings().load_runner_settings(runner_path)
     assert s.session.state == "off"
 
 
 @then("disabled tasks are skipped")
 def then_disabled_skipped(pilot) -> None:
-    tasks_dir = ui(pilot).app.state.runners_dir / "sh_runner" / "tasks"
-    disabled = tasks_dir / "disabled_task"
-    enabled = tasks_dir / "enabled_task"
+    tasks_path = ui(pilot).app.state.runners_path / "sh_runner" / "tasks"
+    disabled = tasks_path / "disabled_task"
+    enabled = tasks_path / "enabled_task"
     assert disabled.exists()
     assert enabled.exists()
 
@@ -989,26 +989,26 @@ def then_not_started(pilot) -> None:
 def then_no_install(pilot) -> None:
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
-        runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-        if not runner_dir.exists():
+        runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+        if not runner_path.exists():
             return
         ui(pilot).pause(0.1)
 
 
 @then("since it's already stopped, it proceeds immediately")
 def then_stopped_proceeds(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    s = settings().load_task_settings(task_dir)
+    s = settings().load_task_settings(task_path)
     assert s.session.state == "stopped"
 
 
 @then("default properties are filled")
 def then_defaults_filled(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert len(s.properties) >= 0
 
 
@@ -1019,13 +1019,13 @@ def then_no_prompts(pilot) -> None:
 
 @then('it waits (polling every 0.5s) until the task state becomes "stopped"')
 def then_waits_stopped(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        s = settings().load_task_settings(task_dir)
+        s = settings().load_task_settings(task_path)
         if s.session.state == "stopped":
             return
         ui(pilot).pause(0.1)
@@ -1033,8 +1033,8 @@ def then_waits_stopped(pilot) -> None:
 
 @then("the full RunnerValidator runs validation")
 def then_validator_runs(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    validator = RunnerValidator(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    validator = RunnerValidator(runner_path)
     validator.validate()
     assert True
 
@@ -1068,9 +1068,9 @@ def then_asset_copied(pilot) -> None:
 @then("metadata is validated")
 def then_metadata_validated(pilot) -> None:
     screen = ui(pilot).app.screen
-    runner_dir = getattr(screen, "tmp_runner_folder", None)
-    if runner_dir:
-        assert (runner_dir / "metadata.toml").exists()
+    runner_path = getattr(screen, "tmp_runner_folder", None)
+    if runner_path:
+        assert (runner_path / "metadata.toml").exists()
 
 
 @then("bundled tasks are fetched from the runner's `bundled.toml`")
@@ -1109,32 +1109,32 @@ def then_installed_check(pilot) -> None:
 
 @then("old settings are merged with new property definitions")
 def then_old_settings_merged(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    if runner_dir.exists():
-        s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    if runner_path.exists():
+        s = settings().load_runner_settings(runner_path)
         assert s.properties is not None
 
 
 @then("properties that no longer exist in the new version are preserved")
 def then_old_props_preserved(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    if runner_dir.exists():
-        s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    if runner_path.exists():
+        s = settings().load_runner_settings(runner_path)
         assert s.properties is not None or len(s.properties) >= 0
 
 
 @then("properties that still exist retain their values")
 def then_existing_props_retained(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    if runner_dir.exists():
-        s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    if runner_path.exists():
+        s = settings().load_runner_settings(runner_path)
         assert isinstance(s.properties, dict)
 
 
 @then('it\'s treated as a "reinstall"')
 def then_treated_as_reinstall(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    assert runner_dir.exists()
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    assert runner_path.exists()
 
 
 @then("the environment contains:")
@@ -1144,8 +1144,8 @@ def then_env_contains(pilot) -> None:
 
 @then("validation passes, the install proceeds")
 def then_install_proceeds(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    assert runner_dir.exists()
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    assert runner_path.exists()
 
 
 @then("the runner directory is copied to a temporary location")
@@ -1199,8 +1199,8 @@ def then_description_updated(pilot) -> None:
 
 @then("the property value is unchanged")
 def then_prop_unchanged(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert len(s.properties) == 0
 
 
@@ -1215,25 +1215,25 @@ def then_validation_fails(pilot) -> None:
 
 @then('the state transitions to "initialization"')
 def then_state_initialization(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().set_runner_state(runner_dir, "initialization")
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().set_runner_state(runner_path, "initialization")
+    s = settings().load_runner_settings(runner_path)
     assert s.session.state == "initialization"
 
 
 @then('the state transitions to "termination"')
 def then_state_termination(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().set_runner_state(runner_dir, "termination")
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().set_runner_state(runner_path, "termination")
+    s = settings().load_runner_settings(runner_path)
     assert s.session.state == "termination"
 
 
 @then('the state transitions to "off"')
 def then_state_off(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().set_runner_state(runner_dir, "off")
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().set_runner_state(runner_path, "off")
+    s = settings().load_runner_settings(runner_path)
     assert s.session.state == "off"
 
 
@@ -1249,58 +1249,58 @@ def then_dirs_created(pilot) -> None:
 
 
 @then("the runner directory is deleted with `shutil.rmtree`")
-def then_runner_dir_deleted(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    assert not runner_dir.exists()
+def then_runner_path_deleted(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    assert not runner_path.exists()
 
 
 @then("the runner directory is deleted")
-def then_runner_dir_deleted(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    assert not runner_dir.exists()
+def then_runner_path_deleted(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    assert not runner_path.exists()
 
 
 @then("the task directory is deleted")
-def then_task_dir_deleted(pilot) -> None:
+def then_task_path_deleted(pilot) -> None:
     deadline = time.monotonic() + 8
     while time.monotonic() < deadline:
-        task_dir = (
-            ui(pilot).app.state.runners_dir
+        task_path = (
+            ui(pilot).app.state.runners_path
             / "sh_runner" / "tasks" / "sh_runner_task"
         )
-        if not task_dir.exists():
+        if not task_path.exists():
             return
         ui(pilot).pause(0.2)
     # Force-delete if the app didn't (running task scenario often can't complete)
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    if task_dir.exists():
+    if task_path.exists():
         import shutil
-        shutil.rmtree(task_dir)
-    assert not task_dir.exists()
+        shutil.rmtree(task_path)
+    assert not task_path.exists()
 
 
 @then("the task directory is deleted with `shutil.rmtree`")
-def then_task_dir_deleted(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+def then_task_path_deleted(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    assert not task_dir.exists()
+    assert not task_path.exists()
 
 
 @then("the runner remains intact")
 def then_runner_intact(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    assert runner_dir.exists()
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    assert runner_path.exists()
 
 
-@then("the runner is installed to `runners_dir/<id>`")
+@then("the runner is installed to `runners_path/<id>`")
 def then_runner_installed(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    assert runner_dir.exists()
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    assert runner_path.exists()
 
 
 @then("a FileBrowserScreen is shown in folder selection mode")

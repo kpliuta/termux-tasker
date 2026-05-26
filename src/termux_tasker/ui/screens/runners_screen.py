@@ -39,16 +39,16 @@ class RunnersScreen(MenuScreen):
     def _refresh(self) -> None:
         app = termux_app(self)
         items: dict[str, str] = {}
-        runners_dir = app.state.runners_dir
-        runner_dirs: list[Path] = sorted(runners_dir.iterdir())
-        for runner_dir in runner_dirs:
-            if not runner_dir.is_dir():
+        runners_path = app.state.runners_path
+        runner_paths: list[Path] = sorted(runners_path.iterdir())
+        for runner_path in runner_paths:
+            if not runner_path.is_dir():
                 continue
-            meta_path = runner_dir / "metadata.toml"
+            meta_path = runner_path / "metadata.toml"
             if not meta_path.exists():
                 continue
             meta = RunnerMetadata.load(meta_path)
-            settings = RunnerSettings.load(runner_dir / "settings.toml")
+            settings = RunnerSettings.load(runner_path / "settings.toml")
             status = self._status_str(settings)
             items[rf"{meta.general.name} \[{status}]"] = f"open_{meta.general.id}"
 
@@ -72,12 +72,12 @@ class RunnersScreen(MenuScreen):
             event.stop()
             runner_id = btn_id[5:]
             app = termux_app(self)
-            for runner_dir in app.state.runners_dir.iterdir():
-                if not runner_dir.is_dir():
+            for runner_path in app.state.runners_path.iterdir():
+                if not runner_path.is_dir():
                     continue
-                meta_path = runner_dir / "metadata.toml"
+                meta_path = runner_path / "metadata.toml"
                 if meta_path.exists():
                     meta = RunnerMetadata.load(meta_path)
                     if meta.general.id == runner_id:
-                        termux_app(self).push_screen(RunnerMenuScreen(runner_dir))
+                        termux_app(self).push_screen(RunnerMenuScreen(runner_path))
                         return

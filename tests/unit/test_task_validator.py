@@ -16,7 +16,7 @@ url = "https://github.com/user/test-runner"
 app_min_version = ">=0.1.0"
 
 [exec]
-task-exec = "echo {task_dir}"
+task-exec = "echo {task_path}"
 """
 
 VALID_TASK_METADATA = """\
@@ -44,96 +44,96 @@ default_timeout = "30m"
 
 class TestTaskValidatorMetadataExisted:
     def test_metadata_exists(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
-        (task_dir / "metadata.toml").write_text(VALID_TASK_METADATA)
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
+        (task_path / "metadata.toml").write_text(VALID_TASK_METADATA)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_existed()
 
     def test_metadata_not_exists(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         with pytest.raises(TaskValidatorException, match="metadata.toml not found"):
             validator.validate_metadata_existed()
 
 
 class TestTaskValidatorMetadataStructure:
     def test_valid_metadata_local(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
-        (task_dir / "metadata.toml").write_text(VALID_TASK_METADATA_LOCAL)
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
+        (task_path / "metadata.toml").write_text(VALID_TASK_METADATA_LOCAL)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_structure()
 
     def test_missing_id(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
         content = VALID_TASK_METADATA.replace('id = "test-task"', '')
-        (task_dir / "metadata.toml").write_text(content)
+        (task_path / "metadata.toml").write_text(content)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         with pytest.raises(TaskValidatorException, match="id is required"):
             validator.validate_metadata_structure()
 
     def test_missing_runner_id(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
         content = VALID_TASK_METADATA.replace('runner_id = "test-runner"', '')
-        (task_dir / "metadata.toml").write_text(content)
+        (task_path / "metadata.toml").write_text(content)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         with pytest.raises(TaskValidatorException, match="runner_id is required"):
             validator.validate_metadata_structure()
 
     def test_missing_default_timeout(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
         content = VALID_TASK_METADATA.replace('default_timeout = "1h"', '')
-        (task_dir / "metadata.toml").write_text(content)
+        (task_path / "metadata.toml").write_text(content)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         with pytest.raises(TaskValidatorException, match="default_timeout is required"):
             validator.validate_metadata_structure()
 
     def test_invalid_timeout_format(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
         content = VALID_TASK_METADATA.replace('default_timeout = "1h"', 'default_timeout = "1x"')
-        (task_dir / "metadata.toml").write_text(content)
+        (task_path / "metadata.toml").write_text(content)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         with pytest.raises(TaskValidatorException, match="must be in format"):
             validator.validate_metadata_structure()
 
@@ -147,83 +147,83 @@ url = "https://github.com/user/test-runner"
 app_min_version = ">=0.1.0"
 
 [exec]
-task-exec = "echo {task_dir}"
+task-exec = "echo {task_path}"
 
 [[task-validator]]
-command = "test -f {task_dir}/required_file"
+command = "test -f {task_path}/required_file"
 """
 
 
 class TestTaskValidatorRunnerCompatibility:
     def test_compatible(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
-        (task_dir / "metadata.toml").write_text(VALID_TASK_METADATA)
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
+        (task_path / "metadata.toml").write_text(VALID_TASK_METADATA)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_structure()
         validator.check_runner_compatibility()
 
     def test_runner_id_mismatch(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
         content = VALID_TASK_METADATA.replace('runner_id = "test-runner"', 'runner_id = "other-runner"')
-        (task_dir / "metadata.toml").write_text(content)
+        (task_path / "metadata.toml").write_text(content)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_structure()
         with pytest.raises(TaskValidatorException, match="does not match"):
             validator.check_runner_compatibility()
 
     def test_runner_version_incompatible(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
         content = VALID_TASK_METADATA.replace('runner_min_version = ">=0.1.0"', 'runner_min_version = ">=2.0.0"')
-        (task_dir / "metadata.toml").write_text(content)
+        (task_path / "metadata.toml").write_text(content)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_structure()
         with pytest.raises(TaskValidatorException, match="does not satisfy"):
             validator.check_runner_compatibility()
 
     def test_runner_version_compatible_with_spec(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
         content = VALID_TASK_METADATA.replace('runner_min_version = ">=0.1.0"', 'runner_min_version = ">=0.1.0,<2.0.0"')
-        (task_dir / "metadata.toml").write_text(content)
+        (task_path / "metadata.toml").write_text(content)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_structure()
         validator.check_runner_compatibility()
 
 
 class TestTaskValidatorRunnerValidators:
     def test_missing_required_file_fails_validation(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_WITH_VALIDATOR)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_WITH_VALIDATOR)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
-        (task_dir / "metadata.toml").write_text(VALID_TASK_METADATA)
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
+        (task_path / "metadata.toml").write_text(VALID_TASK_METADATA)
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_existed()
         validator.validate_metadata_structure()
         validator.check_runner_compatibility()
@@ -231,16 +231,16 @@ class TestTaskValidatorRunnerValidators:
             validator.execute_runner_validators()
 
     def test_required_file_present_passes_validation(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_WITH_VALIDATOR)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_WITH_VALIDATOR)
 
-        task_dir = tmp_dir / "task"
-        task_dir.mkdir()
-        (task_dir / "metadata.toml").write_text(VALID_TASK_METADATA)
-        (task_dir / "required_file").write_text("content")
+        task_path = tmp_dir / "task"
+        task_path.mkdir()
+        (task_path / "metadata.toml").write_text(VALID_TASK_METADATA)
+        (task_path / "required_file").write_text("content")
 
-        validator = TaskValidator(runner_dir, task_dir, tmp_dir / ".tmp")
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_existed()
         validator.validate_metadata_structure()
         validator.check_runner_compatibility()

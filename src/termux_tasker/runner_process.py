@@ -50,8 +50,8 @@ class RunnerProcess:
     shutting_down flag is checked every second for responsive shutdown.
     """
 
-    def __init__(self, runner_dir: Path, session_id: str, tmp_dir: Path) -> None:
-        self.runner_dir = runner_dir
+    def __init__(self, runner_path: Path, session_id: str, tmp_dir: Path) -> None:
+        self.runner_path = runner_path
         self.session_id = session_id
         self.tmp_dir = tmp_dir
         self.shutting_down = False
@@ -59,10 +59,10 @@ class RunnerProcess:
         self._processes: list[asyncio.subprocess.Process] = []
         self._run_lock = False
 
-        self._stdout_path = runner_dir / "stdout"
-        self._metadata_path = runner_dir / "metadata.toml"
-        self._settings_path = runner_dir / "settings.toml"
-        self._tasks_dir = runner_dir / "tasks"
+        self._stdout_path = runner_path / "stdout"
+        self._metadata_path = runner_path / "metadata.toml"
+        self._settings_path = runner_path / "settings.toml"
+        self._tasks_path = runner_path / "tasks"
 
         self.metadata: RunnerMetadata = RunnerMetadata.load(self._metadata_path)
         self.settings: RunnerSettings = RunnerSettings.load(self._settings_path)
@@ -79,28 +79,28 @@ class RunnerProcess:
         self.settings.session.state = state
         self.settings.save(self._settings_path)
 
-    def _change_task_state(self, task_dir: Path, state: str) -> None:
+    def _change_task_state(self, task_path: Path, state: str) -> None:
         self._log(f"Task state: {state}")
-        task_settings = TaskSettings.load(task_dir / "settings.toml")
+        task_settings = TaskSettings.load(task_path / "settings.toml")
         task_settings.session.state = state
-        task_settings.save(task_dir / "settings.toml")
+        task_settings.save(task_path / "settings.toml")
 
     async def _run_cmd(
-            self, cmd: str, error_context: str, task_dir: Path | None = None,
+            self, cmd: str, error_context: str, task_path: Path | None = None,
             extra_env: dict[str, str] | None = None,
     ) -> None:
         """Execute a shell command and stream its output to the runner's stdout log.
 
         - Commands are run via ``sh -c``.
-        - The ``{task_dir}`` placeholder is substituted before execution.
+        - The ``{task_path}`` placeholder is substituted before execution.
         - Environment includes OS env + runner properties as ``VAR_<NAME>`` +
           any extra_env (used for task-specific vars).
         - Subprocess is tracked in self._processes for later termination.
         - Stdout is streamed line-by-line with timestamps to the runner's
           stdout file.
         """
-        if task_dir is not None:
-            cmd = cmd.replace("{task_dir}", str(task_dir))
+        if task_path is not None:
+            cmd = cmd.replace("{task_path}", str(task_path))
         self._log(f"Run: {cmd}")
         env = os.environ.copy()
         for key, val in self.settings.properties.items():
@@ -111,7 +111,7 @@ class RunnerProcess:
             "sh", "-c", cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
-            cwd=self.runner_dir,
+            cwd=self.runner_path,
             env=env,
         )
         self._processes.append(proc)
@@ -129,18 +129,18 @@ class RunnerProcess:
         if return_code != 0:
             raise RunnerException(f"Error during command execution {error_context}")
 
-    async def _run_task_cmd(self, cmd: str, task_dir: Path) -> None:
+    async def _run_task_cmd(self, cmd: str, task_path: Path) -> None:
         """Run a task-level command, injecting task properties as env vars.
 
         Wraps _run_cmd with task-specific environment and converts errors
         to TaskException (caught by _run_loop as non-fatal).
         """
-        cmd_with_placeholder = cmd.replace("{task_dir}", str(task_dir))
-        task_settings = TaskSettings.load(task_dir / "settings.toml")
+        cmd_with_placeholder = cmd.replace("{task_path}", str(task_path))
+        task_settings = TaskSettings.load(task_path / "settings.toml")
         task_env = {_to_env_key(k): v for k, v in task_settings.properties.items()}
         try:
             await self._run_cmd(
-                cmd, error_context=cmd_with_placeholder, task_dir=task_dir,
+                cmd, error_context=cmd_with_placeholder, task_path=task_path,
                 extra_env=task_env,
             )
         except Exception as e:
@@ -212,10 +212,10 @@ class RunnerProcess:
                     )
 
                 # Tasks are processed in sorted directory order (by task id)
-                for task_dir in sorted(self._tasks_dir.iterdir()):
-                    if not task_dir.is_dir():
+                for task_path in sorted(self._tasks_path.iterdir()):
+                    if not task_path.is_dir():
                         continue
-                    task_settings_path = task_dir / "settings.toml"
+                    task_settings_path = task_path / "settings.toml"
                     if not task_settings_path.exists():
                         continue
 
@@ -224,7 +224,7 @@ class RunnerProcess:
                     if self._should_skip_task(task_settings):
                         continue
 
-                    task_meta = TaskMetadata.load(task_dir / "metadata.toml")
+                    task_meta = TaskMetadata.load(task_path / "metadata.toml")
                     self._log(f"Run task: {task_meta.general.id}")
 
                     self._change_runner_state("before-task")
@@ -232,15 +232,15 @@ class RunnerProcess:
                         await self._run_cmd(
                             self.metadata.exec.before_task,
                             self.metadata.exec.before_task,
-                            task_dir=task_dir,
+                            task_path=task_path,
                         )
 
                     try:
                         self._change_runner_state("task-exec")
-                        self._change_task_state(task_dir, "running")
+                        self._change_task_state(task_path, "running")
                         if self.metadata.exec.task_exec:
                             await self._run_task_cmd(
-                                self.metadata.exec.task_exec, task_dir
+                                self.metadata.exec.task_exec, task_path
                             )
                         task_settings.session.last_run_status = "success"
                     except TaskException:
@@ -250,14 +250,14 @@ class RunnerProcess:
                         task_settings.session.session_id = self.session_id
                         task_settings.session.last_run = _now_timestamp()
                         task_settings.save(task_settings_path)
-                        self._change_task_state(task_dir, "stopped")
+                        self._change_task_state(task_path, "stopped")
 
                     self._change_runner_state("after-task")
                     if self.metadata.exec.after_task:
                         await self._run_cmd(
                             self.metadata.exec.after_task,
                             self.metadata.exec.after_task,
-                            task_dir=task_dir,
+                            task_path=task_path,
                         )
 
                 self._change_runner_state("after-exec")

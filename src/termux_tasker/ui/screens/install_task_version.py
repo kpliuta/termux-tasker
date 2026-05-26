@@ -34,8 +34,8 @@ from termux_tasker.ui.screens._utils import (
 
 
 class InstallTaskVersionScreen(MenuScreen):
-    def __init__(self, runner_dir: Path, tmp_task_folder: Path) -> None:
-        self.runner_dir = runner_dir
+    def __init__(self, runner_path: Path, tmp_task_folder: Path) -> None:
+        self.runner_path = runner_path
         self.tmp_task_folder = tmp_task_folder
         meta = TaskMetadata.load(tmp_task_folder / "metadata.toml")
         self._task_meta = meta
@@ -57,7 +57,7 @@ class InstallTaskVersionScreen(MenuScreen):
         is_git = (tmp_folder / ".git").exists()
 
         installed_versions = get_installed_task_versions(
-            self.runner_dir / "tasks", meta.general.id
+            self.runner_path / "tasks", meta.general.id
         )
 
         items: dict[str, str] = {}
@@ -130,7 +130,7 @@ class InstallTaskVersionScreen(MenuScreen):
         app = termux_app(self)
         try:
             validator = TaskValidator(
-                self.runner_dir, tmp_folder, app.state.tmp_dir
+                self.runner_path, tmp_folder, app.state.tmp_dir
             )
             validator.validate()
         except TaskValidatorException as e:
@@ -162,13 +162,13 @@ class InstallTaskVersionScreen(MenuScreen):
         )
 
     def _check_install_state(self, task_id: str, tag: str) -> str:
-        tasks_dir = self.runner_dir / "tasks"
-        if not tasks_dir.exists():
+        tasks_path = self.runner_path / "tasks"
+        if not tasks_path.exists():
             return "install"
-        for task_dir in tasks_dir.iterdir():
-            if not task_dir.is_dir():
+        for task_path in tasks_path.iterdir():
+            if not task_path.is_dir():
                 continue
-            meta_path = task_dir / "metadata.toml"
+            meta_path = task_path / "metadata.toml"
             if meta_path.exists():
                 meta = TaskMetadata.load(meta_path)
                 if meta.general.id == task_id:
@@ -180,7 +180,7 @@ class InstallTaskVersionScreen(MenuScreen):
     async def _finalize_install(
         self, task_id: str, _tag: str, install_state: str
     ) -> None:
-        target_dir = self.runner_dir / "tasks" / task_id
+        target_dir = self.runner_path / "tasks" / task_id
         meta = self._task_meta
 
         if install_state == "install":

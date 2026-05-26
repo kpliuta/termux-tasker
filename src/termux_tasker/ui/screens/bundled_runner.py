@@ -43,9 +43,9 @@ class BundledRunnerScreen(MenuScreen):
                 app.state.register_tmp_folder(folder)
 
         installed_runners: set[str] = set()
-        for runner_dir in app.state.runners_dir.iterdir():
-            if runner_dir.is_dir():
-                meta_path = runner_dir / "metadata.toml"
+        for runner_path in app.state.runners_path.iterdir():
+            if runner_path.is_dir():
+                meta_path = runner_path / "metadata.toml"
                 if meta_path.exists():
                     meta = RunnerMetadata.load(meta_path)
                     installed_runners.add(meta.general.id)

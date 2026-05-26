@@ -33,13 +33,13 @@ optional = false
 options = ["one", "two", "three"]
 
 [[task-validator]]
-command = "test -f {task_dir}/required_file"
+command = "test -f {task_path}/required_file"
 
 [exec]
 initialization = "echo initialization && echo \"property-1 value: $VAR_PROPERTY_1\" && sleep 2"
 before-exec = "echo before-exec && sleep 2"
 before-task = "echo before-task && sleep 2"
-task-exec = "sh {task_dir}/required_file"
+task-exec = "sh {task_path}/required_file"
 after-task = "echo after-task && sleep 2"
 after-exec = "echo after-exec && sleep 2"
 termination = "echo termination && sleep 2"

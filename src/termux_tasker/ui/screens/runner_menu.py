@@ -26,12 +26,12 @@ from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
 
 
 class RunnerMenuScreen(MenuScreen):
-    def __init__(self, runner_dir: Path) -> None:
-        self.runner_dir = runner_dir
-        meta = RunnerMetadata.load(runner_dir / "metadata.toml")
-        settings = RunnerSettings.load(runner_dir / "settings.toml")
+    def __init__(self, runner_path: Path) -> None:
+        self.runner_path = runner_path
+        meta = RunnerMetadata.load(runner_path / "metadata.toml")
+        settings = RunnerSettings.load(runner_path / "settings.toml")
 
-        self._fix_session(settings, runner_dir)
+        self._fix_session(settings, runner_path)
         desc = self._build_description(meta, settings)
         items = self._build_items(meta, settings)
 
@@ -47,7 +47,7 @@ class RunnerMenuScreen(MenuScreen):
         self._stop_polling()
 
     def _start_polling(self) -> None:
-        settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+        settings = RunnerSettings.load(self.runner_path / "settings.toml")
         if settings.general.enabled:
             self._poll_timer = self.set_interval(1.0, self._poll_state)
 
@@ -57,8 +57,8 @@ class RunnerMenuScreen(MenuScreen):
             self._poll_timer = None
 
     def _poll_state(self) -> None:
-        meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
-        settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
+        settings = RunnerSettings.load(self.runner_path / "settings.toml")
         if not settings.general.enabled:
             self._stop_polling()
         self._refresh_ui(meta, settings)
@@ -74,7 +74,7 @@ class RunnerMenuScreen(MenuScreen):
             if btn_id is not None and btn_id in id_to_label:
                 btn.label = id_to_label[btn_id]
 
-    def _fix_session(self, settings: RunnerSettings, runner_dir: Path) -> None:
+    def _fix_session(self, settings: RunnerSettings, runner_path: Path) -> None:
         """Reset stale session state (same pattern as TaskMenuScreen).
 
         Runners are forced to "off" (vs tasks forced to "stopped")
@@ -85,7 +85,7 @@ class RunnerMenuScreen(MenuScreen):
             settings.session.state = "off"
         if app:
             settings.session.session_id = app.state.session_id
-            settings.save(runner_dir / "settings.toml")
+            settings.save(runner_path / "settings.toml")
 
     @staticmethod
     def _build_description(
@@ -131,8 +131,8 @@ class RunnerMenuScreen(MenuScreen):
         RunnerProcess, and launch the asyncio lifecycle loop.
         """
         app = termux_app(self)
-        meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
-        settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
+        settings = RunnerSettings.load(self.runner_path / "settings.toml")
 
         if settings.general.enabled:
             loading = LoadingScreen("Runner shutting down")
@@ -142,13 +142,13 @@ class RunnerMenuScreen(MenuScreen):
                 await runner_proc.shutdown()
                 del app.state.runners[meta.general.id]
             await loading.dismiss(None)
-            settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+            settings = RunnerSettings.load(self.runner_path / "settings.toml")
             settings.general.enabled = False
         else:
             settings.general.enabled = True
-            settings.save(self.runner_dir / "settings.toml")
+            settings.save(self.runner_path / "settings.toml")
             runner_proc = RunnerProcess(
-                self.runner_dir, app.state.session_id, app.state.tmp_dir
+                self.runner_path, app.state.session_id, app.state.tmp_dir
             )
             app.state.runners[meta.general.id] = runner_proc
             loading = LoadingScreen("Runner starting up")
@@ -156,9 +156,9 @@ class RunnerMenuScreen(MenuScreen):
             runner_proc.run()
             await loading.dismiss(None)
 
-        settings.save(self.runner_dir / "settings.toml")
-        meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
-        settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+        settings.save(self.runner_path / "settings.toml")
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
+        settings = RunnerSettings.load(self.runner_path / "settings.toml")
         self._refresh_ui(meta, settings)
         if settings.general.enabled:
             self._start_polling()
@@ -168,27 +168,27 @@ class RunnerMenuScreen(MenuScreen):
     @on(Button.Pressed, "#show_tasks")
     def on_show_tasks(self, event: Button.Pressed) -> None:
         event.stop()
-        termux_app(self).push_screen(TasksMenuScreen(self.runner_dir))
+        termux_app(self).push_screen(TasksMenuScreen(self.runner_path))
 
     @on(Button.Pressed, "#show_logs")
     def on_show_logs(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.runner_dir / "stdout", show_follow=True)
+            LogScreen(content=self.runner_path / "stdout", show_follow=True)
         )
 
     @on(Button.Pressed, "#show_metadata")
     def on_show_metadata(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.runner_dir / "metadata.toml", show_follow=False)
+            LogScreen(content=self.runner_path / "metadata.toml", show_follow=False)
         )
 
     @on(Button.Pressed, "#show_settings")
     def on_show_settings(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.runner_dir / "settings.toml", show_follow=False)
+            LogScreen(content=self.runner_path / "settings.toml", show_follow=False)
         )
 
     @on(Button.Pressed, "#update")
@@ -196,14 +196,14 @@ class RunnerMenuScreen(MenuScreen):
         event.stop()
         from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
         app = termux_app(self)
-        tmp_folder = copy_to_tmp(self.runner_dir, app.state.tmp_dir, "runner")
+        tmp_folder = copy_to_tmp(self.runner_path, app.state.tmp_dir, "runner")
         app.state.register_tmp_folder(tmp_folder)
         termux_app(self).push_screen(InstallRunnerVersionScreen(tmp_folder))
 
     @on(Button.Pressed, "#uninstall")
     def on_uninstall(self, event: Button.Pressed) -> None:
         event.stop()
-        meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
 
         async def on_confirm(result: str | None) -> None:
             if result is not None:
@@ -221,8 +221,8 @@ class RunnerMenuScreen(MenuScreen):
 
     async def _do_uninstall(self) -> None:
         app = termux_app(self)
-        meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
-        settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
+        settings = RunnerSettings.load(self.runner_path / "settings.toml")
 
         if settings.session.state != "off":
             loading = LoadingScreen("Runner shutting down")
@@ -232,11 +232,11 @@ class RunnerMenuScreen(MenuScreen):
                 await runner_proc.shutdown()
                 del app.state.runners[meta.general.id]
                 settings.general.enabled = False
-                settings.save(self.runner_dir / "settings.toml")
+                settings.save(self.runner_path / "settings.toml")
             await loading.dismiss(None)
 
         import shutil
-        shutil.rmtree(self.runner_dir, ignore_errors=True)
+        shutil.rmtree(self.runner_path, ignore_errors=True)
 
         termux_app(self).pop_screen()   # noqa
 
@@ -249,8 +249,8 @@ class RunnerMenuScreen(MenuScreen):
             self._set_property(prop_name)
 
     def _set_property(self, prop_name: str) -> None:
-        meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
-        settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
+        settings = RunnerSettings.load(self.runner_path / "settings.toml")
         try:
             prop = next(p for p in meta.properties if p.name == prop_name)
         except StopIteration:
@@ -286,13 +286,13 @@ class RunnerMenuScreen(MenuScreen):
             if not prop.optional and is_property_value_empty(result, prop.input_type):
                 _warn_and_retry()
                 return
-            current_settings = RunnerSettings.load(self.runner_dir / "settings.toml")
+            current_settings = RunnerSettings.load(self.runner_path / "settings.toml")
             if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
                 current_settings.properties[prop.name] = ",".join(str(v) for v in result)
             else:
                 current_settings.properties[prop.name] = str(result)
-            current_settings.save(self.runner_dir / "settings.toml")
-            current_meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
+            current_settings.save(self.runner_path / "settings.toml")
+            current_meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
             self._refresh_ui(current_meta, current_settings)
 
         _show_input()

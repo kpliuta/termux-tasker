@@ -11,7 +11,7 @@ Feature: Runner Execution Lifecycle
     Then the runner enters a loop:
       """
       - "before-exec" state: before-exec command is executed
-      - "before-task" state: for each enabled task, before-task command is executed (with `{task_dir}`)
+      - "before-task" state: for each enabled task, before-task command is executed (with `{task_path}`)
       - "task-exec" state: for each enabled task, task command is executed
       - "after-task" state: after-task command is executed
       - "after-exec" state: after-exec command is executed

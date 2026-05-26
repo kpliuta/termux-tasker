@@ -55,13 +55,13 @@ optional = false
 options = ["one", "two", "three"]
 
 [[task-validator]]
-command = "test -f {task_dir}/required_file"
+command = "test -f {task_path}/required_file"
 
 [exec]
 initialization = 'echo init'
 before-exec = 'echo before-exec'
 before-task = 'echo before-task'
-task-exec = 'sh {task_dir}/required_file'
+task-exec = 'sh {task_path}/required_file'
 after-task = 'echo after-task'
 after-exec = 'echo after-exec'
 termination = 'echo termination'
@@ -223,7 +223,7 @@ def tmp_dir() -> Iterator[Path]:
 
 
 @pytest.fixture
-def sh_runner_dir(tmp_dir: Path) -> Path:
+def sh_runner_path(tmp_dir: Path) -> Path:
     dst = tmp_dir / "runners" / "sh_runner"
     _write_runner(dst, SH_RUNNER_METADATA)
     settings = RunnerSettings()
@@ -235,18 +235,18 @@ def sh_runner_dir(tmp_dir: Path) -> Path:
 
 
 @pytest.fixture
-def sh_runner_enabled(sh_runner_dir: Path) -> Path:
-    settings = RunnerSettings.load(sh_runner_dir / "settings.toml")
+def sh_runner_enabled(sh_runner_path: Path) -> Path:
+    settings = RunnerSettings.load(sh_runner_path / "settings.toml")
     settings.general.enabled = True
-    settings.save(sh_runner_dir / "settings.toml")
-    return sh_runner_dir
+    settings.save(sh_runner_path / "settings.toml")
+    return sh_runner_path
 
 
 # ── Task fixtures ───────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def sh_runner_task_dir(tmp_dir: Path) -> Path:
+def sh_runner_task_path(tmp_dir: Path) -> Path:
     dst = tmp_dir / "tasks" / "sh_runner_task"
     _write_task(dst, SH_RUNNER_TASK_METADATA)
     settings = TaskSettings()
@@ -258,18 +258,18 @@ def sh_runner_task_dir(tmp_dir: Path) -> Path:
 
 
 @pytest.fixture
-def sh_runner_task_enabled(sh_runner_task_dir: Path) -> Path:
-    settings = TaskSettings.load(sh_runner_task_dir / "settings.toml")
+def sh_runner_task_enabled(sh_runner_task_path: Path) -> Path:
+    settings = TaskSettings.load(sh_runner_task_path / "settings.toml")
     settings.general.enabled = True
-    settings.save(sh_runner_task_dir / "settings.toml")
-    return sh_runner_task_dir
+    settings.save(sh_runner_task_path / "settings.toml")
+    return sh_runner_task_path
 
 
 # ── Metadata fixtures ────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def optional_runner_dir(tmp_dir: Path) -> Path:
+def optional_runner_path(tmp_dir: Path) -> Path:
     dst = tmp_dir / "runners" / "optional_runner"
     _write_runner(dst, OPTIONAL_RUNNER_METADATA)
     settings = RunnerSettings()
@@ -304,7 +304,7 @@ def app(tmp_dir: Path) -> TermuxTaskerApp:
 
     app = TermuxTaskerApp(app_version="0.1.0")
     app.state.work_dir = tmp_dir
-    app.state.runners_dir = tmp_dir / "runners"
+    app.state.runners_path = tmp_dir / "runners"
     app.state.tmp_dir = tmp_dir / ".tmp"
     app.state.app_config_file = tmp_dir / "app.toml"
     app.state.ensure_dirs()

@@ -20,7 +20,7 @@ url = "https://github.com/user/test-runner"
 app_min_version = ">=0.1.0"
 
 [exec]
-task-exec = "echo {task_dir}"
+task-exec = "echo {task_path}"
 """
 
 VALID_METADATA_LOCAL = """\
@@ -31,7 +31,7 @@ version = "1.0"
 app_min_version = ">=0.0.1"
 
 [exec]
-task-exec = "echo {task_dir}"
+task-exec = "echo {task_path}"
 """
 
 INVALID_METADATA_NO_TASK_EXEC = """\
@@ -105,10 +105,10 @@ class TestRunnerValidatorMetadataStructure:
             validator.validate_metadata_structure()
 
     def test_invalid_task_exec_no_placeholder(self, tmp_dir: Path) -> None:
-        content = VALID_METADATA.replace('task-exec = "echo {task_dir}"', 'task-exec = "echo hello"')
+        content = VALID_METADATA.replace('task-exec = "echo {task_path}"', 'task-exec = "echo hello"')
         (tmp_dir / "metadata.toml").write_text(content)
         validator = RunnerValidator(tmp_dir)
-        with pytest.raises(RunnerValidatorException, match="task_dir"):
+        with pytest.raises(RunnerValidatorException, match="task_path"):
             validator.validate_metadata_structure()
 
     def test_invalid_url(self, tmp_dir: Path) -> None:

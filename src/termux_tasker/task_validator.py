@@ -36,9 +36,9 @@ class TaskValidator:
       4. execute_runner_validators      — run the runner's custom shell validators
     """
 
-    def __init__(self, runner_dir: Path, task_dir: Path, tmp_dir: Path) -> None:
-        self.runner_dir = runner_dir
-        self.task_dir = task_dir
+    def __init__(self, runner_path: Path, task_path: Path, tmp_dir: Path) -> None:
+        self.runner_path = runner_path
+        self.task_path = task_path
         self.tmp_dir = tmp_dir
         self._metadata: Optional[TaskMetadata] = None
         self._runner_metadata: Optional[RunnerMetadata] = None
@@ -60,14 +60,14 @@ class TaskValidator:
             return None
 
     def validate_metadata_existed(self) -> None:
-        task_meta_path = self.task_dir / "metadata.toml"
+        task_meta_path = self.task_path / "metadata.toml"
         if not task_meta_path.exists():
             raise TaskValidatorException(
-                f"metadata.toml not found in {self.task_dir}"
+                f"metadata.toml not found in {self.task_path}"
             )
 
     def validate_metadata_essentials(self) -> None:
-        meta = TaskMetadata.load(self.task_dir / "metadata.toml")
+        meta = TaskMetadata.load(self.task_path / "metadata.toml")
         if not meta.general.name:
             raise TaskValidatorException(
                 f"task metadata.toml: [general].name is required and must be a non-empty string"
@@ -75,7 +75,7 @@ class TaskValidator:
         self._metadata = meta
 
     def validate_metadata_structure(self) -> None:
-        path = self.task_dir / "metadata.toml"
+        path = self.task_path / "metadata.toml"
         meta = TaskMetadata.load(path)
         self._metadata = meta
 
@@ -100,7 +100,7 @@ class TaskValidator:
                 "task metadata.toml: [general].version is required"
             )
 
-        is_git = self._is_git_repo(self.task_dir)
+        is_git = self._is_git_repo(self.task_path)
         if is_git:
             try:
                 Version(general.version)
@@ -108,7 +108,7 @@ class TaskValidator:
                 raise TaskValidatorException(
                     f"task metadata.toml: [general].version '{general.version}' is not a valid semantic version"
                 )
-            tag = self._get_git_tag(self.task_dir)
+            tag = self._get_git_tag(self.task_path)
             if tag and general.version != tag:
                 raise TaskValidatorException(
                     f"task metadata.toml: [general].version '{general.version}' does not match git tag '{tag}'"
@@ -182,7 +182,7 @@ class TaskValidator:
         if meta is None:
             raise TaskValidatorException("Task metadata not loaded")
 
-        runner_meta_path = self.runner_dir / "metadata.toml"
+        runner_meta_path = self.runner_path / "metadata.toml"
         if not runner_meta_path.exists():
             raise TaskValidatorException(
                 f"Runner metadata not found at {runner_meta_path}"
@@ -216,7 +216,7 @@ class TaskValidator:
 
         These are arbitrary shell commands defined in the runner's
         metadata.toml ([[task-validator]]).  Each command receives
-        ``{task_dir}`` substituted with the task's path.  The task is
+        ``{task_path}`` substituted with the task's path.  The task is
         considered invalid if any command returns a non-zero exit code.
         Stderr is captured and truncated to the last 5 lines for error
         reporting.
@@ -234,7 +234,7 @@ class TaskValidator:
 
         runner_meta = self._runner_metadata
         if runner_meta is None:
-            runner_meta_path = self.runner_dir / "metadata.toml"
+            runner_meta_path = self.runner_path / "metadata.toml"
             runner_meta = RunnerMetadata.load(runner_meta_path)
             self._runner_metadata = runner_meta
 
@@ -247,13 +247,13 @@ class TaskValidator:
             stdout_file.unlink(missing_ok=True)
             stderr_file.unlink(missing_ok=True)
 
-            command = tv.command.replace("{task_dir}", str(self.task_dir))
+            command = tv.command.replace("{task_path}", str(self.task_path))
             full_command = f"{command} > {stdout_file} 2> {stderr_file}"
 
             try:
                 result = subprocess.run(
                     full_command, shell=True, capture_output=False,
-                    cwd=self.runner_dir, timeout=60,
+                    cwd=self.runner_path, timeout=60,
                 )
                 if result.returncode != 0:
                     cause = self._read_cause(stderr_file)

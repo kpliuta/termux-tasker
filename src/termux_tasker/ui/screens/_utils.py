@@ -106,15 +106,15 @@ def git_checkout(repo_path: Path, tag: str) -> bool:
 
 
 def get_installed_runner_versions(
-    runners_dir: Path, runner_id: str
+    runners_path: Path, runner_id: str
 ) -> set[str]:
     versions: set[str] = set()
-    if not runners_dir.exists():
+    if not runners_path.exists():
         return versions
-    for runner_dir in runners_dir.iterdir():
-        if not runner_dir.is_dir():
+    for runner_path in runners_path.iterdir():
+        if not runner_path.is_dir():
             continue
-        meta_path = runner_dir / "metadata.toml"
+        meta_path = runner_path / "metadata.toml"
         if meta_path.exists():
             meta = RunnerMetadata.load(meta_path)
             if meta.general.id == runner_id:
@@ -123,15 +123,15 @@ def get_installed_runner_versions(
 
 
 def get_installed_task_versions(
-    tasks_dir: Path, task_id: str
+    tasks_path: Path, task_id: str
 ) -> set[str]:
     versions: set[str] = set()
-    if not tasks_dir.exists():
+    if not tasks_path.exists():
         return versions
-    for task_dir in tasks_dir.iterdir():
-        if not task_dir.is_dir():
+    for task_path in tasks_path.iterdir():
+        if not task_path.is_dir():
             continue
-        meta_path = task_dir / "metadata.toml"
+        meta_path = task_path / "metadata.toml"
         if meta_path.exists():
             meta = TaskMetadata.load(meta_path)
             if meta.general.id == task_id:

@@ -41,9 +41,9 @@ class TermuxTaskerApp(App[None]):
         await self.push_screen(loading)
         for runner_proc in self.state.runners.values():
             await runner_proc.shutdown()
-            settings = RunnerSettings.load(runner_proc.runner_dir / "settings.toml")
+            settings = RunnerSettings.load(runner_proc.runner_path / "settings.toml")
             settings.general.enabled = False
-            settings.save(runner_proc.runner_dir / "settings.toml")
+            settings.save(runner_proc.runner_path / "settings.toml")
         await loading.dismiss(None)
         self.exit()
 

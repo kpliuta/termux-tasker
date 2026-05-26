@@ -56,7 +56,7 @@ class InstallRunnerVersionScreen(MenuScreen):
 
         app = termux_app(self)
         installed_versions = get_installed_runner_versions(
-            app.state.runners_dir, meta.general.id
+            app.state.runners_path, meta.general.id
         )
 
         items: dict[str, str] = {}
@@ -160,10 +160,10 @@ class InstallRunnerVersionScreen(MenuScreen):
 
     def _check_install_state(self, runner_id: str, tag: str) -> str:
         app = termux_app(self)
-        for runner_dir in app.state.runners_dir.iterdir():
-            if not runner_dir.is_dir():
+        for runner_path in app.state.runners_path.iterdir():
+            if not runner_path.is_dir():
                 continue
-            meta_path = runner_dir / "metadata.toml"
+            meta_path = runner_path / "metadata.toml"
             if meta_path.exists():
                 meta = RunnerMetadata.load(meta_path)
                 if meta.general.id == runner_id:
@@ -176,7 +176,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         self, runner_id: str, _tag: str, install_state: str
     ) -> None:
         app = termux_app(self)
-        target_dir = app.state.runners_dir / runner_id
+        target_dir = app.state.runners_path / runner_id
         meta = self._runner_meta
 
         (self.tmp_runner_folder / "tasks").mkdir(exist_ok=True)

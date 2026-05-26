@@ -7,7 +7,7 @@ from tests.bdd.steps_common import *  # noqa
 def given_app_launched(pilot) -> None:
     app = pilot.app
     assert app.state.work_dir.exists()
-    assert app.state.runners_dir.exists()
+    assert app.state.runners_path.exists()
     assert app.state.tmp_dir.exists()
     assert app.state.app_config_file.exists()
 
@@ -120,10 +120,10 @@ def given_no_runners(pilot) -> None:
 @given("at least one runner is running")
 @given("the runner is enabled and running")
 def given_runners_running(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().enable_runner(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().enable_runner(runner_path)
     proc = RunnerProcess(
-        runner_dir,
+        runner_path,
         ui(pilot).app.state.session_id,
         ui(pilot).app.state.tmp_dir,
     )
@@ -133,14 +133,14 @@ def given_runners_running(pilot) -> None:
 @given("there is at least one installed runner")
 @given("a runner is already installed")
 def given_installed_runner(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    assert runner_dir.exists()
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    assert runner_path.exists()
 
 
 @given("the runner is disabled")
 def given_runner_disabled(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().disable_runner(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().disable_runner(runner_path)
 
 
 @given("a runner uninstall confirmation dialog is shown")
@@ -151,15 +151,15 @@ def given_uninstall_confirmation(pilot) -> None:
 
 @given('the runner state is "off"')
 def given_runner_state_off(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    s = settings().load_runner_settings(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
     assert s.session.state == "off"
 
 
 @given('the runner state is not "off"')
 def given_runner_state_not_off(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().set_runner_state(runner_dir, "initialization")
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().set_runner_state(runner_path, "initialization")
 
 
 @given("a runner is enabled")
@@ -171,14 +171,14 @@ def given_runner_enabled_for_lifecycle(pilot) -> None:
 
 @given("a runner was disabled before the app exited")
 def given_runner_was_disabled(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().disable_runner(runner_dir)
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().disable_runner(runner_path)
 
 
 @given("the runner metadata defines a property")
 def given_runner_has_properties(pilot) -> None:
     meta = settings().load_runner_metadata(
-        ui(pilot).app.state.runners_dir / "sh_runner"
+        ui(pilot).app.state.runners_path / "sh_runner"
     )
     assert len(meta.properties) > 0
 
@@ -186,11 +186,11 @@ def given_runner_has_properties(pilot) -> None:
 @given("there is at least one task installed")
 @given("there is at least one installed task")
 def given_installed_task(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    assert task_dir.exists()
+    assert task_path.exists()
 
 
 @given("a task uninstall confirmation dialog is shown")
@@ -201,42 +201,42 @@ def given_task_uninstall_confirmation(pilot) -> None:
 
 @given('the task state is "stopped"')
 def given_task_stopped(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    s = settings().load_task_settings(task_dir)
+    s = settings().load_task_settings(task_path)
     assert s.session.state == "stopped"
 
 
 @given('the task state is not "stopped"')
 def given_task_not_stopped(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    settings().set_task_state(task_dir, "running")
-    settings().enable_task(task_dir)
+    settings().set_task_state(task_path, "running")
+    settings().enable_task(task_path)
 
 
 @given("a runner is executing a command")
 def given_runner_executing(pilot) -> None:
-    runner_dir = ui(pilot).app.state.runners_dir / "sh_runner"
-    settings().enable_runner(runner_dir)
-    settings().set_runner_state(runner_dir, "task-exec")
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    settings().enable_runner(runner_path)
+    settings().set_runner_state(runner_path, "task-exec")
 
 
 @given("a task is successfully installed")
 def given_task_installed(pilot) -> None:
     from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
 
     def _push():
-        ui(pilot).app.push_screen(TaskMenuScreen(task_dir))
+        ui(pilot).app.push_screen(TaskMenuScreen(task_path))
 
     ui(pilot).app.call_from_thread(_push)
     ui(pilot).pause(0.1)
@@ -244,18 +244,18 @@ def given_task_installed(pilot) -> None:
 
 @given('a task is configured with `settings.general.timeout = "30s"`')
 def given_timeout_30s(pilot) -> None:
-    task_dir = (
-        ui(pilot).app.state.runners_dir
+    task_path = (
+        ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
-    settings().set_task_timeout(task_dir, "30s")
+    settings().set_task_timeout(task_path, "30s")
 
 
 @given("a runner has both enabled and disabled tasks")
 def given_mixed_tasks(pilot) -> None:
-    tasks_dir = ui(pilot).app.state.runners_dir / "sh_runner" / "tasks"
+    tasks_path = ui(pilot).app.state.runners_path / "sh_runner" / "tasks"
 
-    enabled_dir = tasks_dir / "enabled_task"
+    enabled_dir = tasks_path / "enabled_task"
     fs().ensure_directory(enabled_dir)
     fs().write_text(
         enabled_dir / "metadata.toml",
@@ -269,7 +269,7 @@ def given_mixed_tasks(pilot) -> None:
     )
     settings().enable_task(enabled_dir)
 
-    disabled_dir = tasks_dir / "disabled_task"
+    disabled_dir = tasks_path / "disabled_task"
     fs().ensure_directory(disabled_dir)
     fs().write_text(
         disabled_dir / "metadata.toml",
@@ -303,10 +303,10 @@ def given_version_selected(pilot) -> None:
 
 
 @given("I am installing a runner where all properties have defaults or are optional")
-def given_runner_optional_properties(pilot, optional_runner_dir: Path) -> None:
+def given_runner_optional_properties(pilot, optional_runner_path: Path) -> None:
     from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
 
-    screen = InstallRunnerVersionScreen(optional_runner_dir)
+    screen = InstallRunnerVersionScreen(optional_runner_path)
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.1)
 
@@ -314,7 +314,7 @@ def given_runner_optional_properties(pilot, optional_runner_dir: Path) -> None:
 @given("the property is non-optional")
 def given_property_non_optional(pilot) -> None:
     meta = settings().load_runner_metadata(
-        ui(pilot).app.state.runners_dir / "sh_runner"
+        ui(pilot).app.state.runners_path / "sh_runner"
     )
     non_optional = [p for p in meta.properties if not p.optional]
     assert len(non_optional) > 0
@@ -340,8 +340,8 @@ def given_task_non_optional(pilot, task_required_dir: Path) -> None:
     from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
     from termux_tasker.ui.base.screen import InputScreen
 
-    runner_dir = pilot.app.state.runners_dir / "sh_runner"
-    screen = InstallTaskVersionScreen(runner_dir, task_required_dir)
+    runner_path = pilot.app.state.runners_path / "sh_runner"
+    screen = InstallTaskVersionScreen(runner_path, task_required_dir)
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.1)
 

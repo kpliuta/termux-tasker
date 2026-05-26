@@ -15,8 +15,8 @@ from termux_tasker.ui.screens._utils import (
 
 
 class TaskTypeScreen(MenuScreen):
-    def __init__(self, runner_dir: Path) -> None:
-        self.runner_dir = runner_dir
+    def __init__(self, runner_path: Path) -> None:
+        self.runner_path = runner_path
         super().__init__(
             menu_items={
                 "Bundled": "bundled",
@@ -31,7 +31,7 @@ class TaskTypeScreen(MenuScreen):
     def on_bundled(self, event: Button.Pressed) -> None:
         event.stop()
         from termux_tasker.ui.screens.bundled_task import BundledTaskScreen
-        termux_app(self).push_screen(BundledTaskScreen(self.runner_dir))
+        termux_app(self).push_screen(BundledTaskScreen(self.runner_path))
 
     @on(Button.Pressed, "#github_url")
     def on_github(self, event: Button.Pressed) -> None:
@@ -60,7 +60,7 @@ class TaskTypeScreen(MenuScreen):
                 tmp_folder = copy_to_tmp(result, app.state.tmp_dir, "task")
                 app.state.register_tmp_task_folder(tmp_folder)
                 from termux_tasker.task_validator import TaskValidator, TaskValidatorException
-                validator = TaskValidator(self.runner_dir, tmp_folder, app.state.tmp_dir / "validate")
+                validator = TaskValidator(self.runner_path, tmp_folder, app.state.tmp_dir / "validate")
                 try:
                     validator.validate_metadata_existed()
                     validator.validate_metadata_essentials()
@@ -68,7 +68,7 @@ class TaskTypeScreen(MenuScreen):
                     termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
                     return
                 from termux_tasker.ui.screens.install_task import InstallTaskScreen
-                termux_app(self).push_screen(InstallTaskScreen(self.runner_dir, tmp_folder))
+                termux_app(self).push_screen(InstallTaskScreen(self.runner_path, tmp_folder))
 
         termux_app(self).push_screen(
             FileBrowserScreen(select_folder=True, path=Path.home()),
@@ -94,7 +94,7 @@ class TaskTypeScreen(MenuScreen):
             return
         app.state.register_tmp_task_folder(folder)
         from termux_tasker.task_validator import TaskValidator, TaskValidatorException
-        validator = TaskValidator(self.runner_dir, folder, app.state.tmp_dir / "validate")
+        validator = TaskValidator(self.runner_path, folder, app.state.tmp_dir / "validate")
         try:
             validator.validate_metadata_existed()
             validator.validate_metadata_essentials()
@@ -102,4 +102,4 @@ class TaskTypeScreen(MenuScreen):
             termux_app(self).push_screen(InfoScreen(message=e.message, severity="error"))
             return
         from termux_tasker.ui.screens.install_task import InstallTaskScreen
-        termux_app(self).push_screen(InstallTaskScreen(self.runner_dir, folder))
+        termux_app(self).push_screen(InstallTaskScreen(self.runner_path, folder))

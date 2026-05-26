@@ -32,20 +32,20 @@ class RunnerValidator:
       4. check_app_compatibility      — app version meets runner_min_version
     """
 
-    def __init__(self, runner_dir: Path, app_version: str = "0.1.0") -> None:
-        self.runner_dir = runner_dir
+    def __init__(self, runner_path: Path, app_version: str = "0.1.0") -> None:
+        self.runner_path = runner_path
         self.app_version = app_version
         self._metadata: Optional[RunnerMetadata] = None
 
     def _is_git_repo(self) -> bool:
-        return (self.runner_dir / ".git").exists()
+        return (self.runner_path / ".git").exists()
 
     def _get_git_tag(self) -> Optional[str]:
         import subprocess
         try:
             result = subprocess.run(
                 ["git", "tag", "--points-at", "HEAD"],
-                capture_output=True, text=True, cwd=self.runner_dir, timeout=10,
+                capture_output=True, text=True, cwd=self.runner_path, timeout=10,
             )
             tag = result.stdout.strip()
             return tag if tag else None
@@ -53,13 +53,13 @@ class RunnerValidator:
             return None
 
     def validate_metadata_existed(self) -> None:
-        if not (self.runner_dir / "metadata.toml").exists():
+        if not (self.runner_path / "metadata.toml").exists():
             raise RunnerValidatorException(
-                f"metadata.toml not found in {self.runner_dir}"
+                f"metadata.toml not found in {self.runner_path}"
             )
 
     def validate_metadata_essentials(self) -> None:
-        meta = RunnerMetadata.load(self.runner_dir / "metadata.toml")
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
         if not meta.general.name:
             raise RunnerValidatorException(
                 f"metadata.toml: [general].name is required and must be a non-empty string"
@@ -73,12 +73,12 @@ class RunnerValidator:
         - If the runner is a git repo, version must be a valid PEP 440
           semver AND match the git tag at HEAD.
         - GitHub URL is required for git repos (needed for updates).
-        - ``{task_dir}`` placeholder must be present in task-exec and
+        - ``{task_path}`` placeholder must be present in task-exec and
           all task-validator commands.
         - Property definitions must use valid TOML key names and one
           of the supported input types.
         """
-        path = self.runner_dir / "metadata.toml"
+        path = self.runner_path / "metadata.toml"
         meta = RunnerMetadata.load(path)
         self._metadata = meta
 
@@ -145,10 +145,10 @@ class RunnerValidator:
                 raise RunnerValidatorException(
                     f"metadata.toml: [[task-validator]].{i}.command is required"
                 )
-            if "{task_dir}" not in tv.command:
+            if "{task_path}" not in tv.command:
                 raise RunnerValidatorException(
                     f"metadata.toml: [[task-validator]].{i}.command '{tv.command}' "
-                    f"must contain {{task_dir}} placeholder"
+                    f"must contain {{task_path}} placeholder"
                 )
 
         # [exec] validation
@@ -156,9 +156,9 @@ class RunnerValidator:
             raise RunnerValidatorException(
                 "metadata.toml: [exec].task-exec is required"
             )
-        if "{task_dir}" not in meta.exec.task_exec:
+        if "{task_path}" not in meta.exec.task_exec:
             raise RunnerValidatorException(
-                "metadata.toml: [exec].task-exec must contain {task_dir} placeholder"
+                "metadata.toml: [exec].task-exec must contain {task_path} placeholder"
             )
 
     @staticmethod
@@ -190,7 +190,7 @@ class RunnerValidator:
                     )
 
     def validate_bundled_structure(self) -> None:
-        bundled_path = self.runner_dir / "bundled.toml"
+        bundled_path = self.runner_path / "bundled.toml"
         if not bundled_path.exists():
             return
 

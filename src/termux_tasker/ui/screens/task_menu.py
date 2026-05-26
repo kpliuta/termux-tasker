@@ -29,13 +29,13 @@ _TIMEOUT_RE = re.compile(r"^[0-9]+[hms]$")
 
 
 class TaskMenuScreen(MenuScreen):
-    def __init__(self, task_dir: Path) -> None:
-        self.task_dir = task_dir
-        self.runner_dir = task_dir.parent.parent
-        meta = TaskMetadata.load(task_dir / "metadata.toml")
-        settings = TaskSettings.load(task_dir / "settings.toml")
+    def __init__(self, task_path: Path) -> None:
+        self.task_path = task_path
+        self.runner_path = task_path.parent.parent
+        meta = TaskMetadata.load(task_path / "metadata.toml")
+        settings = TaskSettings.load(task_path / "settings.toml")
 
-        self._fix_session(settings, task_dir)
+        self._fix_session(settings, task_path)
         desc = self._build_description(meta, settings)
         items = self._build_items(meta, settings)
 
@@ -51,7 +51,7 @@ class TaskMenuScreen(MenuScreen):
         self._stop_polling()
 
     def _start_polling(self) -> None:
-        settings = TaskSettings.load(self.task_dir / "settings.toml")
+        settings = TaskSettings.load(self.task_path / "settings.toml")
         if settings.general.enabled:
             self._poll_timer = self.set_interval(1.0, self._poll_state)
 
@@ -61,8 +61,8 @@ class TaskMenuScreen(MenuScreen):
             self._poll_timer = None
 
     def _poll_state(self) -> None:
-        meta = TaskMetadata.load(self.task_dir / "metadata.toml")
-        settings = TaskSettings.load(self.task_dir / "settings.toml")
+        meta = TaskMetadata.load(self.task_path / "metadata.toml")
+        settings = TaskSettings.load(self.task_path / "settings.toml")
         if not settings.general.enabled:
             self._stop_polling()
         self._refresh_ui(meta, settings)
@@ -78,7 +78,7 @@ class TaskMenuScreen(MenuScreen):
             if btn_id is not None and btn_id in id_to_label:
                 btn.label = id_to_label[btn_id]
 
-    def _fix_session(self, settings: TaskSettings, task_dir: Path) -> None:
+    def _fix_session(self, settings: TaskSettings, task_path: Path) -> None:
         """Reset stale session state on app restart.
 
         If the recorded session_id doesn't match the current app session,
@@ -90,7 +90,7 @@ class TaskMenuScreen(MenuScreen):
             settings.session.state = "stopped"
         if app:
             settings.session.session_id = app.state.session_id
-            settings.save(task_dir / "settings.toml")
+            settings.save(task_path / "settings.toml")
 
     @staticmethod
     def _build_description(
@@ -125,11 +125,11 @@ class TaskMenuScreen(MenuScreen):
     @on(Button.Pressed, "#toggle")
     def on_toggle(self, event: Button.Pressed) -> None:
         event.stop()
-        settings = TaskSettings.load(self.task_dir / "settings.toml")
+        settings = TaskSettings.load(self.task_path / "settings.toml")
         settings.general.enabled = not settings.general.enabled
-        settings.save(self.task_dir / "settings.toml")
-        meta = TaskMetadata.load(self.task_dir / "metadata.toml")
-        settings = TaskSettings.load(self.task_dir / "settings.toml")
+        settings.save(self.task_path / "settings.toml")
+        meta = TaskMetadata.load(self.task_path / "metadata.toml")
+        settings = TaskSettings.load(self.task_path / "settings.toml")
         self._refresh_ui(meta, settings)
         if settings.general.enabled:
             self._start_polling()
@@ -140,14 +140,14 @@ class TaskMenuScreen(MenuScreen):
     def on_show_metadata(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.task_dir / "metadata.toml", show_follow=False)
+            LogScreen(content=self.task_path / "metadata.toml", show_follow=False)
         )
 
     @on(Button.Pressed, "#show_settings")
     def on_show_settings(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.task_dir / "settings.toml", show_follow=False)
+            LogScreen(content=self.task_path / "settings.toml", show_follow=False)
         )
 
     @on(Button.Pressed, "#set_timeout")
@@ -166,7 +166,7 @@ class TaskMenuScreen(MenuScreen):
         event.stop()
 
         def _show_input() -> None:
-            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            settings = TaskSettings.load(self.task_path / "settings.toml")
             termux_app(self).push_screen(
                 InputScreen(
                     title="Timeout",
@@ -204,11 +204,11 @@ class TaskMenuScreen(MenuScreen):
             if not _TIMEOUT_RE.match(val):
                 _warn_format()
                 return
-            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            settings = TaskSettings.load(self.task_path / "settings.toml")
             settings.general.timeout = val
-            settings.save(self.task_dir / "settings.toml")
-            meta = TaskMetadata.load(self.task_dir / "metadata.toml")
-            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            settings.save(self.task_path / "settings.toml")
+            meta = TaskMetadata.load(self.task_path / "metadata.toml")
+            settings = TaskSettings.load(self.task_path / "settings.toml")
             self._refresh_ui(meta, settings)
 
         _show_input()
@@ -218,16 +218,16 @@ class TaskMenuScreen(MenuScreen):
         event.stop()
         from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
         app = termux_app(self)
-        tmp_folder = copy_to_tmp(self.task_dir, app.state.tmp_dir, "task")
+        tmp_folder = copy_to_tmp(self.task_path, app.state.tmp_dir, "task")
         app.state.register_tmp_task_folder(tmp_folder)
         termux_app(self).push_screen(
-            InstallTaskVersionScreen(self.runner_dir, tmp_folder)
+            InstallTaskVersionScreen(self.runner_path, tmp_folder)
         )
 
     @on(Button.Pressed, "#uninstall")
     def on_uninstall(self, event: Button.Pressed) -> None:
         event.stop()
-        meta = TaskMetadata.load(self.task_dir / "metadata.toml")
+        meta = TaskMetadata.load(self.task_path / "metadata.toml")
 
         async def on_confirm(result: str | None) -> None:
             if result is not None:
@@ -250,14 +250,14 @@ class TaskMenuScreen(MenuScreen):
         await termux_app(self).push_screen(loading)
 
         while True:
-            settings = TaskSettings.load(self.task_dir / "settings.toml")
+            settings = TaskSettings.load(self.task_path / "settings.toml")
             if settings.session.state == "stopped":
                 break
             await asyncio.sleep(0.5)
 
         await loading.dismiss(None)
 
-        shutil.rmtree(self.task_dir, ignore_errors=True)
+        shutil.rmtree(self.task_path, ignore_errors=True)
         termux_app(self).pop_screen()   # noqa
 
     @on(Button.Pressed)
@@ -269,8 +269,8 @@ class TaskMenuScreen(MenuScreen):
             self._set_property(prop_name)
 
     def _set_property(self, prop_name: str) -> None:
-        meta = TaskMetadata.load(self.task_dir / "metadata.toml")
-        settings = TaskSettings.load(self.task_dir / "settings.toml")
+        meta = TaskMetadata.load(self.task_path / "metadata.toml")
+        settings = TaskSettings.load(self.task_path / "settings.toml")
         try:
             prop = next(p for p in meta.properties if p.name == prop_name)
         except StopIteration:
@@ -306,14 +306,14 @@ class TaskMenuScreen(MenuScreen):
             if not prop.optional and is_property_value_empty(result, prop.input_type):
                 _warn_and_retry()
                 return
-            current_settings = TaskSettings.load(self.task_dir / "settings.toml")
+            current_settings = TaskSettings.load(self.task_path / "settings.toml")
             if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
                 current_settings.properties[prop.name] = ",".join(str(v) for v in result)
             else:
                 current_settings.properties[prop.name] = str(result)
-            current_settings.save(self.task_dir / "settings.toml")
-            current_meta = TaskMetadata.load(self.task_dir / "metadata.toml")
-            current_settings = TaskSettings.load(self.task_dir / "settings.toml")
+            current_settings.save(self.task_path / "settings.toml")
+            current_meta = TaskMetadata.load(self.task_path / "metadata.toml")
+            current_settings = TaskSettings.load(self.task_path / "settings.toml")
             self._refresh_ui(current_meta, current_settings)
 
         _show_input()

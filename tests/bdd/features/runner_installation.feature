@@ -59,7 +59,7 @@ Feature: Runner Installation
     When the install finalizes
     And properties are prompted one by one via InputScreen
     When I provide valid values for all properties
-    Then the runner is installed to `runners_dir/<id>`
+    Then the runner is installed to `runners_path/<id>`
     And the install screens are popped
     And the Runner Menu screen is shown for the newly installed runner
 
@@ -67,7 +67,7 @@ Feature: Runner Installation
     Given I am installing a runner where all properties have defaults or are optional
     When the install finalizes
     Then default properties are filled
-    And the runner is installed to `runners_dir/<id>`
+    And the runner is installed to `runners_path/<id>`
     And no property prompts are shown
     And the Runner Menu screen is shown for the newly installed runner
 

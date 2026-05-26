@@ -19,7 +19,7 @@ version = "0.1.0"
 app_min_version = ">=0.1.0"
 
 [exec]
-task-exec = "echo {task_dir}"
+task-exec = "echo {task_path}"
 """
 
 
@@ -39,12 +39,12 @@ class TestParseTimeout:
 
 class TestRunnerProcessInit:
     def test_init(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        proc = RunnerProcess(runner_dir, "test-session", tmp_dir / ".tmp")
-        assert proc.runner_dir == runner_dir
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        assert proc.runner_path == runner_path
         assert proc.session_id == "test-session"
         assert proc.shutting_down is False
 
@@ -53,10 +53,10 @@ class TestRunnerProcessInit:
 class TestRunnerProcessRun:
     @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
     async def test_run_basic(self, mock_subprocess, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
-        (runner_dir / "settings.toml").write_text('''\
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
+        (runner_path / "settings.toml").write_text('''\
 [general]
 enabled = true
 timeout = "1m"
@@ -68,14 +68,14 @@ session_id = "none"
 state = "off"
 ''')
 
-        tasks_dir = runner_dir / "tasks"
-        tasks_dir.mkdir()
+        tasks_path = runner_path / "tasks"
+        tasks_path.mkdir()
 
         mock_proc = AsyncMock()
         mock_proc.wait.return_value = 0
         mock_subprocess.return_value = mock_proc
 
-        proc = RunnerProcess(runner_dir, "test-session", tmp_dir / ".tmp")
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         proc.shutting_down = True
         proc._run_lock = False
 
@@ -85,10 +85,10 @@ state = "off"
 
     @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
     async def test_run_with_error(self, mock_subprocess, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
-        (runner_dir / "settings.toml").write_text('''\
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
+        (runner_path / "settings.toml").write_text('''\
 [general]
 enabled = true
 timeout = "1m"
@@ -100,14 +100,14 @@ session_id = "none"
 state = "off"
 ''')
 
-        tasks_dir = runner_dir / "tasks"
-        tasks_dir.mkdir()
+        tasks_path = runner_path / "tasks"
+        tasks_path.mkdir()
 
         mock_proc = AsyncMock()
         mock_proc.wait.return_value = 1
         mock_subprocess.return_value = mock_proc
 
-        proc = RunnerProcess(runner_dir, "test-session", tmp_dir / ".tmp")
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         proc.shutting_down = True
         proc._run_lock = False
 
@@ -118,10 +118,10 @@ state = "off"
 class TestRunnerProcessShutdown:
     @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
     async def test_shutdown(self, mock_subprocess, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
-        (runner_dir / "settings.toml").write_text('''\
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
+        (runner_path / "settings.toml").write_text('''\
 [general]
 enabled = true
 timeout = "1m"
@@ -133,14 +133,14 @@ session_id = "none"
 state = "off"
 ''')
 
-        tasks_dir = runner_dir / "tasks"
-        tasks_dir.mkdir()
+        tasks_path = runner_path / "tasks"
+        tasks_path.mkdir()
 
         mock_proc = AsyncMock()
         mock_proc.wait.return_value = 0
         mock_subprocess.return_value = mock_proc
 
-        proc = RunnerProcess(runner_dir, "test-session", tmp_dir / ".tmp")
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         proc.shutting_down = True
 
         await proc.shutdown()
@@ -148,11 +148,11 @@ state = "off"
 
 class TestRunnerProcessRunLock:
     def test_run_lock_prevents_concurrent_starts(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        proc = RunnerProcess(runner_dir, "test-session", tmp_dir / ".tmp")
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         proc._run_lock = True
         result = proc.run()
         assert result is False
@@ -160,21 +160,21 @@ class TestRunnerProcessRunLock:
 
 class TestRunnerProcessTerminate:
     def test_terminate(self, tmp_dir: Path) -> None:
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        proc = RunnerProcess(runner_dir, "test-session", tmp_dir / ".tmp")
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         proc.terminate()
 
     def test_terminate_calls_on_all_tracked_subprocesses(self, tmp_dir: Path) -> None:
         from unittest.mock import MagicMock
 
-        runner_dir = tmp_dir / "runner"
-        runner_dir.mkdir()
-        (runner_dir / "metadata.toml").write_text(RUNNER_METADATA)
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_METADATA)
 
-        proc = RunnerProcess(runner_dir, "test-session", tmp_dir / ".tmp")
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
         mock_proc = MagicMock()
         proc._processes = [mock_proc]
         proc.terminate()

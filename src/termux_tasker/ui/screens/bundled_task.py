@@ -12,8 +12,8 @@ from termux_tasker.ui.screens._utils import termux_app, clone_repo
 
 
 class BundledTaskScreen(MenuScreen):
-    def __init__(self, runner_dir: Path) -> None:
-        self.runner_dir = runner_dir
+    def __init__(self, runner_path: Path) -> None:
+        self.runner_path = runner_path
         self._tmp_folders: list[Path] = []
         super().__init__({}, show_back_button=True)
         self.title = "Bundled Task"
@@ -27,7 +27,7 @@ class BundledTaskScreen(MenuScreen):
     async def _load(self) -> None:
         loading = LoadingScreen("Fetching tasks")
         await termux_app(self).push_screen(loading)
-        bundled = BundledTasks.load(self.runner_dir / "bundled.toml")
+        bundled = BundledTasks.load(self.runner_path / "bundled.toml")
         self._tmp_folders.clear()
 
         app = termux_app(self)
@@ -42,12 +42,12 @@ class BundledTaskScreen(MenuScreen):
                 app.state.register_tmp_task_folder(folder)
 
         installed_tasks: set[str] = set()
-        tasks_dir = self.runner_dir / "tasks"
-        if tasks_dir.exists():
-            for task_dir in tasks_dir.iterdir():
-                if not task_dir.is_dir():
+        tasks_path = self.runner_path / "tasks"
+        if tasks_path.exists():
+            for task_path in tasks_path.iterdir():
+                if not task_path.is_dir():
                     continue
-                meta_path = task_dir / "metadata.toml"
+                meta_path = task_path / "metadata.toml"
                 if meta_path.exists():
                     meta = TaskMetadata.load(meta_path)
                     installed_tasks.add(meta.general.id)
@@ -83,7 +83,7 @@ class BundledTaskScreen(MenuScreen):
                     if meta.general.id == task_id:
                         app = termux_app(self)
                         from termux_tasker.task_validator import TaskValidator, TaskValidatorException
-                        validator = TaskValidator(self.runner_dir, tmp_folder, app.state.tmp_dir / "validate")
+                        validator = TaskValidator(self.runner_path, tmp_folder, app.state.tmp_dir / "validate")
                         try:
                             validator.validate_metadata_existed()
                             validator.validate_metadata_essentials()
@@ -92,6 +92,6 @@ class BundledTaskScreen(MenuScreen):
                             return
                         from termux_tasker.ui.screens.install_task import InstallTaskScreen
                         termux_app(self).push_screen(
-                            InstallTaskScreen(self.runner_dir, tmp_folder)
+                            InstallTaskScreen(self.runner_path, tmp_folder)
                         )
                         return
