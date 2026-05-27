@@ -302,7 +302,7 @@ def app(tmp_dir: Path) -> TermuxTaskerApp:
     """Create a TermuxTaskerApp configured with tmp_dir as work directory."""
     from termux_tasker.app import TermuxTaskerApp
 
-    app = TermuxTaskerApp(app_version="0.1.0")
+    app = TermuxTaskerApp(app_version="0.1.0", skip_android_init=True)
     app.state.work_dir = tmp_dir
     app.state.runners_path = tmp_dir / "runners"
     app.state.tmp_dir = tmp_dir / ".tmp"

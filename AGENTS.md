@@ -14,6 +14,7 @@
 - Delete all unused code (methods, classes, files, imports).
 - Run `poetry run mypy src/` and `poetry run autoflake --remove-all-unused-imports --ignore-init-module-imports --in-place --recursive src/` after every change — both must pass/be clean.
 - Update README.md for user-visible changes.
+- Use all the skills under .agent/skills/* where applicable.
 
 [//]: # (python)
 
@@ -63,3 +64,11 @@
 - Mock external dependencies; avoid `torch`.
 - All tests run in parallel by default (`-n auto`). For serial debugging: `pytest -n 0`.
 - Fixtures for runner/task directories defined in `tests/bdd/conftest.py`.
+
+[//]: # (entry point)
+
+- `run.sh` is the Termux entry point; installs Python + Poetry, then runs the app.
+- Pass `--skip-android-init` to bypass Termux checks (local dev on PC).
+- `main()` in `app.py` parses `sys.argv` for `--skip-android-init`.
+- BDD tests always create the app with `skip_android_init=True`.
+- `android_init.py` contains async checks (Termux env, storage, packages, upgrade) called from `on_mount()`.

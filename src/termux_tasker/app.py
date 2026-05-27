@@ -1,21 +1,30 @@
 from __future__ import annotations
 
 import shutil
+import sys
+from typing import Optional
 
 from textual.app import App
 
+from termux_tasker.android_init import InitResult, run_android_checks
 from termux_tasker.app_state import AppState
 from termux_tasker.config import AppConfig, RunnerSettings
-from termux_tasker.ui.base.screen import ConfirmationScreen, LoadingScreen
+from termux_tasker.ui.base.screen import (
+    ConfirmationScreen, InfoScreen, LoadingScreen,
+)
 from termux_tasker.ui.screens.main_menu import MainMenuScreen
+
+
+SKIP_ANDROID_FLAG = "--skip-android-init"
 
 
 class TermuxTaskerApp(App[None]):
     BINDINGS = [("ctrl+q", "quit", "Exit")]
 
-    def __init__(self, app_version: str) -> None:
+    def __init__(self, app_version: str, skip_android_init: bool = False) -> None:
         super().__init__()
         self.state = AppState(app_version)
+        self.skip_android_init = skip_android_init
 
     def action_quit(self) -> None:  # type: ignore[override]
         if not self.state.runners:
@@ -50,6 +59,46 @@ class TermuxTaskerApp(App[None]):
     def on_mount(self) -> None:
         self.state.ensure_dirs()
         self._ensure_app_config()
+
+        if self.skip_android_init:
+            self.push_screen(MainMenuScreen())
+        else:
+            self.run_worker(self._android_init_flow())
+
+    async def _android_init_flow(self) -> None:
+        """Show loading screen, run Android checks, handle issues."""
+        loading = LoadingScreen("Starting up — checking Android environment...")
+        await self.push_screen(loading)
+
+        result: InitResult = await run_android_checks(self.state.app_config_file)
+
+        await loading.dismiss(None)
+
+        if result.has_critical:
+            await self.push_screen(
+                InfoScreen(
+                    message="\n\n".join(i.message for i in result.issues),
+                    severity="error",
+                    button_text="Close",
+                ),
+                self._on_critical_init_result,
+            )
+        elif result.issues:
+            await self.push_screen(
+                InfoScreen(
+                    message="\n\n".join(i.message for i in result.issues),
+                    severity="warning",
+                    button_text="Ok",
+                ),
+                self._on_noncritical_init_result,
+            )
+        else:
+            await self.push_screen(MainMenuScreen())
+
+    def _on_critical_init_result(self, _result: Optional[None]) -> None:
+        self.exit()
+
+    def _on_noncritical_init_result(self, _result: Optional[None]) -> None:
         self.push_screen(MainMenuScreen())
 
     def _ensure_app_config(self) -> None:
@@ -69,12 +118,15 @@ class TermuxTaskerApp(App[None]):
 
 def main() -> None:
     import importlib.metadata
+
+    skip_android = SKIP_ANDROID_FLAG in sys.argv
+
     try:
         version = importlib.metadata.version("termux-tasker")
     except importlib.metadata.PackageNotFoundError:
         version = "0.1.0"
 
-    app = TermuxTaskerApp(app_version=version)
+    app = TermuxTaskerApp(app_version=version, skip_android_init=skip_android)
     app.run()
 
 

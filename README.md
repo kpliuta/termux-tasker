@@ -15,6 +15,7 @@ Termux Tasker provides a terminal UI to run and monitor shell-based automation o
 src/termux_tasker/
 ├── app.py                # App entry point & lifecycle
 ├── app_state.py          # Global state (directories, runners, sessions)
+├── android_init.py       # Termux/Android environment checks at startup
 ├── config.py             # TOML-based config models (dataclasses + caching)
 ├── runner_process.py     # Runner execution loop (asyncio-based)
 ├── runner_validator.py   # Runner metadata & structure validation
@@ -47,7 +48,7 @@ src/termux_tasker/
 
 ### Data flow
 
-1. App starts → creates work directories (`~/.termux-tasker/`) → shows **Main Menu**.
+1. App starts → Android init checks (Termux environment, storage, dependencies) with a **Loading Screen** → shows **Main Menu** (or error screen if critical issues).
 2. User navigates to **Runners** → sees installed runners (polled every 1s from disk).
 3. User presses **Install Runner** → selects source (Bundled / GitHub URL / Local) → repository is cloned/copied → metadata validated → version selected → runner installed under `runners/<id>/`.
 4. From **Runner Menu**, user can enable/disable, view logs, set properties, or open **Tasks**.
@@ -105,14 +106,13 @@ Environment variables are injected alongside placeholders:
 - **Task properties** → `VAR_<PROPERTY_NAME>` (`before-task`, `task-exec`, `after-task` only)
 - **Output directory** → `OUTPUT_DIR` (`before-task`, `task-exec`, `after-task` only)
 
-## Installation
+## Local development (PC)
 
 ```bash
-# Production
 poetry install
 
-# Development
-poetry install --extras dev
+# Launch without Android-specific checks
+poetry run python -m termux_tasker.app --skip-android-init
 ```
 
 Requires **Python ≥3.13** and dependencies: `textual`, `tomlkit`, `packaging`.
@@ -120,8 +120,13 @@ Requires **Python ≥3.13** and dependencies: `textual`, `tomlkit`, `packaging`.
 ## Usage
 
 ```bash
-# Launch the TUI
-poetry run termux-tasker
+# Launch the TUI (Android / Termux) — installs Python + Poetry if needed
+./run.sh
+
+# Launch on PC (skip Android checks)
+./run.sh --skip-android-init
+# or
+poetry run python -m termux_tasker.app --skip-android-init
 ```
 
 ### Key bindings
