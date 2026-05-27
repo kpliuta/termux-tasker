@@ -153,6 +153,21 @@ task-exec = "echo {task_path}"
 command = "test -f {task_path}/required_file"
 """
 
+RUNNER_WITH_TASK_DIR_NAME_VALIDATOR = """\
+[general]
+id = "test-runner"
+name = "Test Runner"
+version = "0.1.0"
+url = "https://github.com/user/test-runner"
+app_min_version = ">=0.1.0"
+
+[exec]
+task-exec = "echo {task_path}"
+
+[[task-validator]]
+command = "test -d tasks/{task_dir_name}"
+"""
+
 
 class TestTaskValidatorRunnerCompatibility:
     def test_compatible(self, tmp_dir: Path) -> None:
@@ -239,6 +254,22 @@ class TestTaskValidatorRunnerValidators:
         task_path.mkdir()
         (task_path / "metadata.toml").write_text(VALID_TASK_METADATA)
         (task_path / "required_file").write_text("content")
+
+        validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
+        validator.validate_metadata_existed()
+        validator.validate_metadata_structure()
+        validator.check_runner_compatibility()
+        validator.execute_runner_validators()
+
+    def test_task_dir_name_substituted_in_validator(self, tmp_dir: Path) -> None:
+        runner_path = tmp_dir / "runner"
+        runner_path.mkdir()
+        (runner_path / "metadata.toml").write_text(RUNNER_WITH_TASK_DIR_NAME_VALIDATOR)
+        (runner_path / "tasks").mkdir()
+
+        task_path = runner_path / "tasks" / "test-task"
+        task_path.mkdir(parents=True)
+        (task_path / "metadata.toml").write_text(VALID_TASK_METADATA)
 
         validator = TaskValidator(runner_path, task_path, tmp_dir / ".tmp")
         validator.validate_metadata_existed()

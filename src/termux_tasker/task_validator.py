@@ -216,9 +216,10 @@ class TaskValidator:
 
         These are arbitrary shell commands defined in the runner's
         metadata.toml ([[task-validator]]).  Each command receives
-        ``{task_path}`` substituted.  The task is considered invalid
-        if any command returns a non-zero exit code.  Stderr is captured
-        and truncated to the last 5 lines for error reporting.
+        ``{task_path}`` and ``{task_dir_name}`` substituted.  The task
+        is considered invalid if any command returns a non-zero exit code.
+        Stderr is captured and truncated to the last 5 lines for error
+        reporting.
 
         Security note: the validator commands come from the runner that
         the user chose to install — they are not untrusted input.
@@ -246,7 +247,7 @@ class TaskValidator:
             stdout_file.unlink(missing_ok=True)
             stderr_file.unlink(missing_ok=True)
 
-            command = tv.command.replace("{task_path}", str(self.task_path))
+            command = tv.command.replace("{task_path}", str(self.task_path)).replace("{task_dir_name}", self.task_path.name)
             full_command = f"{command} > {stdout_file} 2> {stderr_file}"
 
             try:

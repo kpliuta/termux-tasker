@@ -92,10 +92,11 @@ The `$OUTPUT_DIR` environment variable is injected into all task-level commands 
 
 Placeholders are optional.
 
-| Placeholder | Description | Available in | Optional |
-|---|---|---|---|
-| `{runner_path}` | Absolute path of the runner's directory | All steps | Yes |
-| `{task_path}` | Absolute path of the current task's directory | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes |
+| Placeholder       | Description                                               | Available in                                                   | Optional |
+|-------------------|-----------------------------------------------------------|----------------------------------------------------------------|----------|
+| `{runner_path}`   | Absolute path of the runner's directory                   | All steps                                                      | Yes      |
+| `{task_path}`     | Absolute path of the current task's directory             | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes      |
+| `{task_dir_name}` | Directory name (basename) of the current task's directory | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes      |
 
 Runner-level steps (`initialization`, `before-exec`, `after-exec`, `termination`) run outside any task context — only `{runner_path}` is available there.
 

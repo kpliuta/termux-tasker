@@ -91,12 +91,18 @@ def _create_proc(runner_path: Path, tmp_dir: Path) -> RunnerProcess:
     return proc
 
 
-def _assert_placeholder_substituted(cmd: str, runner_path: Path, task_path: Path | None = None) -> None:
+def _assert_placeholder_substituted(
+    cmd: str, runner_path: Path, task_path: Path | None = None,
+    task_dir_name: str | None = None,
+) -> None:
     assert str(runner_path) in cmd
     assert "{runner_path}" not in cmd
     if task_path:
         assert str(task_path) in cmd
         assert "{task_path}" not in cmd
+    if task_dir_name:
+        assert task_dir_name in cmd
+        assert "{task_dir_name}" not in cmd
 
 
 class TestParseTimeout:
@@ -263,3 +269,17 @@ class TestPlaceholderSubstitution:
         await proc._run_task_cmd("echo {runner_path} {task_path}", task_path)
 
         _assert_placeholder_substituted(mock_subprocess.call_args.args[2], runner_path, task_path)
+
+    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
+    async def test_task_dir_name_in_task_exec(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        mock_subprocess.return_value = _mock_proc()
+
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        await proc._run_task_cmd("echo {runner_path} {task_path} {task_dir_name}", task_path)
+
+        _assert_placeholder_substituted(
+            mock_subprocess.call_args.args[2], runner_path, task_path,
+            task_dir_name=task_path.name,
+        )
