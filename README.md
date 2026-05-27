@@ -82,6 +82,12 @@ initialization
                       └─ after-task
 ```
 
+### Output directory
+
+Each task gets an `output/` subdirectory at `$task_path/output`. It is automatically created before the task's `before-task`, `task-exec`, and `after-task` commands run. Task scripts can use this directory to store output files, logs, artifacts, etc.
+
+The `$OUTPUT_DIR` environment variable is injected into all task-level commands (`before-task`, `task-exec`, `after-task`), pointing to the absolute path of this directory.
+
 ### Placeholder interpolation in exec commands
 
 Placeholders are optional.
@@ -96,6 +102,7 @@ Runner-level steps (`initialization`, `before-exec`, `after-exec`, `termination`
 Environment variables are injected alongside placeholders:
 - **Runner properties** → `VAR_<PROPERTY_NAME>` (all steps)
 - **Task properties** → `VAR_<PROPERTY_NAME>` (`before-task`, `task-exec`, `after-task` only)
+- **Output directory** → `OUTPUT_DIR` (`before-task`, `task-exec`, `after-task` only)
 
 ## Installation
 
@@ -135,6 +142,7 @@ Main Menu
 │   │   │   ├── [Task] → Task Menu
 │   │   │   │   ├── Enable/Disable
 │   │   │   │   ├── Show metadata/settings (view files)
+│   │   │   │   ├── Show output (file browser, read-only)
 │   │   │   │   ├── Set Timeout
 │   │   │   │   ├── Set Properties
 │   │   │   │   ├── Update (version selection)

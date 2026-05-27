@@ -87,3 +87,19 @@ Feature: Task Menu
     And it waits (polling every 0.5s) until the task state becomes "stopped"
     Then the task directory is deleted
     And the screen is popped
+
+  Scenario: Show output button visible when output dir exists
+    Given the output directory exists
+    And the Task Menu screen is shown for a task
+    Then it contains "Show output" button
+
+  Scenario: Show output button hidden when output dir does not exist
+    Given the Task Menu screen is shown for a task
+    Then it does NOT contain "Show output" button
+
+  Scenario: Open output viewer from task menu
+    Given the output directory exists and contains files
+    And the Task Menu screen is shown for a task
+    When I press "Show output" button
+    Then a FileBrowserScreen is shown
+    And the output listing shows all files

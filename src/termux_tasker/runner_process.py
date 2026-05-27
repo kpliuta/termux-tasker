@@ -107,6 +107,8 @@ class RunnerProcess:
         env = os.environ.copy()
         for key, val in self.settings.properties.items():
             env[_to_env_key(key)] = val
+        if task_path is not None:
+            env["OUTPUT_DIR"] = str(task_path / "output")
         if extra_env:
             env.update(extra_env)
         proc = await asyncio.create_subprocess_exec(
@@ -228,6 +230,9 @@ class RunnerProcess:
 
                     task_meta = TaskMetadata.load(task_path / "metadata.toml")
                     self._log(f"Run task: {task_meta.general.id}")
+
+                    output_dir = task_path / "output"
+                    output_dir.mkdir(parents=True, exist_ok=True)
 
                     self._change_runner_state("before-task")
                     if self.metadata.exec.before_task:

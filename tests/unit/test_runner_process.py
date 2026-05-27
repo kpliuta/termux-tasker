@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -182,6 +183,52 @@ class TestAppSessionId:
         state = AppState("0.1.0")
         assert len(state.session_id) == 36
         assert state.session_id.count("-") == 4
+
+
+@pytest.mark.asyncio
+class TestOutputDir:
+    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
+    async def test_output_dir_created_before_task_exec(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        mock_subprocess.return_value = _mock_proc()
+
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        proc.shutting_down = False
+        proc._run_lock = False
+        loop_task = asyncio.create_task(proc._run_loop())
+        await asyncio.sleep(0.05)
+        proc.shutting_down = True
+        await loop_task
+
+        output_dir = task_path / "output"
+        assert output_dir.exists()
+        assert output_dir.is_dir()
+
+    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
+    async def test_output_dir_env_var_set_when_task_path_provided(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        mock_subprocess.return_value = _mock_proc()
+
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        await proc._run_task_cmd("echo test", task_path)
+
+        env = mock_subprocess.call_args.kwargs["env"]
+        assert "OUTPUT_DIR" in env
+        assert env["OUTPUT_DIR"] == str(task_path / "output")
+
+    @patch("termux_tasker.runner_process.asyncio.create_subprocess_exec")
+    async def test_output_dir_env_var_not_set_without_task_path(self, mock_subprocess: AsyncMock, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        mock_subprocess.return_value = _mock_proc()
+
+        proc = _create_proc(runner_path, tmp_dir)
+        await proc._run_loop()
+
+        for call in mock_subprocess.call_args_list:
+            env = call.kwargs["env"]
+            assert "OUTPUT_DIR" not in env, f"OUTPUT_DIR was set in env for call: {call}"
 
 
 @pytest.mark.asyncio

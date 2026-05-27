@@ -269,6 +269,16 @@ def then_contains_button(pilot, label: str) -> None:
     ui(pilot).assert_has_button(label)
 
 
+@then('it contains "Show output" button')
+def then_contains_show_output(pilot) -> None:
+    ui(pilot).assert_has_button("Show output")
+
+
+@then('it does NOT contain "Show output" button')
+def then_not_contains_show_output(pilot) -> None:
+    assert not ui(pilot).has_button("Show output"), "Button 'Show output' was found but should not be present"
+
+
 @then('it has "Yes" and "No" buttons')
 def then_yes_no_buttons(pilot) -> None:
     assert ui(pilot).has_button("Yes") or bool(
@@ -721,6 +731,12 @@ def then_error_flow(pilot) -> None:
     )
 
 
+@then("a FileBrowserScreen is shown")
+def then_file_browser_shown(pilot) -> None:
+    ui(pilot).assert_screen(FileBrowserScreen)
+
+
+@then("a LogScreen is shown")
 @then("a LogScreen is shown with the runner's stdout file")
 @then("a LogScreen is shown with the runner's metadata file")
 def then_log_screen_shown(pilot) -> None:
@@ -1325,3 +1341,14 @@ def then_prop_name_conversion() -> None:
 @then("runners continue running")
 def then_runners_continue(pilot) -> None:
     assert len(ui(pilot).app.state.runners) > 0
+
+
+@then("the output listing shows all files")
+def then_output_listing_shows(pilot) -> None:
+    from textual.widgets import DirectoryTree
+    ui(pilot).assert_screen(FileBrowserScreen)
+    tree = ui(pilot).app.screen.query_one(DirectoryTree)
+    labels = [str(child.label) for child in tree.root.children]
+    assert "result.txt" in labels, f"Expected result.txt in output listing, got: {labels}"
+    has_logs = any("logs" in lbl for lbl in labels)
+    assert has_logs, f"Expected logs in output listing, got: {labels}"

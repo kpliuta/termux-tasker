@@ -378,6 +378,28 @@ def given_existing_content(pilot) -> None:
 def given_content_displayed(pilot) -> None:
     ui(pilot).assert_screen(LogScreen)
 
+@given("the output directory exists")
+def given_output_dir_exists(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    output_dir = task_path / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+
+@given("the output directory exists and contains files")
+def given_output_dir_has_files(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    output_dir = task_path / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "result.txt").write_text("test output")
+    (output_dir / "logs").mkdir()
+
+
 @given("a LogScreen is opened with a TOML file containing `[section]` headers")
 def given_toml_log(pilot) -> None:
     toml_file = ui(pilot).app.state.work_dir / "test.toml"

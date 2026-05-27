@@ -132,6 +132,11 @@ def when_update(pilot) -> None:
     ui(pilot).click_label("Update")
 
 
+@when('I press "Show output" button')
+def when_show_output(pilot) -> None:
+    ui(pilot).click_label("Show output")
+
+
 @when('I press "Reset" button')
 def when_reset(pilot) -> None:
     ui(pilot).click_id("#reset_button")

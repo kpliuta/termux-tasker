@@ -17,6 +17,7 @@ from termux_tasker.ui.base.screen import (
     InfoScreen,
     ConfirmationScreen,
     LogScreen,
+    FileBrowserScreen,
 )
 from termux_tasker.ui.screens._utils import (
     termux_app,
@@ -106,9 +107,8 @@ class TaskMenuScreen(MenuScreen):
             parts.append(f"{prop_name}: {prop_val}")
         return "\n".join(parts)
 
-    @staticmethod
     def _build_items(
-        meta: TaskMetadata, settings: TaskSettings
+        self, meta: TaskMetadata, settings: TaskSettings
     ) -> dict[str, str]:
         items: dict[str, str] = {}
         toggle_label = "Disable" if settings.general.enabled else "Enable"
@@ -120,6 +120,9 @@ class TaskMenuScreen(MenuScreen):
             items[f"Set {prop.name}"] = f"set_{prop.name}"
         items["Update"] = "update"
         items["Uninstall"] = "uninstall"
+        output_dir = self.task_path / "output"
+        if output_dir.exists():
+            items["Show output"] = "show_output"
         return items
 
     @on(Button.Pressed, "#toggle")
@@ -148,6 +151,14 @@ class TaskMenuScreen(MenuScreen):
         event.stop()
         termux_app(self).push_screen(
             LogScreen(content=self.task_path / "settings.toml", show_follow=False)
+        )
+
+    @on(Button.Pressed, "#show_output")
+    def on_show_output(self, event: Button.Pressed) -> None:
+        event.stop()
+        output_dir = self.task_path / "output"
+        termux_app(self).push_screen(
+            FileBrowserScreen(path=output_dir, read_only=True, expand=True)
         )
 
     @on(Button.Pressed, "#set_timeout")
