@@ -92,18 +92,21 @@ class RunnerProcess:
         """Execute a shell command and stream its output to the runner's stdout log.
 
         - Commands are run via ``sh -c``.
-        - Placeholders like ``{task_path}``, ``{task_dir_name}`` and
-          ``{runner_path}`` are substituted before execution.
+        - ``{runner_path}`` is available in runner-level steps only
+          (initialization, before-exec, after-exec, termination).
+        - ``{task_path}`` and ``{task_dir_name}`` are available in
+          task-level steps only (before-task, task-exec, after-task).
         - Environment includes OS env + runner properties as ``VAR_<NAME>`` +
           any extra_env (used for task-specific vars).
         - Subprocess is tracked in self._processes for later termination.
         - Stdout is streamed line-by-line with timestamps to the runner's
           stdout file.
         """
-        cmd = cmd.replace("{runner_path}", str(self.runner_path))
         if task_path is not None:
             cmd = cmd.replace("{task_path}", str(task_path))
             cmd = cmd.replace("{task_dir_name}", task_path.name)
+        else:
+            cmd = cmd.replace("{runner_path}", str(self.runner_path))
         self._log(f"Run: {cmd}")
         env = os.environ.copy()
         for key, val in self.settings.properties.items():
@@ -140,7 +143,7 @@ class RunnerProcess:
         Wraps _run_cmd with task-specific environment and converts errors
         to TaskException (caught by _run_loop as non-fatal).
         """
-        cmd_with_placeholder = cmd.replace("{runner_path}", str(self.runner_path)).replace("{task_path}", str(task_path)).replace("{task_dir_name}", task_path.name)
+        cmd_with_placeholder = cmd.replace("{task_path}", str(task_path)).replace("{task_dir_name}", task_path.name)
         task_settings = TaskSettings.load(task_path / "settings.toml")
         task_env = {_to_env_key(k): v for k, v in task_settings.properties.items()}
         try:

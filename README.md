@@ -94,7 +94,7 @@ Placeholders are optional.
 
 | Placeholder       | Description                                               | Available in                                                   | Optional |
 |-------------------|-----------------------------------------------------------|----------------------------------------------------------------|----------|
-| `{runner_path}`   | Absolute path of the runner's directory                   | All steps                                                      | Yes      |
+| `{runner_path}`   | Absolute path of the runner's directory                   | `initialization`, `before-exec`, `after-exec`, `termination`   | Yes      |
 | `{task_path}`     | Absolute path of the current task's directory             | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes      |
 | `{task_dir_name}` | Directory name (basename) of the current task's directory | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes      |
 
