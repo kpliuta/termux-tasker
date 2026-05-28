@@ -92,8 +92,7 @@ class RunnerProcess:
         """Execute a shell command and stream its output to the runner's stdout log.
 
         - Commands are run via ``sh -c``.
-        - ``{runner_path}`` is available in runner-level steps only
-          (initialization, before-exec, after-exec, termination).
+        - ``{runner_path}`` is available in all lifecycle steps.
         - ``{task_path}`` and ``{task_dir_name}`` are available in
           task-level steps only (before-task, task-exec, after-task).
         - Environment includes OS env + runner properties as ``VAR_<NAME>`` +
@@ -102,11 +101,10 @@ class RunnerProcess:
         - Stdout is streamed line-by-line with timestamps to the runner's
           stdout file.
         """
+        cmd = cmd.replace("{runner_path}", str(self.runner_path))
         if task_path is not None:
             cmd = cmd.replace("{task_path}", str(task_path))
             cmd = cmd.replace("{task_dir_name}", task_path.name)
-        else:
-            cmd = cmd.replace("{runner_path}", str(self.runner_path))
         self._log(f"Run: {cmd}")
         env = os.environ.copy()
         for key, val in self.settings.properties.items():

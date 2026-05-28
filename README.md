@@ -95,11 +95,11 @@ Placeholders are optional.
 
 | Placeholder       | Description                                               | Available in                                                   | Optional |
 |-------------------|-----------------------------------------------------------|----------------------------------------------------------------|----------|
-| `{runner_path}`   | Absolute path of the runner's directory                   | `initialization`, `before-exec`, `after-exec`, `termination`   | Yes      |
+| `{runner_path}`   | Absolute path of the runner's directory                   | All lifecycle steps                                            | Yes      |
 | `{task_path}`     | Absolute path of the current task's directory             | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes      |
 | `{task_dir_name}` | Directory name (basename) of the current task's directory | `before-task`, `task-exec`, `after-task`, `[[task-validator]]` | Yes      |
 
-Runner-level steps (`initialization`, `before-exec`, `after-exec`, `termination`) run outside any task context — only `{runner_path}` is available there.
+`{runner_path}` is available in every step. Task-level placeholders (`{task_path}`, `{task_dir_name}`) are only available in task-context steps.
 
 Environment variables are injected alongside placeholders:
 - **Runner properties** → `VAR_<PROPERTY_NAME>` (all steps)
@@ -109,7 +109,7 @@ Environment variables are injected alongside placeholders:
 ## Local development (PC)
 
 ```bash
-poetry install
+poetry install --extras dev
 
 # Launch without Android-specific checks
 poetry run python -m termux_tasker.app --skip-android-init
