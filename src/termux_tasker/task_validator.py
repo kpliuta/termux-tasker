@@ -257,8 +257,9 @@ class TaskValidator:
                 )
                 if result.returncode != 0:
                     cause = self._read_cause(stderr_file)
+                    desc = f" ({tv.description})" if tv.description else ""
                     raise TaskValidatorException(
-                        message=f"Task validator command failed with exit code {result.returncode}",
+                        message=f"Task validator{desc} ended with non-zero exit code {result.returncode}: {command}",
                         command=tv.command,
                         cause=cause,
                     )

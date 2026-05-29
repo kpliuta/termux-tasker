@@ -162,7 +162,7 @@ class TestTaskValidatorRunnerValidators:
         validator.validate_metadata_existed()
         validator.validate_metadata_structure()
         validator.check_runner_compatibility()
-        with pytest.raises(TaskValidatorException, match="Task validator command failed"):
+        with pytest.raises(TaskValidatorException, match="Task validator ended with non-zero exit code"):
             validator.execute_runner_validators()
 
     def test_required_file_present_passes_validation(self, tmp_dir: Path) -> None:

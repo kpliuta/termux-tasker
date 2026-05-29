@@ -1,6 +1,6 @@
 # Backlog
 
-*Ordered by `priority desc` within each section.*
+*Ordered by `priority desc` within each section. Bugs on the top.*
 
 ## In progress
 
@@ -8,6 +8,11 @@
 
 ## Todo
 
+* `medium` Bug: If runner/installer is installed from main, the version is displayed incorrectly. As a solution the installed version could be kept in the metadata
+* `medium` Bug: Close button on LogScreen is loosing its dimensions in some screen resolutions
+* `medium` Bug: Local Storage should open FileBrowserScreen at /sdcard/ instead of ~/ in Termux env
+* `medium` Bug: TUI hangs on picking up ~/.termux-tasker as Local Storage install
+* `medium` Backspace key should behave the same way as Esc key
 * `medium` Implement runner/task validation tools for external use
 * `low`    Implement ability to install multiple similar tasks
 * `low`    Design autoupgrade mechanism, make it configurable (depends on deliverable format)
