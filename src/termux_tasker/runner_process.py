@@ -121,15 +121,19 @@ class RunnerProcess:
             env=env,
         )
         self._processes.append(proc)
+
         assert proc.stdout is not None
         while True:
             line = await proc.stdout.readline()
             if not line:
                 break
-            timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-            self._stdout_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self._stdout_path, "a") as f:
-                f.write(f"{timestamp} {line.decode(errors='replace').rstrip()}\n")
+            text = line.decode(errors="replace").strip()
+            if text:
+                timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+                self._stdout_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(self._stdout_path, "a") as f:
+                    f.write(f"{timestamp} {text}\n")
+
         return_code = await proc.wait()
         self._processes.remove(proc)
         if return_code != 0:

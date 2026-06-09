@@ -8,12 +8,21 @@
 
 ## Todo
 
+* `high`   Bug: Runner doesn't change Enabled state to False after a critical error, even though State changes to Off correctly. Termination step should play "finally" block role
+* `high`   Bug: Ghost processes are still hanging in the process list even though the runner is terminated (or tasker was killed)
+* `high`   Implement possibility to kill the runner (1) from termination modal screen and (2) from runner menu
 * `medium` Bug: If runner/installer is installed from main, the version is displayed incorrectly. As a solution the installed version could be kept in the metadata
 * `medium` Bug: Close button on LogScreen is loosing its dimensions in some screen resolutions
 * `medium` Bug: Local Storage should open FileBrowserScreen at /sdcard/ instead of ~/ in Termux env
 * `medium` Bug: TUI hangs on picking up ~/.termux-tasker as Local Storage install
-* `medium` Backspace key should behave the same way as Esc key
 * `medium` Implement runner/task validation tools for external use
+* `medium` Implement soft-wrap for LogScreen
+* `low`    Backspace key should behave the same way as Esc key
+* `low`    ConfirmationScreen arrow keys navigation
+* `low`    Move focus to radio buttons on InputScreen opening
+* `low`    Implement true Follow for LogScreen instead of re-reading a file each time
+* `low`    Implement LogScreen params (offset, follow state, soft-wrap) persistence in runner settings.
+* `low`    Implement Clean button to set the LogScreen offset and Reset button that will reset the offset.
 * `low`    Implement ability to install multiple similar tasks
 * `low`    Design autoupgrade mechanism, make it configurable (depends on deliverable format)
 * `low`    Consolidate TCSS and layout for basic components
@@ -22,6 +31,7 @@
 ## Investigation
 
 * `high`   Determine deliverable format and how it will be executed on device
+* `medium` How to sync git version and poetry version?
 * `low`    Explore task-to-runner data sharing (install packages, patches, set runner settings)
 * `low`    Investigate replacing timeout with cron-based scheduling
 
