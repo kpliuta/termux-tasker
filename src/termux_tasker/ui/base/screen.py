@@ -474,6 +474,7 @@ class LogScreen(ModalScreen[None]):
             self,
             content: str | Path = "",
             show_follow: bool = False,
+            soft_wrap: bool = False,
             name: str | None = None,
             id: str | None = None,
             classes: str | None = None,
@@ -481,19 +482,24 @@ class LogScreen(ModalScreen[None]):
         super().__init__(name=name, id=id, classes=classes)
         self.content = content
         self.show_follow = show_follow and isinstance(content, Path)
+        self.soft_wrap = soft_wrap
         self._timer: Any = None
         self._file_pos = 0
 
     def compose(self) -> ComposeResult:
         with Vertical(id="log_dialog"):
-            yield RichLog(highlight=True, markup=False)
+            yield RichLog(highlight=True, markup=False, wrap=self.soft_wrap)
             with Horizontal(id="log_controls"):
+                yield Checkbox("Wrap", id="wrap_checkbox", value=self.soft_wrap)
                 if self.show_follow:
                     yield Checkbox("Follow", id="follow_checkbox")
                     yield Button("Reset", id="reset_button", variant="default")
                 yield Button("Close", id="close_button", variant="primary")
 
     def on_mount(self) -> None:
+        self._load_content()
+
+    def _load_content(self) -> None:
         log = self.query_one(RichLog)
         if isinstance(self.content, Path):
             if self.content.exists():
@@ -514,6 +520,15 @@ class LogScreen(ModalScreen[None]):
             if self._timer:
                 self._timer.stop()
                 self._timer = None
+
+    @on(Checkbox.Changed, "#wrap_checkbox")
+    def on_wrap_changed(self, event: Checkbox.Changed) -> None:
+        event.stop()
+        self.soft_wrap = event.value
+        log = self.query_one(RichLog)
+        log.wrap = event.value
+        log.clear()
+        self._load_content()
 
     def _update_log_from_file(self) -> None:
         if isinstance(self.content, Path) and self.content.exists():

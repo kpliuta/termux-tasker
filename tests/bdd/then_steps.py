@@ -811,6 +811,23 @@ def then_timer_stopped(pilot) -> None:
         assert screen._timer is None    # noqa
 
 
+@then("the soft wrap is disabled (default)")
+@then("the soft wrap is disabled")
+def then_wrap_disabled(pilot) -> None:
+    from textual.widgets import RichLog
+
+    log = ui(pilot).app.screen.query_one(RichLog)
+    assert log.wrap is False
+
+
+@then("the soft wrap is enabled")
+def then_wrap_enabled(pilot) -> None:
+    from textual.widgets import RichLog
+
+    log = ui(pilot).app.screen.query_one(RichLog)
+    assert log.wrap is True
+
+
 @then("the follow timer is started (1 second interval)")
 def then_timer_started(pilot) -> None:
     screen = ui(pilot).app.screen

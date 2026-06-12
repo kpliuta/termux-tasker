@@ -39,3 +39,11 @@ Feature: Log Screen
     Then the follow timer is stopped
     When I check the "Follow" checkbox again
     Then the follow timer is started (1 second interval)
+
+  Scenario: Toggle soft wrap on/off
+    Given a LogScreen is opened with a file path
+    Then the soft wrap is disabled (default)
+    When I check the "Wrap" checkbox
+    Then the soft wrap is enabled
+    When I uncheck the "Wrap" checkbox
+    Then the soft wrap is disabled

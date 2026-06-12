@@ -245,6 +245,22 @@ def when_uncheck_follow(pilot) -> None:
     ui(pilot).pause()
 
 
+@when('I uncheck the "Wrap" checkbox')
+def when_uncheck_wrap(pilot) -> None:
+    cb = ui(pilot).app.screen.query_one("#wrap_checkbox")
+    if cb.value:
+        ui(pilot).click_id("#wrap_checkbox")
+    ui(pilot).pause()
+
+
+@when('I check the "Wrap" checkbox')
+def when_check_wrap(pilot) -> None:
+    cb = ui(pilot).app.screen.query_one("#wrap_checkbox")
+    if not cb.value:
+        ui(pilot).click_id("#wrap_checkbox")
+    ui(pilot).pause()
+
+
 @when('I check the "Follow" checkbox again')
 def when_check_follow(pilot) -> None:
     cb = ui(pilot).app.screen.query_one("#follow_checkbox")

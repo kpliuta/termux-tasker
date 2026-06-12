@@ -16,13 +16,13 @@
 * `medium` Bug: Local Storage should open FileBrowserScreen at /sdcard/ instead of ~/ in Termux env
 * `medium` Bug: TUI hangs on picking up ~/.termux-tasker as Local Storage install
 * `medium` Implement runner/task validation tools for external use
-* `medium` Implement soft-wrap for LogScreen
 * `low`    Backspace key should behave the same way as Esc key
 * `low`    ConfirmationScreen arrow keys navigation
 * `low`    Move focus to radio buttons on InputScreen opening
 * `low`    Implement true Follow for LogScreen instead of re-reading a file each time
 * `low`    Implement LogScreen params (offset, follow state, soft-wrap) persistence in runner settings.
 * `low`    Implement Clean button to set the LogScreen offset and Reset button that will reset the offset.
+* `low`    Implement Beginning/End navigation buttons on the LogScreen.
 * `low`    Implement ability to install multiple similar tasks
 * `low`    Design autoupgrade mechanism, make it configurable (depends on deliverable format)
 * `low`    Consolidate TCSS and layout for basic components
@@ -41,6 +41,7 @@
 * `high`   Implement `{runner_path}` placeholder resolution for initialization, before-exec, after-exec, termination steps
 * `high`   Introduce an output directory for task output resources (`$task_path/output`, create if not existed before task execution) with `$OUTPUT_DIR` env var passed to before-task, task-exec, after-task steps, and new item in task menu (visible only when output directory existed) which opens file viewer with only close button
 * `high`   Rename `task_dir` → `task_path` and `runner_dir` → `runner_path` throughout the codebase
+* `medium` Implement soft-wrap for LogScreen
 
 ## Cancelled
 
