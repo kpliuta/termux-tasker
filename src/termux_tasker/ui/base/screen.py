@@ -13,7 +13,7 @@ from textual.reactive import reactive
 from textual.screen import Screen, ModalScreen
 from textual.widgets import (
     Header, Footer, Button, Static, DirectoryTree, Input,
-    Checkbox, RadioButton, RadioSet, LoadingIndicator, RichLog
+    Checkbox, RadioButton, RadioSet, LoadingIndicator,
 )
 
 _HERE = Path(__file__).parent
@@ -459,102 +459,3 @@ class LoadingScreen(ModalScreen[None]):
         self.query_one("#loading_message", Static).update(message)
 
 
-class LogScreen(ModalScreen[None]):
-    """A modal screen for displaying logs with an optional 'follow' feature.
-
-    When follow mode is enabled (via a Checkbox), a 1-second interval timer
-    polls the file for new content and appends it to the RichLog widget.
-    Tracks ``_file_pos`` to read incrementally.
-    """
-
-    CSS_PATH = _HERE / "log_screen.tcss"
-    BINDINGS = [("escape", "close", "Close")]
-
-    def __init__(
-            self,
-            content: str | Path = "",
-            show_follow: bool = False,
-            soft_wrap: bool = False,
-            name: str | None = None,
-            id: str | None = None,
-            classes: str | None = None,
-    ) -> None:
-        super().__init__(name=name, id=id, classes=classes)
-        self.content = content
-        self.show_follow = show_follow and isinstance(content, Path)
-        self.soft_wrap = soft_wrap
-        self._timer: Any = None
-        self._file_pos = 0
-
-    def compose(self) -> ComposeResult:
-        with Vertical(id="log_dialog"):
-            yield RichLog(highlight=True, markup=False, wrap=self.soft_wrap)
-            with Horizontal(id="log_controls"):
-                yield Checkbox("Wrap", id="wrap_checkbox", value=self.soft_wrap)
-                if self.show_follow:
-                    yield Checkbox("Follow", id="follow_checkbox")
-                    yield Button("Reset", id="reset_button", variant="default")
-                yield Button("Close", id="close_button", variant="primary")
-
-    def on_mount(self) -> None:
-        self._load_content()
-
-    def _load_content(self) -> None:
-        log = self.query_one(RichLog)
-        if isinstance(self.content, Path):
-            if self.content.exists():
-                with open(self.content, "rb") as f:
-                    data = f.read()
-                    log.write(data.decode(errors="replace").rstrip("\n"))
-                    self._file_pos = f.tell()
-            else:
-                log.write(f"File not found: {self.content}")
-        else:
-            log.write(self.content)
-
-    @on(Checkbox.Changed, "#follow_checkbox")
-    def on_follow_changed(self, event: Checkbox.Changed) -> None:
-        if event.value:
-            self._timer = self.set_interval(1.0, self._update_log_from_file)
-        else:
-            if self._timer:
-                self._timer.stop()
-                self._timer = None
-
-    @on(Checkbox.Changed, "#wrap_checkbox")
-    def on_wrap_changed(self, event: Checkbox.Changed) -> None:
-        event.stop()
-        self.soft_wrap = event.value
-        log = self.query_one(RichLog)
-        log.wrap = event.value
-        log.clear()
-        self._load_content()
-
-    def _update_log_from_file(self) -> None:
-        if isinstance(self.content, Path) and self.content.exists():
-            log = self.query_one(RichLog)
-            with open(self.content, "rb") as f:
-                f.seek(self._file_pos)
-                data = f.read()
-                self._file_pos = f.tell()
-            if data:
-                log.write(data.decode(errors="replace").rstrip("\n"))
-
-    @on(Button.Pressed, "#reset_button")
-    def on_reset(self, event: Button.Pressed) -> None:
-        event.stop()
-        if isinstance(self.content, Path) and self.content.exists():
-            self._file_pos = self.content.stat().st_size
-            self.query_one(RichLog).clear()
-
-    @on(Button.Pressed, "#close_button")
-    def on_close(self, event: Button.Pressed) -> None:
-        event.stop()
-        if self._timer:
-            self._timer.stop()
-        self.dismiss(None)
-
-    def action_close(self) -> None:
-        if self._timer:
-            self._timer.stop()
-        self.dismiss(None)

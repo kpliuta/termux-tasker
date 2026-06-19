@@ -6,7 +6,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Button
 
-from termux_tasker.ui.base.screen import LogScreen
+from termux_tasker.ui.base.log_screen import LogScreen
 
 _LONG_LINE = "Long line with spaces: " + " ".join(f"word{i}" for i in range(40))
 

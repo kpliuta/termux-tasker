@@ -8,13 +8,13 @@ from textual.widgets import Button
 
 from termux_tasker.config import RunnerMetadata, RunnerSettings
 from termux_tasker.runner_process import RunnerProcess
+from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base.screen import (
     MenuScreen,
     LoadingScreen,
     InputScreen,
     InfoScreen,
     ConfirmationScreen,
-    LogScreen,
 )
 from termux_tasker.ui.screens._utils import (
     termux_app,

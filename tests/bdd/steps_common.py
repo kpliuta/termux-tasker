@@ -11,13 +11,13 @@ from termux_tasker.runner_process import RunnerProcess, _parse_timeout  # noqa
 from termux_tasker.runner_validator import RunnerValidator
 from termux_tasker.task_validator import TaskValidator, TaskValidatorException
 
+from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base.screen import (
     ConfirmationScreen,
     FileBrowserScreen,
     InfoScreen,
     InputScreen,
     LoadingScreen,
-    LogScreen,
 )
 from termux_tasker.ui.screens.main_menu import MainMenuScreen
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen

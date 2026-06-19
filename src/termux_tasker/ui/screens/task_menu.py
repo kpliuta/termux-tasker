@@ -10,13 +10,13 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, TaskSettings
+from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base.screen import (
     MenuScreen,
     LoadingScreen,
     InputScreen,
     InfoScreen,
     ConfirmationScreen,
-    LogScreen,
     FileBrowserScreen,
 )
 from termux_tasker.ui.screens._utils import (
