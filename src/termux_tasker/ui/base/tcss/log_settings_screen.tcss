@@ -1,0 +1,32 @@
+LogSettingsScreen {
+    align: center middle;
+}
+
+#log_settings_dialog {
+    width: 80%;
+    height: 80%;
+    border: tall $primary;
+    background: $surface;
+    padding: 0 1;
+}
+
+#settings_scrollable {
+    height: 1fr;
+    overflow-y: scroll;
+}
+
+#settings_scrollable > * {
+    margin: 1;
+    width: 1fr;
+}
+
+#help_close_row {
+    height: auto;
+    align: center middle;
+    margin-top: 1;
+}
+
+#help_close_row Button {
+    width: 1fr;
+    margin: 0 2;
+}

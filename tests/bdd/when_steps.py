@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import shutil
+
+import termux_tasker.ui.screens.install_runner_version as _irv_mod  # noqa
+
 from tests.bdd.steps_common import *  # noqa
 
 
@@ -10,7 +14,12 @@ def when_show_runners(pilot) -> None:
 
 @when('I press "Settings" button')
 def when_settings(pilot) -> None:
-    ui(pilot).click_id("#settings")
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
+    else:
+        ui(pilot).click_id("#settings")
 
 
 @when('I press "Exit" button')
@@ -137,9 +146,10 @@ def when_show_output(pilot) -> None:
     ui(pilot).click_label("Show output")
 
 
-@when('I press "Reset" button')
-def when_reset(pilot) -> None:
-    ui(pilot).click_id("#reset_button")
+@when('I press "Close" button in Settings')
+def when_close_settings(pilot) -> None:
+    ui(pilot).click_label("Close")
+    ui(pilot).pause()
 
 
 @when("I press Ctrl+Q")
@@ -237,40 +247,69 @@ def when_dismiss_warning(pilot) -> None:
     ui(pilot).click_id("#info_button")
 
 
-@when('I uncheck the "Follow" checkbox')
-def when_uncheck_follow(pilot) -> None:
-    cb = ui(pilot).app.screen.query_one("#follow_checkbox")
-    if cb.value:
-        ui(pilot).click_id("#follow_checkbox")
+@when('I enable Auto-scroll in Settings')
+def when_enable_auto_scroll(pilot) -> None:
+    if isinstance(ui(pilot).app.screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
+    cb = ui(pilot).app.screen.query_one("#auto_scroll_checkbox")
+    if not cb.value:
+        ui(pilot).click_id("#auto_scroll_checkbox")
     ui(pilot).pause()
 
 
-@when('I uncheck the "Wrap" checkbox')
-def when_uncheck_wrap(pilot) -> None:
-    cb = ui(pilot).app.screen.query_one("#wrap_checkbox")
+@when('I disable Auto-scroll in Settings')
+def when_disable_auto_scroll(pilot) -> None:
+    if isinstance(ui(pilot).app.screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
+    cb = ui(pilot).app.screen.query_one("#auto_scroll_checkbox")
     if cb.value:
-        ui(pilot).click_id("#wrap_checkbox")
+        ui(pilot).click_id("#auto_scroll_checkbox")
     ui(pilot).pause()
 
 
-@when('I check the "Wrap" checkbox')
-def when_check_wrap(pilot) -> None:
+@when('I click "Clear Screen" in Settings')
+def when_clear_screen(pilot) -> None:
+    if isinstance(ui(pilot).app.screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
+    ui(pilot).click_id("#clear_screen_button")
+    ui(pilot).pause()
+
+
+@when('I check "Word Wrap" in Settings')
+def when_check_wrap_in_settings(pilot) -> None:
+    if isinstance(ui(pilot).app.screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
     cb = ui(pilot).app.screen.query_one("#wrap_checkbox")
     if not cb.value:
         ui(pilot).click_id("#wrap_checkbox")
     ui(pilot).pause()
 
 
-@when('I check the "Follow" checkbox again')
-def when_check_follow(pilot) -> None:
-    cb = ui(pilot).app.screen.query_one("#follow_checkbox")
-    if not cb.value:
-        ui(pilot).click_id("#follow_checkbox")
+@when('I uncheck "Word Wrap" in Settings')
+def when_uncheck_wrap_in_settings(pilot) -> None:
+    if isinstance(ui(pilot).app.screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
+    cb = ui(pilot).app.screen.query_one("#wrap_checkbox")
+    if cb.value:
+        ui(pilot).click_id("#wrap_checkbox")
+    ui(pilot).pause()
+
+
+@when('I open Help from Settings')
+def when_open_help(pilot) -> None:
+    if isinstance(ui(pilot).app.screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
+    ui(pilot).click_id("#help_button")
     ui(pilot).pause()
 
 
 @when("new content is appended to the file")
-@when("new content is written to the file")
 def when_append_content(pilot) -> None:
     log_file = ui(pilot).app.state.work_dir / "follow.log"
     fs().append_text(log_file, "new content\n")
@@ -300,7 +339,6 @@ def when_confirm_install(pilot) -> None:
 
 @when("the install finalizes")
 def when_install_finalizes(pilot) -> None:
-    from termux_tasker.ui.base.screen import InputScreen
     if isinstance(ui(pilot).app.screen, InputScreen):
         ui(pilot).set_value("#input_field", "test_value")
         ui(pilot).pause()
@@ -328,8 +366,6 @@ def when_provide_all_values(pilot) -> None:
 @when("I install the same runner again with a different version")
 @when("I install the same runner with the same version")
 def when_reinstall_runner(pilot) -> None:
-    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
     from tests.bdd.given_steps import given_runner_type_screen
     given_runner_type_screen(pilot)
     ui(pilot).click_label("GitHub URL")
@@ -359,14 +395,11 @@ def when_invalid_url(pilot) -> None:
 def when_runner_disk_change(pilot) -> None:
     runner_path = ui(pilot).app.state.runners_path / "sh_runner"
     if runner_path.exists():
-        import shutil
         shutil.rmtree(runner_path)
 
 
 @when("the git checkout fails")
 def when_git_checkout_fails(pilot) -> None:
-    from termux_tasker.ui.base.screen import ConfirmationScreen
-    import termux_tasker.ui.screens.install_runner_version as _irv_mod
     _irv_mod.git_checkout = lambda _repo, _tag: False  # type: ignore[method-assign]
     tmp_folder = getattr(ui(pilot).app.screen, "tmp_runner_folder", None)
     if tmp_folder:
@@ -426,3 +459,24 @@ def when_runner_shut_down(pilot) -> None:
     ui(pilot).app.state.runners.pop("sh_runner", None)
     runner_path = ui(pilot).app.state.runners_path / "sh_runner"
     settings().set_runner_state(runner_path, "termination")
+
+
+@when('I click "Clear Log File" in Settings')
+def when_click_clear_log_file(pilot) -> None:
+    if isinstance(ui(pilot).app.screen, LogScreen):
+        ui(pilot).click_id("#settings_button")
+        ui(pilot).pause()
+    ui(pilot).click_id("#clear_log_file_button")
+    ui(pilot).pause()
+
+
+@when("I cancel the clear confirmation")
+def when_cancel_clear(pilot) -> None:
+    ui(pilot).click_id("#cancel_button")
+    ui(pilot).pause()
+
+
+@when("I confirm the clear")
+def when_confirm_clear(pilot) -> None:
+    ui(pilot).click_id("#delete_button")
+    ui(pilot).pause()

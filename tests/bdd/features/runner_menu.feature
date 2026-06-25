@@ -56,13 +56,13 @@ Feature: Runner Menu
     Given the Runner Menu screen is shown
     When I press "Show Runner Logs" button
     Then a LogScreen is shown with the runner's stdout file
-    And follow mode is enabled
+    And dynamic mode is enabled
 
   Scenario: View runner metadata
     Given the Runner Menu screen is shown
     When I press "Show metadata.toml" button
     Then a LogScreen is shown with the runner's metadata file
-    And follow mode is disabled
+    And dynamic mode is disabled
 
   Scenario: Update a runner
     Given the Runner Menu screen is shown

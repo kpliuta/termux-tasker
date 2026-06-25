@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import shutil
 import time
 
 from tests.bdd.steps_common import *  # noqa
-from termux_tasker.runner_process import _parse_timeout # noqa
+from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
 
 
 @then("the main menu screen is shown")
@@ -50,16 +51,12 @@ def then_task_type_shown(pilot) -> None:
 
 @then("the Install Runner Version screen is shown")
 def then_install_runner_version_shown(pilot) -> None:
-    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
-
     ui(pilot).assert_screen(InstallRunnerVersionScreen)
 
 
 @then("the Install Runner screen is shown")
 @then("the Install Runner screen is shown with the cloned folder")
 def then_install_runner_screen_shown(pilot) -> None:
-    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-
     for _ in range(50):
         if ui(pilot).screen_is(InstallRunnerScreen):
             return
@@ -69,29 +66,21 @@ def then_install_runner_screen_shown(pilot) -> None:
 
 @then("the Install Task Version screen is shown")
 def then_install_task_version_shown(pilot) -> None:
-    from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
-
     ui(pilot).assert_screen(InstallTaskVersionScreen)
 
 
 @then("the Install Task screen is shown")
 def then_install_task_shown(pilot) -> None:
-    from termux_tasker.ui.screens.install_task import InstallTaskScreen
-
     ui(pilot).assert_screen(InstallTaskScreen)
 
 
 @then("the Bundled Runner screen is shown")
 def then_bundled_runner_screen(pilot) -> None:
-    from termux_tasker.ui.screens.bundled_runner import BundledRunnerScreen
-
     ui(pilot).assert_screen(BundledRunnerScreen)
 
 
 @then("the Bundled Task screen is shown")
 def then_bundled_task_screen(pilot) -> None:
-    from termux_tasker.ui.screens.bundled_task import BundledTaskScreen
-
     ui(pilot).assert_screen(BundledTaskScreen)
 
 
@@ -107,8 +96,6 @@ def then_new_runner_menu_shown(pilot) -> None:
 
 @then("I am returned to the previous screen")
 def then_previous_screen(pilot) -> None:
-    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-    from termux_tasker.ui.screens.install_task import InstallTaskScreen
     assert ui(pilot).screen_is(
         (RunnersScreen, RunnerMenuScreen, MainMenuScreen,
          InstallRunnerScreen, InstallTaskScreen)
@@ -568,8 +555,6 @@ def then_settings_saved(pilot) -> None:
 
 @then("the setting is saved to `app.toml`")
 def then_setting_saved_app_toml(pilot) -> None:
-    from termux_tasker.config import AppConfig
-
     cfg = AppConfig.load(ui(pilot).app.state.app_config_file)
     assert cfg.settings.upgrade_on_startup is not None
 
@@ -743,41 +728,87 @@ def then_log_screen_shown(pilot) -> None:
     ui(pilot).assert_screen(LogScreen)
 
 
-@then("follow mode is enabled")
-def then_follow_enabled(pilot) -> None:
-    screen = ui(pilot).app.screen
-    if hasattr(screen, "show_follow"):
-        assert screen.show_follow is True
+@then("a LogSettingsScreen is shown")
+def then_log_settings_screen_shown(pilot) -> None:
+    assert isinstance(ui(pilot).app.screen, LogSettingsScreen), \
+        f"Expected LogSettingsScreen, got {type(ui(pilot).app.screen).__name__}"
 
 
-@then("follow mode is disabled")
-def then_follow_disabled(pilot) -> None:
+@then("the LogSettingsScreen is dismissed")
+def then_log_settings_dismissed(pilot) -> None:
+    assert not isinstance(ui(pilot).app.screen, LogSettingsScreen)
+
+
+@then("a LogHelpScreen is shown with setting descriptions")
+def then_log_help_screen_shown(pilot) -> None:
+    assert isinstance(ui(pilot).app.screen, LogHelpScreen), \
+        f"Expected LogHelpScreen, got {type(ui(pilot).app.screen).__name__}"
+
+
+@then('only "Word Wrap" setting is visible')
+def then_only_word_wrap_visible(pilot) -> None:
+    assert isinstance(ui(pilot).app.screen, LogSettingsScreen)
+    assert ui(pilot).app.screen.query_one("#wrap_checkbox") is not None
+    assert not ui(pilot).app.screen.query("#auto_scroll_checkbox")
+
+
+@then("there is no Help button in Settings")
+def then_no_help_button_in_settings(pilot) -> None:
     screen = ui(pilot).app.screen
-    if hasattr(screen, "show_follow"):
-        assert screen.show_follow is False
+    assert isinstance(screen, LogSettingsScreen)
+    assert not screen.query("#help_button")
+
+
+@then("dynamic mode is enabled")
+def then_dynamic_enabled(pilot) -> None:
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    if hasattr(screen, "is_dynamic"):
+        assert screen.is_dynamic is True
+
+
+@then("dynamic mode is disabled")
+def then_dynamic_disabled(pilot) -> None:
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    if hasattr(screen, "is_dynamic"):
+        assert screen.is_dynamic is False
 
 
 @then("the file content is displayed in the RichLog widget")
 def then_content_displayed(pilot) -> None:
-    from textual.widgets import RichLog
-
-    log = ui(pilot).app.screen.query_one(RichLog)
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
     assert log is not None
 
 
 @then("the new content appears in the RichLog within 1 second")
 def then_new_content_appears(pilot) -> None:
-    from textual.widgets import RichLog
-
-    log = ui(pilot).app.screen.query_one(RichLog)
-    ui(pilot).pause(1.2)
-    assert log is not None
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
+    deadline = time.monotonic() + 1.5
+    while time.monotonic() < deadline:
+        if any("new content" in str(s) for s in log.lines):
+            return
+        pilot.pause(0.05)
+    rendered_text = " | ".join(str(s) for s in log.lines)
+    raise AssertionError(
+        f"'new content' not found in RichLog within 1.5 seconds\nLines: {rendered_text!r}"
+    )
 
 
 @then("previously displayed content is not duplicated")
 def then_no_duplicates(pilot) -> None:
-    from textual.widgets import RichLog
-    log = ui(pilot).app.screen.query_one(RichLog)
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
     lines = str(log.render()) if hasattr(log, 'render') else ''
     unique_lines = set(lines.split('\n'))
     assert len(lines.split('\n')) >= len(unique_lines), "Duplicated content detected"
@@ -785,15 +816,18 @@ def then_no_duplicates(pilot) -> None:
 
 @then("the RichLog display is cleared")
 def then_richlog_cleared(pilot) -> None:
-    from textual.widgets import RichLog
-
-    log = ui(pilot).app.screen.query_one(RichLog)
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
     assert log is not None
 
 
 @then("the file read position is moved to the end of the file")
 def then_file_pos_moved(pilot) -> None:
     screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
     if hasattr(screen, "_file_pos"):
         assert screen._file_pos > 0 # noqa
 
@@ -807,6 +841,8 @@ def then_only_new_content(pilot) -> None:
 @then("the follow timer is stopped")
 def then_timer_stopped(pilot) -> None:
     screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
     if hasattr(screen, "_timer"):
         assert screen._timer is None    # noqa
 
@@ -814,40 +850,46 @@ def then_timer_stopped(pilot) -> None:
 @then("the soft wrap is disabled (default)")
 @then("the soft wrap is disabled")
 def then_wrap_disabled(pilot) -> None:
-    from textual.widgets import RichLog
-
-    log = ui(pilot).app.screen.query_one(RichLog)
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
     assert log.wrap is False
 
 
 @then("the soft wrap is enabled")
 def then_wrap_enabled(pilot) -> None:
-    from textual.widgets import RichLog
-
-    log = ui(pilot).app.screen.query_one(RichLog)
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
     assert log.wrap is True
 
 
 @then("the follow timer is started (1 second interval)")
 def then_timer_started(pilot) -> None:
     screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
     if hasattr(screen, "_timer"):
         assert screen._timer is not None    # noqa
 
 
 @then("the square brackets are displayed literally")
 def then_brackets_literal(pilot) -> None:
-    from textual.widgets import RichLog
-
-    log = ui(pilot).app.screen.query_one(RichLog)
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
     assert log is not None
 
 
 @then("not interpreted as Textual markup")
 def then_not_markup(pilot) -> None:
-    from textual.widgets import RichLog
-
-    log = ui(pilot).app.screen.query_one(RichLog)
+    screen = ui(pilot).app.screen
+    if isinstance(screen, LogSettingsScreen):
+        screen = screen._log_screen
+    log = screen.query_one(RichLog)
     assert log.markup is False
 
 
@@ -1127,7 +1169,6 @@ def then_task_validator_run(pilot) -> None:
     screen = ui(pilot).app.screen
     tmp = getattr(screen, "tmp_runner_folder", None) or getattr(screen, "task_folder", None)
     if tmp and (tmp / "metadata.toml").exists():
-        from termux_tasker.task_validator import TaskValidator
         validator = TaskValidator(tmp)
         assert validator is not None
 
@@ -1310,7 +1351,6 @@ def then_task_path_deleted(pilot) -> None:
         / "sh_runner" / "tasks" / "sh_runner_task"
     )
     if task_path.exists():
-        import shutil
         shutil.rmtree(task_path)
     assert not task_path.exists()
 
@@ -1348,8 +1388,6 @@ def then_sleep_30s() -> None:
 
 @then("property names are converted to uppercase with non-alphanumeric chars replaced by underscores")
 def then_prop_name_conversion() -> None:
-    from termux_tasker.runner_process import _to_env_key    # noqa
-
     assert _to_env_key("property-1") == "VAR_PROPERTY_1"
     assert _to_env_key("my property") == "VAR_MY_PROPERTY"
     assert _to_env_key("prop.name") == "VAR_PROP_NAME"
@@ -1362,10 +1400,29 @@ def then_runners_continue(pilot) -> None:
 
 @then("the output listing shows all files")
 def then_output_listing_shows(pilot) -> None:
-    from textual.widgets import DirectoryTree
     ui(pilot).assert_screen(FileBrowserScreen)
     tree = ui(pilot).app.screen.query_one(DirectoryTree)
     labels = [str(child.label) for child in tree.root.children]
     assert "result.txt" in labels, f"Expected result.txt in output listing, got: {labels}"
     has_logs = any("logs" in lbl for lbl in labels)
     assert has_logs, f"Expected logs in output listing, got: {labels}"
+
+
+@then("a ConfirmClearScreen is shown")
+def then_confirm_clear_shown(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, ConfirmationScreen), \
+        f"Expected ConfirmationScreen, got {type(screen).__name__}"
+
+
+@then("the log file content is preserved")
+@then("the RichLog display still shows previous content")
+def then_log_content_preserved(pilot) -> None:
+    log_file = ui(pilot).app.state.work_dir / "follow.log"
+    assert log_file.read_text() == "existing content\n"
+
+
+@then("the log file is truncated")
+def then_log_file_truncated(pilot) -> None:
+    log_file = ui(pilot).app.state.work_dir / "follow.log"
+    assert log_file.read_text() == ""

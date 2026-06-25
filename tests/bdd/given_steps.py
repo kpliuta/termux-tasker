@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from tests.bdd.steps_common import *  # noqa
+from tests.bdd.when_steps import when_select_folder
 
 
 @given("the app is launched for the first time")
@@ -45,8 +46,6 @@ def given_type_screen(pilot) -> None:
 
 @given("the Install Runner screen is shown for a git-based runner")
 def given_install_runner_git(pilot) -> None:
-    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-
     given_runner_type_screen(pilot)
     ui(pilot).click_label("GitHub URL")
     ui(pilot).pause()
@@ -58,11 +57,8 @@ def given_install_runner_git(pilot) -> None:
 
 @given("the Install Runner screen is shown for a local runner")
 def given_install_runner_local(pilot) -> None:
-    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-
     given_runner_type_screen(pilot)
     ui(pilot).click_label("Local Storage")
-    from tests.bdd.when_steps import when_select_folder
     when_select_folder(pilot)
     ui(pilot).assert_screen(InstallRunnerScreen)
 
@@ -228,8 +224,6 @@ def given_runner_executing(pilot) -> None:
 
 @given("a task is successfully installed")
 def given_task_installed(pilot) -> None:
-    from termux_tasker.ui.screens.task_menu import TaskMenuScreen
-
     task_path = (
         ui(pilot).app.state.runners_path
         / "sh_runner" / "tasks" / "sh_runner_task"
@@ -288,8 +282,6 @@ def given_mixed_tasks(pilot) -> None:
 @given("I selected a git tag to install")
 @given("the Install Runner Version screen is shown")
 def given_version_selected(pilot) -> None:
-    from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
-    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
     given_runner_type_screen(pilot)
     ui(pilot).click_label("GitHub URL")
     ui(pilot).pause()
@@ -304,8 +296,6 @@ def given_version_selected(pilot) -> None:
 
 @given("I am installing a runner where all properties have defaults or are optional")
 def given_runner_optional_properties(pilot, optional_runner_path: Path) -> None:
-    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
-
     screen = InstallRunnerVersionScreen(optional_runner_path)
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.1)
@@ -322,9 +312,6 @@ def given_property_non_optional(pilot) -> None:
 
 @given("I am installing a runner with non-optional properties without defaults")
 def given_runner_non_optional(pilot, runner_required_dir: Path) -> None:
-    from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
-    from termux_tasker.ui.base.screen import InputScreen
-
     screen = InstallRunnerVersionScreen(runner_required_dir)
     ui(pilot).push_screen(screen)
     ui(pilot).pause(0.1)
@@ -337,9 +324,6 @@ def given_runner_non_optional(pilot, runner_required_dir: Path) -> None:
 
 @given("I am installing a task with non-optional properties without defaults")
 def given_task_non_optional(pilot, task_required_dir: Path) -> None:
-    from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
-    from termux_tasker.ui.base.screen import InputScreen
-
     runner_path = pilot.app.state.runners_path / "sh_runner"
     screen = InstallTaskVersionScreen(runner_path, task_required_dir)
     ui(pilot).push_screen(screen)
@@ -355,15 +339,15 @@ def given_task_non_optional(pilot, task_required_dir: Path) -> None:
 def given_log_screen_file(pilot) -> None:
     log_file = ui(pilot).app.state.work_dir / "test.log"
     fs().write_text(log_file, "line 1\nline 2\nline 3\n")
-    ui(pilot).push_log_screen(log_file, follow=False)
+    ui(pilot).push_log_screen(log_file, is_dynamic=False)
     ui(pilot).assert_screen(LogScreen)
 
 
-@given("a LogScreen is opened with follow mode enabled")
+@given("a LogScreen is opened in dynamic mode")
 def given_log_screen_follow(pilot) -> None:
     log_file = ui(pilot).app.state.work_dir / "follow.log"
     fs().write_text(log_file, "existing content\n")
-    ui(pilot).push_log_screen(log_file, follow=True)
+    ui(pilot).push_log_screen(log_file, is_dynamic=True)
     ui(pilot).assert_screen(LogScreen)
 
 
@@ -404,7 +388,7 @@ def given_output_dir_has_files(pilot) -> None:
 def given_toml_log(pilot) -> None:
     toml_file = ui(pilot).app.state.work_dir / "test.toml"
     fs().write_text(toml_file, '[general]\nname = "test"\nversion = "1.0"\n')
-    ui(pilot).push_log_screen(toml_file, follow=True)
+    ui(pilot).push_log_screen(toml_file, is_dynamic=True)
     ui(pilot).assert_screen(LogScreen)
 
 

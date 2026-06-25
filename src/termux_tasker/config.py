@@ -354,6 +354,13 @@ class RunnerSettingsGeneral:
 
 
 @dataclass
+class LogSettings:
+    soft_wrap: bool = False
+    auto_scroll: bool = False
+    offset: int = 0
+
+
+@dataclass
 class SessionInfo:
     session_id: str = "none"
     state: str = "off"
@@ -374,6 +381,7 @@ class RunnerSettings:
 
     general: RunnerSettingsGeneral = field(default_factory=RunnerSettingsGeneral)
     properties: dict[str, str] = field(default_factory=dict)
+    log: LogSettings = field(default_factory=LogSettings)
     session: SessionInfo = field(default_factory=SessionInfo)
 
     @classmethod
@@ -397,6 +405,12 @@ class RunnerSettings:
             for k, v in properties_table.items():
                 result.properties[str(k)] = str(v)
 
+        log_table = doc.get("log", {})
+        if isinstance(log_table, dict):
+            result.log.soft_wrap = bool(log_table.get("soft_wrap", False))
+            result.log.auto_scroll = bool(log_table.get("auto_scroll", False))
+            result.log.offset = int(log_table.get("offset", 0))
+
         session_table = doc.get("session", {})
         if isinstance(session_table, dict):
             result.session.session_id = str(session_table.get("session_id", "none"))
@@ -416,6 +430,12 @@ class RunnerSettings:
         doc["general"] = general
 
         doc["properties"] = _properties_to_table(self.properties)
+
+        log = tomlkit.table()
+        log["soft_wrap"] = self.log.soft_wrap
+        log["auto_scroll"] = self.log.auto_scroll
+        log["offset"] = self.log.offset
+        doc["log"] = log
 
         session = tomlkit.table()
         session["session_id"] = self.session.session_id

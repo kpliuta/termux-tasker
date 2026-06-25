@@ -173,22 +173,39 @@ class RunnerMenuScreen(MenuScreen):
     @on(Button.Pressed, "#show_logs")
     def on_show_logs(self, event: Button.Pressed) -> None:
         event.stop()
+        settings = RunnerSettings.load(self.runner_path / "settings.toml")
+
+        def _on_settings_changed(soft_wrap: bool, auto_scroll: bool, offset: int) -> None:
+            rs = RunnerSettings.load(self.runner_path / "settings.toml")
+            rs.log.soft_wrap = soft_wrap
+            rs.log.auto_scroll = auto_scroll
+            rs.log.offset = offset
+            rs.save(self.runner_path / "settings.toml")
+
         termux_app(self).push_screen(
-            LogScreen(content=self.runner_path / "stdout", show_follow=True)
+            LogScreen(
+                content=self.runner_path / "stdout",
+                is_dynamic=True,
+                soft_wrap=settings.log.soft_wrap,
+                auto_scroll=settings.log.auto_scroll,
+                offset=settings.log.offset,
+                clear_log_file_enabled=settings.session.state == "off",
+                on_settings_changed=_on_settings_changed,
+            )
         )
 
     @on(Button.Pressed, "#show_metadata")
     def on_show_metadata(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.runner_path / "metadata.toml", show_follow=False)
+            LogScreen(content=self.runner_path / "metadata.toml")
         )
 
     @on(Button.Pressed, "#show_settings")
     def on_show_settings(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.runner_path / "settings.toml", show_follow=False)
+            LogScreen(content=self.runner_path / "settings.toml")
         )
 
     @on(Button.Pressed, "#update")

@@ -9,7 +9,9 @@ import pytest
 from termux_tasker.runner_process import (
     RunnerProcess,
     _parse_timeout, # noqa
+    _to_env_key, # noqa
 )
+from termux_tasker.app_state import AppState
 
 RUNNER_METADATA = """\
 [general]
@@ -177,8 +179,6 @@ class TestRunnerProcessTerminate:
 
 class TestToEnvKey:
     def test_property_name_conversion(self) -> None:
-        from termux_tasker.runner_process import _to_env_key    # noqa
-
         assert _to_env_key("property-1") == "VAR_PROPERTY_1"
         assert _to_env_key("my property") == "VAR_MY_PROPERTY"
         assert _to_env_key("prop.name") == "VAR_PROP_NAME"
@@ -186,8 +186,6 @@ class TestToEnvKey:
 
 class TestAppSessionId:
     def test_unique_session_id_is_generated(self) -> None:
-        from termux_tasker.app_state import AppState
-
         state = AppState("0.1.0")
         assert len(state.session_id) == 36
         assert state.session_id.count("-") == 4

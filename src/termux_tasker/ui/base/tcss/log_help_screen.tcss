@@ -1,0 +1,30 @@
+LogHelpScreen {
+    align: center middle;
+}
+
+#log_help_dialog {
+    width: 80%;
+    height: 80%;
+    border: tall $primary;
+    background: $surface;
+    padding: 0 1;
+}
+
+#log_help_text_container {
+    height: 1fr;
+    overflow-y: scroll;
+}
+
+#log_help_text {
+    padding: 0 1;
+}
+
+#log_help_close {
+    height: auto;
+    margin-top: 1;
+}
+
+#log_help_close Button {
+    width: 1fr;
+    margin: 0 1;
+}

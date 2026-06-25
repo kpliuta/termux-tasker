@@ -175,12 +175,12 @@ class UIHelper:
 
     # ── Log screen helpers ──────────────────────────────────────────────
 
-    def push_log_screen(self, log_file: Path, follow: bool = False) -> None:
+    def push_log_screen(self, log_file: Path, is_dynamic: bool = False) -> None:
         log_file.parent.mkdir(parents=True, exist_ok=True)
         if not log_file.exists():
             log_file.write_text("")
         self._pilot.push_screen(
-            factory=lambda: LogScreen(content=log_file, show_follow=follow)
+            factory=lambda: LogScreen(content=log_file, is_dynamic=is_dynamic)
         )
         self._pilot.pause(0.3)
 

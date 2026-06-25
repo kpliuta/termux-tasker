@@ -6,12 +6,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_bdd import given, then, when
+from textual.widgets import DirectoryTree, RichLog, Static
 
+from termux_tasker.config import AppConfig
 from termux_tasker.runner_process import RunnerProcess, _parse_timeout  # noqa
 from termux_tasker.runner_validator import RunnerValidator
 from termux_tasker.task_validator import TaskValidator, TaskValidatorException
 
-from termux_tasker.ui.base.log_screen import LogScreen
+from termux_tasker.ui.base.log_screen import LogHelpScreen, LogScreen, LogSettingsScreen
 from termux_tasker.ui.base.screen import (
     ConfirmationScreen,
     FileBrowserScreen,
@@ -19,6 +21,12 @@ from termux_tasker.ui.base.screen import (
     InputScreen,
     LoadingScreen,
 )
+from termux_tasker.ui.screens.bundled_runner import BundledRunnerScreen
+from termux_tasker.ui.screens.bundled_task import BundledTaskScreen
+from termux_tasker.ui.screens.install_runner import InstallRunnerScreen
+from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersionScreen
+from termux_tasker.ui.screens.install_task import InstallTaskScreen
+from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
 from termux_tasker.ui.screens.main_menu import MainMenuScreen
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
 from termux_tasker.ui.screens.runners_screen import RunnersScreen
@@ -36,10 +44,15 @@ from tests.bdd.helpers import validation_helper as _val
 __all__ = [
     "UIHelper", "given", "then", "when",
     "Path", "pytest", "asyncio", "AsyncMock", "patch",
+    "AppConfig", "DirectoryTree", "RichLog", "Static",
     "RunnerProcess", "_parse_timeout", "RunnerValidator",
     "TaskValidator", "TaskValidatorException",
+    "BundledRunnerScreen", "BundledTaskScreen",
     "ConfirmationScreen", "FileBrowserScreen", "InfoScreen",
-    "InputScreen", "LoadingScreen", "LogScreen",
+    "InputScreen", "InstallRunnerScreen", "InstallRunnerVersionScreen",
+    "InstallTaskScreen", "InstallTaskVersionScreen",
+    "LoadingScreen", "LogHelpScreen", "LogScreen",
+    "LogSettingsScreen",
     "MainMenuScreen", "RunnerMenuScreen", "RunnersScreen",
     "RunnerTypeScreen", "SettingsScreen", "TaskMenuScreen",
     "TaskTypeScreen", "TasksMenuScreen",

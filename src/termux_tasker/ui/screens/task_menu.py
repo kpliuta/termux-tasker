@@ -143,14 +143,14 @@ class TaskMenuScreen(MenuScreen):
     def on_show_metadata(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.task_path / "metadata.toml", show_follow=False)
+            LogScreen(content=self.task_path / "metadata.toml")
         )
 
     @on(Button.Pressed, "#show_settings")
     def on_show_settings(self, event: Button.Pressed) -> None:
         event.stop()
         termux_app(self).push_screen(
-            LogScreen(content=self.task_path / "settings.toml", show_follow=False)
+            LogScreen(content=self.task_path / "settings.toml")
         )
 
     @on(Button.Pressed, "#show_output")
