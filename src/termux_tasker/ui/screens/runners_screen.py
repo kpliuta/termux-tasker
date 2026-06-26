@@ -7,7 +7,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import RunnerMetadata, RunnerSettings
-from termux_tasker.ui.base.screen import MenuScreen
+from termux_tasker.ui.base import MenuScreen
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
 

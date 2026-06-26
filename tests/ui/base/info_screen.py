@@ -3,7 +3,7 @@ from __future__ import annotations
 from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Button
-from termux_tasker.ui.base.screen import InfoScreen
+from termux_tasker.ui.base import InfoScreen
 
 
 class InfoTestApp(App):

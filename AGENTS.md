@@ -34,12 +34,12 @@
 - `BINDINGS` list for keyboard shortcuts: `[("escape", "press_back", "Back")]`.
 - `push_screen(screen, callback)` for modals; callback receives dismissed screen's result.
 - `self.run_worker(self._async_method())` for async work from sync contexts.
-- CSS files named `{screen_name}.tcss` alongside the Python file:
+- CSS files in `./tcss/` subdirectory:
   ```python
   _HERE = Path(__file__).parent
-  CSS_PATH = _HERE / "menu_screen.tcss"
+  CSS_PATH = _HERE / "tcss" / "menu_screen.tcss"
   ```
-- Import all base screen types from `termux_tasker.ui.base.screen` (never re-import from individual files).
+- Import all base screen types from `termux_tasker.ui.base` (never re-import from individual files).
 
 [//]: # (testing — BDD)
 

@@ -14,7 +14,7 @@ from termux_tasker.config import (
     PropertyDef,
 )
 from termux_tasker.task_validator import TaskValidator, TaskValidatorException
-from termux_tasker.ui.base.screen import (
+from termux_tasker.ui.base import (
     MenuScreen,
     LoadingScreen,
     InfoScreen,

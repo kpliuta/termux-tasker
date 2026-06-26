@@ -3,7 +3,7 @@ from __future__ import annotations
 from textual import on
 from textual.widgets import Button
 
-from termux_tasker.ui.base.screen import MenuScreen
+from termux_tasker.ui.base import MenuScreen
 from termux_tasker.config import AppConfig
 from termux_tasker.ui.screens.settings_screen import SettingsScreen
 from termux_tasker.ui.screens.runners_screen import RunnersScreen

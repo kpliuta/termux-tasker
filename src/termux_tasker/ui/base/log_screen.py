@@ -14,7 +14,7 @@ from textual.containers import Vertical, Horizontal
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, RichLog, Static
 
-from termux_tasker.ui.base.screen import ConfirmationScreen
+from termux_tasker.ui.base import ConfirmationScreen
 
 _HERE = Path(__file__).parent
 

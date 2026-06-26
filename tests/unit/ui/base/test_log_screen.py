@@ -12,7 +12,7 @@ from termux_tasker.ui.base.log_screen import (
     LogSettingsScreen,
     PollWatcher,
 )
-from termux_tasker.ui.base.screen import ConfirmationScreen
+from termux_tasker.ui.base import ConfirmationScreen
 
 
 class TestLogScreenInit:

@@ -4,7 +4,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Button
 
-from termux_tasker.ui.base.screen import ConfirmationScreen
+from termux_tasker.ui.base import ConfirmationScreen
 
 
 class ConfirmationTestApp(App):

@@ -6,7 +6,7 @@ from typing import Any, Optional
 from textual import on
 from textual.widgets import Button
 
-from termux_tasker.ui.base.screen import (
+from termux_tasker.ui.base import (
     MenuScreen, InputScreen, InfoScreen, FileBrowserScreen,
 )
 from termux_tasker.ui.screens._utils import (

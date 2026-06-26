@@ -6,7 +6,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Button
 
-from termux_tasker.ui.base.screen import InputScreen
+from termux_tasker.ui.base import InputScreen
 
 
 class InputTestApp(App):

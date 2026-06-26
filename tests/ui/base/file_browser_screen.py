@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual.app import App
 
-from termux_tasker.ui.base.screen import FileBrowserScreen
+from termux_tasker.ui.base import FileBrowserScreen
 
 
 class FileBrowserTestApp(App):

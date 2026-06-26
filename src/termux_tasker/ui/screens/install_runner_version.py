@@ -13,7 +13,7 @@ from termux_tasker.config import (
     PropertyDef,
 )
 from termux_tasker.runner_validator import RunnerValidator, RunnerValidatorException
-from termux_tasker.ui.base.screen import (
+from termux_tasker.ui.base import (
     MenuScreen,
     LoadingScreen,
     InfoScreen,

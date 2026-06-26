@@ -6,7 +6,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import AppConfig
-from termux_tasker.ui.base.screen import MenuScreen, InputScreen
+from termux_tasker.ui.base import MenuScreen, InputScreen
 from termux_tasker.ui.screens._utils import termux_app
 
 

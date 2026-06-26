@@ -4,18 +4,18 @@ from textual import on
 from textual.app import App
 from textual.widgets import Button
 
-from termux_tasker.ui.base.screen import MenuScreen
+from termux_tasker.ui.base import MenuScreen
 
 
 class ScreenTestApp(App):
     def on_mount(self) -> None:
         # Mapping button IDs to labels
         menu_items = {
-            "action_1": "enable/disable",
-            "action_2": "update version",
-            "action_3": "set timeout",
-            "action_4": "set property 1: <current_val>",
-            "action_5": "show task logs"
+            "enable/disable": "action_1",
+            "update version": "action_2",
+            "set timeout": "action_3",
+            "set property 1: <current_val>": "action_4",
+            "show task logs": "action_5",
         }
         description = (
             "version:         0.1\n"

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from termux_tasker.ui.base.log_screen import LogScreen
-from termux_tasker.ui.base.screen import ConfirmationScreen
+from termux_tasker.ui.base import ConfirmationScreen
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
 from termux_tasker.ui.screens.runners_screen import RunnersScreen
 from termux_tasker.ui.screens.settings_screen import SettingsScreen

@@ -14,7 +14,7 @@ from termux_tasker.runner_validator import RunnerValidator
 from termux_tasker.task_validator import TaskValidator, TaskValidatorException
 
 from termux_tasker.ui.base.log_screen import LogHelpScreen, LogScreen, LogSettingsScreen
-from termux_tasker.ui.base.screen import (
+from termux_tasker.ui.base import (
     ConfirmationScreen,
     FileBrowserScreen,
     InfoScreen,

@@ -9,7 +9,7 @@ from textual.app import App
 from termux_tasker.android_init import InitResult, run_android_checks
 from termux_tasker.app_state import AppState
 from termux_tasker.config import AppConfig, RunnerSettings
-from termux_tasker.ui.base.screen import (
+from termux_tasker.ui.base import (
     ConfirmationScreen, InfoScreen, LoadingScreen,
 )
 from termux_tasker.ui.screens.main_menu import MainMenuScreen
