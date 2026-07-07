@@ -11,6 +11,7 @@
 * `high`   Bug: Runner doesn't change Enabled state to False after a critical error, even though State changes to Off correctly. Termination step should play "finally" block role
 * `high`   Bug: Ghost processes are still hanging in the process list even though the runner is terminated (or tasker was killed)
 * `high`   Implement possibility to kill the runner (1) from termination modal screen and (2) from runner menu
+* `high`   Set settings_enable_monitor_phantom_procs on launching
 * `medium` Bug: If runner/installer is installed from main, the version is displayed incorrectly. As a solution the installed version could be kept in the metadata
 * `medium` Bug: Close button on LogScreen is loosing its dimensions in some screen resolutions
 * `medium` Bug: Local Storage should open FileBrowserScreen at /sdcard/ instead of ~/ in Termux env
@@ -22,6 +23,7 @@
 * `low`    Move focus to radio buttons on InputScreen opening
 * `low`    Implement Beginning/End navigation buttons on the LogScreen.
 * `low`    Implement ability to install multiple similar tasks
+* `low`    Implement manual update (minor version update should check installed runners for compatibility, major update - complete reinstalling of the app)
 * `low`    Design autoupgrade mechanism, make it configurable (depends on deliverable format)
 * `low`    Consolidate TCSS and layout for basic components
 * `low`    Polish UI (TCSS) styling
