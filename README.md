@@ -106,16 +106,11 @@ Environment variables are injected alongside placeholders:
 - **Task properties** → `VAR_<PROPERTY_NAME>` (`before-task`, `task-exec`, `after-task` only)
 - **Output directory** → `OUTPUT_DIR` (`before-task`, `task-exec`, `after-task` only)
 
-## Local development (PC)
+## Installation
 
 ```bash
-poetry install --extras dev
-
-# Launch without Android-specific checks
-poetry run python -m termux_tasker.app --skip-android-init
+curl -sL https://kpliuta.github.io/termux-tasker/install.sh | sh
 ```
-
-Requires **Python ≥3.13** and dependencies: `textual`, `tomlkit`, `packaging`.
 
 ## Usage
 
@@ -164,6 +159,17 @@ Main Menu
 ```
 
 ## Development
+
+### Local development (PC)
+
+```bash
+poetry install --extras dev
+
+# Launch without Android-specific checks
+poetry run python -m termux_tasker.app --skip-android-init
+```
+
+Requires **Python ≥3.13** and dependencies: `textual`, `tomlkit`, `packaging`.
 
 ### Test structure
 
