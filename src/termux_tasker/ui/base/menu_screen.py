@@ -4,7 +4,7 @@ from pathlib import Path
 
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import VerticalScroll
+from textual.containers import Container, VerticalScroll
 from textual.css.query import NoMatches
 from textual.events import Key, ScreenResume
 from textual.reactive import reactive
@@ -49,7 +49,7 @@ class MenuScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with VerticalScroll():
+        with VerticalScroll(id="menu-scroll"):
             if self.description:
                 yield Static(self.description, id="description")
 
@@ -59,8 +59,7 @@ class MenuScreen(Screen[None]):
                 else:
                     yield Button(label, variant="default", disabled=True)
 
-            yield Static(classes="spacer")
-
+        with Container(id="bottom-bar"):
             if self.show_back_button:
                 yield Button("Back", id="back", variant="error")
 
@@ -82,8 +81,8 @@ class MenuScreen(Screen[None]):
             return  # widget tree may not exist yet (triggered via init=False)
         existing_ids = {btn.id for btn in scroll.query(Button) if btn.id}
         needed_ids = {v for v in self.menu_items.values() if v}
-        action_buttons = [b for b in scroll.query(Button) if b.id not in ("back", "exit")]
-        if needed_ids == existing_ids - {"back", "exit"} and len(self.menu_items) == len(action_buttons):
+        action_buttons = list(scroll.query(Button))
+        if needed_ids == existing_ids and len(self.menu_items) == len(action_buttons):
             id_to_label = {v: k for k, v in self.menu_items.items()}
             for btn in action_buttons:
                 if btn.id in id_to_label:
@@ -110,11 +109,12 @@ class MenuScreen(Screen[None]):
                 btn = Button(label, variant="default", disabled=True)
             await scroll.mount(btn)
 
-        await scroll.mount(Static(classes="spacer"))
+        bottom_bar = self.query_one("#bottom-bar", Container)
+        await bottom_bar.remove_children()
         if self.show_back_button:
-            await scroll.mount(Button("Back", id="back", variant="error"))
+            await bottom_bar.mount(Button("Back", id="back", variant="error"))
         if self.show_exit_button:
-            await scroll.mount(Button("Exit", id="exit", variant="error"))
+            await bottom_bar.mount(Button("Exit", id="exit", variant="error"))
 
     def watch_description(self, description: str | None) -> None:
         try:

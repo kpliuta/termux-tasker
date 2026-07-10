@@ -11,6 +11,6 @@ Button {
     margin: 1 2;
 }
 
-.spacer {
-    width: 1;
+#bottom-bar {
+    height: auto;
 }
