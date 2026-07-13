@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Poetry
+        run: pip install poetry
+      - name: Install dependencies
+        run: poetry install
+      - name: Run tests
+        run: poetry run pytest
+      - name: Type check
+        run: poetry run mypy src/
+      - name: Unused imports check
+        run: poetry run autoflake --remove-all-unused-imports --ignore-init-module-imports --check --recursive src/
+      - name: Check CHANGELOG.md [Unreleased] is not empty
+        run: |
+          section=$(sed -n '/^## \[Unreleased\]/,/^## \[/{/^## \[Unreleased\]/d;/^## \[/d;p}' CHANGELOG.md)
+          trimmed=$(echo "$section" | sed '/^[[:space:]]*$/d')
+          if [ -z "$trimmed" ]; then
+            echo "::error::CHANGELOG.md [Unreleased] section is empty. Add changelog entries before merging."
+            exit 1
+          fi
