@@ -139,7 +139,8 @@ class PilotDriver:
                             widget.scroll_visible()
                         except Exception:
                             pass
-                        await pilot.click(widget)
+                        widget.press()
+                        await pilot.pause()
                     elif isinstance(widget, Checkbox):
                         widget.toggle()
                     else:

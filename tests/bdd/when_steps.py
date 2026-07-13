@@ -62,6 +62,7 @@ def when_no(pilot) -> None:
 @when('I press "Uninstall" button')
 def when_uninstall(pilot) -> None:
     ui(pilot).click_label("Uninstall")
+    ui(pilot).wait_until_screen(ConfirmationScreen)
 
 
 @when('I press "{label}" button')
@@ -418,7 +419,7 @@ def when_git_checkout_fails(pilot) -> None:
 def when_uninstall_task(pilot) -> None:
     ui(pilot).nav_to_task_menu()
     ui(pilot).click_id("#uninstall")
-    ui(pilot).pause(0.2)
+    ui(pilot).wait_until_screen(ConfirmationScreen)
     ui(pilot).click_id("#yes_uninstall")
     ui(pilot).pause(0.5)
 

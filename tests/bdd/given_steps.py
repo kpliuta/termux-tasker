@@ -193,6 +193,7 @@ def given_installed_task(pilot) -> None:
 def given_task_uninstall_confirmation(pilot) -> None:
     ui(pilot).nav_to_task_menu()
     ui(pilot).click_id("#uninstall")
+    ui(pilot).wait_until_screen(ConfirmationScreen)
 
 
 @given('the task state is "stopped"')
