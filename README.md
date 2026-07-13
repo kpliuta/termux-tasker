@@ -233,3 +233,11 @@ poetry run python -m textual_dev run --dev tests/ui/base/file_browser_screen.py
 
 - `pilot` — Textual pilot for driving the TUI in tests
 - `tmp_dir` — temporary workspace cleaned up after each test
+
+## CI & Release
+
+This project uses GitHub Actions for CI and automated releases. PRs must follow [Conventional Commits](https://www.conventionalcommits.org/) format — the PR title determines the version bump on merge (`fix:` → patch, `feat:` → minor, `feat!:` → major). Every PR must also include a changelog entry under `## [Unreleased]` in `CHANGELOG.md`.
+
+When a PR is merged to `main` via squash merge, the release workflow automatically bumps the version, updates the changelog, creates a git tag, and publishes a GitHub Release.
+
+For full details, see **[CI-RELEASE.md](CI-RELEASE.md)**.
