@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import importlib.resources as res
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from termux_tasker.runner_process import RunnerProcess
 
@@ -18,32 +18,14 @@ class AppState:
         self.tmp_dir = self.work_dir / ".tmp"
         self.app_config_file = self.work_dir / "app.toml"
 
-        import importlib.resources as res
-        pkg = res.files("termux_tasker")
-        self.default_app_config_file = Path(str(pkg / "resources" / "default.app.toml"))
-        self.bundled_runners_file = Path(str(pkg / "resources" / "bundled_runners.toml"))
+        pkg_path = Path(str(res.files("termux_tasker")))
+        self.app_root_path = pkg_path.parent.parent
+        self.default_app_config_file = pkg_path / "resources" / "default.app.toml"
+        self.bundled_runners_file = pkg_path / "resources" / "bundled_runners.toml"
 
         self.runners: dict[str, RunnerProcess] = {}
-        self._current_runner_path: Optional[Path] = None
-        self._current_task_path: Optional[Path] = None
         self._tmp_runner_folders: list[Path] = []
         self._tmp_task_folders: list[Path] = []
-
-    @property
-    def current_runner_path(self) -> Optional[Path]:
-        return self._current_runner_path
-
-    @current_runner_path.setter
-    def current_runner_path(self, value: Optional[Path]) -> None:
-        self._current_runner_path = value
-
-    @property
-    def current_task_path(self) -> Optional[Path]:
-        return self._current_task_path
-
-    @current_task_path.setter
-    def current_task_path(self, value: Optional[Path]) -> None:
-        self._current_task_path = value
 
     def register_tmp_folder(self, folder: Path) -> None:
         self._tmp_runner_folders.append(folder)

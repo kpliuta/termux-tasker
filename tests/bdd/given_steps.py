@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from termux_tasker.config import RunnerMetadata
+
 from tests.bdd.steps_common import *  # noqa
 from tests.bdd.when_steps import when_select_folder
 
@@ -397,3 +399,28 @@ def given_toml_log(pilot) -> None:
 def given_exit_confirmation(pilot) -> None:
     given_runners_running(pilot)
     ui(pilot).click_id("#exit")
+
+
+@given("the App Version screen is shown")
+def given_app_version_screen(pilot) -> None:
+    ui(pilot).nav_to_settings()
+    ui(pilot).click_id("#update_app")
+    ui(pilot).pause(0.5)
+    ui(pilot).assert_screen(UpdateAppVersionScreen)
+
+
+@given("all installed runners are compatible with the selected version")
+def given_compatible_runners(pilot) -> None:
+    # The default fixture runner uses app_min_version = ">=0.1.0", which is
+    # compatible with any reasonable app version. No action needed.
+    pass
+
+
+@given("an installed runner is incompatible with the selected version")
+def given_incompatible_runner(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    RunnerMetadata.clear_cache(runner_path / "metadata.toml")
+    meta_path = runner_path / "metadata.toml"
+    content = meta_path.read_text()
+    content = content.replace('app_min_version = ">=0.1.0"', 'app_min_version = ">=99.0.0"')
+    meta_path.write_text(content)

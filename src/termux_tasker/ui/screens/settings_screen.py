@@ -8,19 +8,25 @@ from textual.widgets import Button
 from termux_tasker.config import AppConfig
 from termux_tasker.ui.base import MenuScreen, InputScreen
 from termux_tasker.ui.screens._utils import termux_app
+from termux_tasker.ui.screens.update_app_version import UpdateAppVersionScreen
 
 
 class SettingsScreen(MenuScreen):
     def __init__(self, app_version: str, session_id: str, upgrade_on_startup: bool) -> None:
+        self._upgrade_val = upgrade_on_startup
         super().__init__(
-            menu_items={
-                rf"Termux upgrade on startup \[{upgrade_on_startup}]": "upgrade_on_startup",
-            },
+            menu_items=self._build_menu_items(upgrade_on_startup),
             description=f"App Version: {app_version}\nSession ID: {session_id}",
             show_back_button=True,
         )
         self.title = "Settings"
-        self._upgrade_val = upgrade_on_startup
+
+    @staticmethod
+    def _build_menu_items(upgrade_on_startup: bool) -> dict[str, str]:
+        return {
+            rf"Termux upgrade on startup \[{upgrade_on_startup}]": "upgrade_on_startup",
+            "Update App": "update_app",
+        }
 
     @on(Button.Pressed, "#upgrade_on_startup")
     def on_upgrade(self, event: Button.Pressed) -> None:
@@ -34,9 +40,7 @@ class SettingsScreen(MenuScreen):
                 cfg.settings.upgrade_on_startup = result == "true"
                 cfg.save(app.state.app_config_file)
                 self._upgrade_val = cfg.settings.upgrade_on_startup
-                self.menu_items = {
-                    rf"Termux upgrade on startup \[{cfg.settings.upgrade_on_startup}]": "upgrade_on_startup",
-                }
+                self.menu_items = self._build_menu_items(cfg.settings.upgrade_on_startup)
 
         termux_app(self).push_screen(
             InputScreen(
@@ -47,3 +51,8 @@ class SettingsScreen(MenuScreen):
             ),
             on_setting,
         )
+
+    @on(Button.Pressed, "#update_app")
+    def on_update_app(self, event: Button.Pressed) -> None:
+        event.stop()
+        termux_app(self).push_screen(UpdateAppVersionScreen())

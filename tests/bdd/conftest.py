@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -340,8 +340,8 @@ def mock_external_ops(monkeypatch):
             shutil.copytree(src, tmp_folder, dirs_exist_ok=True)
         return tmp_folder
 
-    def _mock_fetch_git_tags(_repo_path: Path) -> tuple[list[str], str]:
-        return ["v1.0.0"], "main"
+    def _mock_fetch_git_tags(_repo_path: Path) -> list[str]:
+        return ["1.0.0"]
 
     def _mock_git_checkout(_repo_path: Path, _tag: str) -> bool:
         return True
@@ -374,6 +374,7 @@ def mock_external_ops(monkeypatch):
         "termux_tasker.ui.screens._utils",
         "termux_tasker.ui.screens.install_runner_version",
         "termux_tasker.ui.screens.install_task_version",
+        "termux_tasker.ui.screens.update_app_version",
     ]
     for mod_name in _TAG_MODULES:
         try:
@@ -385,10 +386,24 @@ def mock_external_ops(monkeypatch):
         "termux_tasker.ui.screens._utils",
         "termux_tasker.ui.screens.install_runner_version",
         "termux_tasker.ui.screens.install_task_version",
+        "termux_tasker.ui.screens.update_app_version",
     ]
     for mod_name in _CHECKOUT_MODULES:
         try:
             monkeypatch.setattr(f"{mod_name}.git_checkout", _mock_git_checkout)
+        except AttributeError:
+            pass
+
+    def _mock_poetry_install(_repo_path: Path) -> bool:
+        return True
+
+    _POETRY_MODULES = [
+        "termux_tasker.ui.screens._utils",
+        "termux_tasker.ui.screens.update_app_version",
+    ]
+    for mod_name in _POETRY_MODULES:
+        try:
+            monkeypatch.setattr(f"{mod_name}.poetry_install", _mock_poetry_install)
         except AttributeError:
             pass
 

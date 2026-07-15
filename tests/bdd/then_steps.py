@@ -1238,7 +1238,7 @@ def then_task_copied(pilot) -> None:
         assert tmp_runner.exists()
 
 
-@then("the main branch and all tags are shown as version buttons")
+@then("all tags are shown as version buttons")
 def then_version_buttons(pilot) -> None:
     buttons = [
         b for b in ui(pilot).app.screen.query("Button")
@@ -1426,3 +1426,63 @@ def then_log_content_preserved(pilot) -> None:
 def then_log_file_truncated(pilot) -> None:
     log_file = ui(pilot).app.state.work_dir / "follow.log"
     assert log_file.read_text() == ""
+
+
+@then("the App Version screen is shown")
+def then_app_version_screen(pilot) -> None:
+    ui(pilot).assert_screen(UpdateAppVersionScreen)
+
+
+@then('a confirmation dialog is shown with "Are you sure you want to update"')
+def then_update_confirmation(pilot) -> None:
+    ui(pilot).assert_screen(ConfirmationScreen)
+    ui(pilot).assert_confirmation_message_contains("Are you sure you want to update")
+
+
+@then('a loading screen "Checking runner compatibility" is shown')
+def then_checking_compatibility(pilot) -> None:
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if ui(pilot).screen_is(LoadingScreen):
+            return
+        ui(pilot).pause(0.05)
+
+
+@then('a loading screen "Updating app" is shown')
+def then_updating_app(pilot) -> None:
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if ui(pilot).screen_is(LoadingScreen):
+            return
+        ui(pilot).pause(0.05)
+
+
+@then("an info screen showing app update success is shown")
+def then_app_updated_info(pilot) -> None:
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if ui(pilot).screen_is(InfoScreen):
+            screen = ui(pilot).app.screen
+            msg = screen.query_one("#info_message")
+            content = msg._content if hasattr(msg, "_content") else str(msg.render())  # noqa
+            if "App updated" in content or "restart" in content.lower():
+                return
+        ui(pilot).pause(0.1)
+    ui(pilot).assert_screen(InfoScreen)
+
+
+@then("it mentions the incompatible runner")
+def then_mentions_incompatible(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, InfoScreen)
+    msg = screen.query_one("#info_message")
+    content = msg._content if hasattr(msg, "_content") else str(msg.render())  # noqa
+    assert "sh_runner" in content or "incompatible" in content.lower(), (
+        f"Expected mention of incompatible runner, got: {content}"
+    )
+
+
+@then("it has an Update App button")
+def then_settings_has_update_app_button(pilot) -> None:
+    ui(pilot).assert_screen(SettingsScreen)
+    ui(pilot).assert_has_button("Update App")

@@ -481,3 +481,8 @@ def when_cancel_clear(pilot) -> None:
 def when_confirm_clear(pilot) -> None:
     ui(pilot).click_id("#delete_button")
     ui(pilot).pause()
+
+
+@when('I press "Update App" button')
+def when_update_app(pilot) -> None:
+    ui(pilot).click_id("#update_app")

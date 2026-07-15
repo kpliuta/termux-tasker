@@ -35,7 +35,7 @@ Feature: Runner Installation
     When I press "Install" button
     Then the Install Runner Version screen is shown
     And a loading screen "Fetching <name> versions" is shown
-    Then the main branch and all tags are shown as version buttons
+    Then all tags are shown as version buttons
     And already-installed versions show "[Installed]" suffix
     When I select a version
     Then a confirmation dialog is shown asking to install/update/reinstall that version

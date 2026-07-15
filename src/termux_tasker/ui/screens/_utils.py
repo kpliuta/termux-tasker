@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+
 from termux_tasker.config import (
     RunnerMetadata,
     RunnerSettings,
@@ -66,12 +67,8 @@ def copy_to_tmp(src: Path, tmp_dir: Path, prefix: str) -> Path:
     return tmp_folder
 
 
-def fetch_git_tags(
-    repo_path: Path,
-) -> tuple[list[str], str]:
+def fetch_git_tags(repo_path: Path) -> list[str]:
     tags: list[str] = []
-    main_branch = "main"
-
     try:
         result = subprocess.run(
             ["git", "tag", "--list"],
@@ -79,18 +76,9 @@ def fetch_git_tags(
         )
         if result.stdout.strip():
             tags = result.stdout.strip().splitlines()
-
-        branch_result = subprocess.run(
-            ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
-            capture_output=True, text=True, cwd=repo_path, timeout=10,
-        )
-        if branch_result.returncode == 0:
-            ref = branch_result.stdout.strip()
-            main_branch = ref.split("/")[-1] if "/" in ref else "main"
     except subprocess.SubprocessError:
         pass
-
-    return tags, main_branch
+    return tags
 
 
 def git_checkout(repo_path: Path, tag: str) -> bool:
@@ -105,38 +93,43 @@ def git_checkout(repo_path: Path, tag: str) -> bool:
         return False
 
 
-def get_installed_runner_versions(
+def poetry_install(repo_path: Path) -> bool:
+    try:
+        subprocess.run(
+            ["poetry", "install", "--only", "main"],
+            capture_output=True, text=True, cwd=repo_path, timeout=120,
+        )
+        return True
+    except subprocess.SubprocessError:
+        return False
+
+
+def get_installed_runner_version(
     runners_path: Path, runner_id: str
-) -> set[str]:
-    versions: set[str] = set()
+) -> Optional[str]:
     if not runners_path.exists():
-        return versions
-    for runner_path in runners_path.iterdir():
-        if not runner_path.is_dir():
-            continue
-        meta_path = runner_path / "metadata.toml"
-        if meta_path.exists():
-            meta = RunnerMetadata.load(meta_path)
-            if meta.general.id == runner_id:
-                versions.add(meta.general.version)
-    return versions
+        return None
+    target = runners_path / runner_id
+    meta_path = target / "metadata.toml"
+    if meta_path.exists():
+        meta = RunnerMetadata.load(meta_path)
+        if meta.general.id == runner_id:
+            return meta.general.version
+    return None
 
 
-def get_installed_task_versions(
+def get_installed_task_version(
     tasks_path: Path, task_id: str
-) -> set[str]:
-    versions: set[str] = set()
+) -> Optional[str]:
     if not tasks_path.exists():
-        return versions
-    for task_path in tasks_path.iterdir():
-        if not task_path.is_dir():
-            continue
-        meta_path = task_path / "metadata.toml"
-        if meta_path.exists():
-            meta = TaskMetadata.load(meta_path)
-            if meta.general.id == task_id:
-                versions.add(meta.general.version)
-    return versions
+        return None
+    target = tasks_path / task_id
+    meta_path = target / "metadata.toml"
+    if meta_path.exists():
+        meta = TaskMetadata.load(meta_path)
+        if meta.general.id == task_id:
+            return meta.general.version
+    return None
 
 
 def merge_runner_properties(

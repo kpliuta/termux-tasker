@@ -25,7 +25,7 @@ from termux_tasker.ui.screens._utils import (
     termux_app,
     fetch_git_tags,
     git_checkout,
-    get_installed_task_versions,
+    get_installed_task_version,
     merge_runner_properties,
     fill_default_properties,
     sanitize_id,
@@ -56,7 +56,7 @@ class InstallTaskVersionScreen(MenuScreen):
         tmp_folder = self.tmp_task_folder
         is_git = (tmp_folder / ".git").exists()
 
-        installed_versions = get_installed_task_versions(
+        installed_version = get_installed_task_version(
             self.runner_path / "tasks", meta.general.id
         )
 
@@ -66,18 +66,11 @@ class InstallTaskVersionScreen(MenuScreen):
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
             await termux_app(self).push_screen(loading)
 
-            tags, main_branch = fetch_git_tags(tmp_folder)
-
-            main_label = main_branch
-            if main_branch in installed_versions:
-                main_label += " \\[Installed]"
-            safe = sanitize_id(main_branch)
-            self._id_to_tag[safe] = main_branch
-            items[main_label] = f"version_{safe}"
+            tags = fetch_git_tags(tmp_folder)
 
             for tag in tags:
                 label = tag
-                if tag in installed_versions:
+                if tag == installed_version:
                     label += " \\[Installed]"
                 safe = sanitize_id(tag)
                 self._id_to_tag[safe] = tag
@@ -87,7 +80,7 @@ class InstallTaskVersionScreen(MenuScreen):
         else:
             tag = meta.general.version
             label = tag
-            if "local" in installed_versions:
+            if tag == installed_version:
                 label += " \\[Installed]"
             safe = sanitize_id(tag)
             self._id_to_tag[safe] = tag
@@ -115,7 +108,7 @@ class InstallTaskVersionScreen(MenuScreen):
         )
         await termux_app(self).push_screen(loading)
 
-        if is_git and tag not in ("main", "master"):
+        if is_git:
             if not git_checkout(tmp_folder, tag):
                 await loading.dismiss(None)
                 await termux_app(self).push_screen(

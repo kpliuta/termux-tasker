@@ -160,22 +160,6 @@ the PR can be merged.
  3. **Unused imports** — `poetry run autoflake --remove-all-unused-imports --ignore-init-module-imports --check --recursive src/`
    - No unused imports in the source code
 
-### How to add changelog entries
-
-In your PR, add entries under the appropriate subsection in `CHANGELOG.md`:
-
-```markdown
-## [Unreleased]
-
-### Added
-- New task scheduling feature
-
-### Fixed
-- Crash when config file is missing
-```
-
-Valid subsections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
-
 ---
 
 ## PR Title Validation (`.github/workflows/pr-title.yml`)
@@ -254,13 +238,6 @@ gh api repos/{owner}/{repo}/branches/main/protection \
   --field enforce_admins=true \
   --field required_pull_request_reviews='{"required_approving_review_count":0}' \
   --field restrictions=null
-
-# Restrict merge strategy to squash only (repo settings)
-gh api repos/{owner}/{repo} \
-  --method PATCH \
-  --field allow_merge_commit=false \
-  --field allow_rebase_merge=false \
-  --field allow_squash_merge=true
 ```
 
 ### Enabling via GitHub UI
