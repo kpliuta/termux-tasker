@@ -24,7 +24,7 @@ from termux_tasker.ui.screens._utils import (
     termux_app,
     fetch_git_tags,
     git_checkout,
-    get_installed_runner_versions,
+    get_installed_runner_version,
     merge_runner_properties,
     fill_default_properties,
     sanitize_id,
@@ -55,7 +55,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         is_git = (tmp_folder / ".git").exists()
 
         app = termux_app(self)
-        installed_versions = get_installed_runner_versions(
+        installed_version = get_installed_runner_version(
             app.state.runners_path, meta.general.id
         )
 
@@ -69,7 +69,7 @@ class InstallRunnerVersionScreen(MenuScreen):
 
             for tag in tags:
                 label = tag
-                if tag in installed_versions:
+                if tag == installed_version:
                     label += " \\[Installed]"
                 safe = sanitize_id(tag)
                 self._id_to_tag[safe] = tag
@@ -79,7 +79,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         else:
             tag = meta.general.version
             label = tag
-            if "local" in installed_versions:
+            if tag == installed_version:
                 label += " \\[Installed]"
             safe = sanitize_id(tag)
             self._id_to_tag[safe] = tag
