@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+
 from termux_tasker.config import (
     RunnerMetadata,
     RunnerSettings,
@@ -86,6 +87,17 @@ def git_checkout(repo_path: Path, tag: str) -> bool:
             ["git", "checkout", tag],
             capture_output=True, text=True,
             cwd=repo_path, timeout=30, check=True,
+        )
+        return True
+    except subprocess.SubprocessError:
+        return False
+
+
+def poetry_install(repo_path: Path) -> bool:
+    try:
+        subprocess.run(
+            ["poetry", "install", "--only", "main"],
+            capture_output=True, text=True, cwd=repo_path, timeout=120,
         )
         return True
     except subprocess.SubprocessError:

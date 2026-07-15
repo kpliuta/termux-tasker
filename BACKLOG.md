@@ -22,7 +22,6 @@
 * `low`    Move focus to radio buttons on InputScreen opening
 * `low`    Implement Beginning/End navigation buttons on the LogScreen.
 * `low`    Implement ability to install multiple similar tasks
-* `low`    Implement manual update (minor version update should check installed runners for compatibility, major update - complete reinstalling of the app)
 * `low`    Design autoupgrade mechanism, make it configurable (depends on deliverable format)
 * `low`    Consolidate TCSS and layout for basic components
 * `low`    Polish UI (TCSS) styling

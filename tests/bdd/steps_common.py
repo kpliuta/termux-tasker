@@ -35,6 +35,7 @@ from termux_tasker.ui.screens.settings_screen import SettingsScreen
 from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 from termux_tasker.ui.screens.task_type import TaskTypeScreen
 from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
+from termux_tasker.ui.screens.update_app_version import UpdateAppVersionScreen
 
 from tests.bdd.helpers import UIHelper
 from tests.bdd.helpers import file_helper as _fs
@@ -55,7 +56,7 @@ __all__ = [
     "LogSettingsScreen",
     "MainMenuScreen", "RunnerMenuScreen", "RunnersScreen",
     "RunnerTypeScreen", "SettingsScreen", "TaskMenuScreen",
-    "TaskTypeScreen", "TasksMenuScreen",
+    "TaskTypeScreen", "TasksMenuScreen", "UpdateAppVersionScreen",
     "ui", "settings", "fs", "val", "TEST_PROPERTIES",
 ]
 
