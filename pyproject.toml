@@ -1,6 +1,6 @@
 [project]
 name = "termux-tasker"
-version = "0.1.1"
+version = "0.2.0"
 description = "A TUI tool for managing shell-based automation tasks on Termux (Android)"
 authors = [
     { name = "kpliuta", email = "9212935+kpliuta@users.noreply.github.com" }
