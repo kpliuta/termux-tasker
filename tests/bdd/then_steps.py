@@ -1238,7 +1238,7 @@ def then_task_copied(pilot) -> None:
         assert tmp_runner.exists()
 
 
-@then("the main branch and all tags are shown as version buttons")
+@then("all tags are shown as version buttons")
 def then_version_buttons(pilot) -> None:
     buttons = [
         b for b in ui(pilot).app.screen.query("Button")

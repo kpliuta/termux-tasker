@@ -65,14 +65,7 @@ class InstallRunnerVersionScreen(MenuScreen):
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
             await termux_app(self).push_screen(loading)
 
-            tags, main_branch = fetch_git_tags(tmp_folder)
-
-            main_label = main_branch
-            if main_branch in installed_versions:
-                main_label += " \\[Installed]"
-            safe = sanitize_id(main_branch)
-            self._id_to_tag[safe] = main_branch
-            items[main_label] = f"version_{safe}"
+            tags = fetch_git_tags(tmp_folder)
 
             for tag in tags:
                 label = tag
@@ -114,7 +107,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         )
         await termux_app(self).push_screen(loading)
 
-        if is_git and tag not in ("main", "master"):
+        if is_git:
             if not git_checkout(tmp_folder, tag):
                 await loading.dismiss(None)
                 await termux_app(self).push_screen(

@@ -66,12 +66,8 @@ def copy_to_tmp(src: Path, tmp_dir: Path, prefix: str) -> Path:
     return tmp_folder
 
 
-def fetch_git_tags(
-    repo_path: Path,
-) -> tuple[list[str], str]:
+def fetch_git_tags(repo_path: Path) -> list[str]:
     tags: list[str] = []
-    main_branch = "main"
-
     try:
         result = subprocess.run(
             ["git", "tag", "--list"],
@@ -79,18 +75,9 @@ def fetch_git_tags(
         )
         if result.stdout.strip():
             tags = result.stdout.strip().splitlines()
-
-        branch_result = subprocess.run(
-            ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
-            capture_output=True, text=True, cwd=repo_path, timeout=10,
-        )
-        if branch_result.returncode == 0:
-            ref = branch_result.stdout.strip()
-            main_branch = ref.split("/")[-1] if "/" in ref else "main"
     except subprocess.SubprocessError:
         pass
-
-    return tags, main_branch
+    return tags
 
 
 def git_checkout(repo_path: Path, tag: str) -> bool:
