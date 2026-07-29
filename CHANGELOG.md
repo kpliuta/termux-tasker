@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- tt-selenium-runner runner to bundled_runners.toml.
+
 ### Changed
 
 - Remove main branch option from `install.sh`.
