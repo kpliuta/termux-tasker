@@ -63,7 +63,22 @@ gh api repos/{owner}/{repo} \
   --field allow_squash_merge=true
 ```
 
-### 2. Enable read/write permissions for GITHUB_TOKEN
+### 2. Automatically delete head branches (optional)
+
+After a PR is merged, GitHub can automatically delete the source branch.
+This keeps the branch list clean.
+
+Go to **Settings -> General -> Pull Requests** and:
+
+- [ ] **Automatically delete head branches** — checked
+
+Or via CLI:
+
+```bash
+gh api repos/{owner}/{repo} --method PATCH --field delete_branch_on_merge=true
+```
+
+### 3. Enable read/write permissions for GITHUB_TOKEN
 
 The release workflow needs to push commits, create tags, and create
 GitHub Releases. The default `GITHUB_TOKEN` must have write access.
