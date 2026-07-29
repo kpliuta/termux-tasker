@@ -10,6 +10,8 @@
 
 * `high`   Bug: Runner doesn't change Enabled state to False after a critical error, even though State changes to Off correctly. Termination step should play "finally" block role
 * `high`   Bug: Ghost processes are still hanging in the process list even though the runner is terminated (or tasker was killed)
+* `high`   Doc: Establish repo/project naming for runners/tasks
+* `high`   Doc: Simplify docs - separate User from Developer docs
 * `high`   Implement possibility to kill the runner (1) from termination modal screen and (2) from runner menu
 * `high`   Set settings_enable_monitor_phantom_procs on launching
 * `medium` Bug: Close button on LogScreen is loosing its dimensions in some screen resolutions
@@ -26,6 +28,7 @@
 * `low`    Consolidate TCSS and layout for basic components
 * `low`    Polish UI (TCSS) styling
 * `low`    Move screen classes from base/screen to separate files and inline tcss for each one
+* `low`    Gray-out installed version on Update App screen
 
 ## Investigation
 

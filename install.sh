@@ -54,12 +54,16 @@ TAGS=$(git tag -l '[0-9]*.[0-9]*.[0-9]*' 2>/dev/null | sort -V -r || true)
 
 printf '\n'
 info "Select a version to install:"
-printf '\n  \033[1m1)\033[0m main (default)\n'
+printf '\n'
 
-IDX=2
+IDX=1
 TAG_LIST=""
 for TAG in $TAGS; do
-    printf '  \033[1m%d)\033[0m %s\n' "$IDX" "$TAG"
+    if [ "$IDX" -eq 1 ]; then
+        printf '  \033[1m%d)\033[0m %s (default)\n' "$IDX" "$TAG"
+    else
+        printf '  \033[1m%d)\033[0m %s\n' "$IDX" "$TAG"
+    fi
     TAG_LIST="$TAG_LIST $TAG"
     IDX=$((IDX + 1))
 done
@@ -70,18 +74,14 @@ read -r CHOICE </dev/tty
 CHOICE=${CHOICE:-1}
 
 SELECTED_TAG=""
-if [ "$CHOICE" = "1" ]; then
-    SELECTED_TAG="main"
-else
-    COUNT=1
-    for TAG in $TAGS; do
-        COUNT=$((COUNT + 1))
-        if [ "$COUNT" = "$CHOICE" ]; then
-            SELECTED_TAG="$TAG"
-            break
-        fi
-    done
-fi
+COUNT=0
+for TAG in $TAGS; do
+    COUNT=$((COUNT + 1))
+    if [ "$COUNT" = "$CHOICE" ]; then
+        SELECTED_TAG="$TAG"
+        break
+    fi
+done
 
 [ -n "$SELECTED_TAG" ] || die "Invalid choice: $CHOICE"
 
