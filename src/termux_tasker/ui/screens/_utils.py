@@ -68,6 +68,21 @@ def copy_to_tmp(src: Path, tmp_dir: Path, prefix: str) -> Path:
 
 
 def fetch_git_tags(repo_path: Path) -> list[str]:
+    """List the tags of the git repo at ``repo_path``.
+
+    First tries ``git fetch --tags`` (best-effort) so versions released
+    after the local clone are picked up too.  If the fetch fails — no
+    remote, offline, or not a git repo — we fall back to whatever tags
+    already exist locally.
+    """
+    try:
+        subprocess.run(
+            ["git", "fetch", "--tags", "--quiet"],
+            capture_output=True, text=True, cwd=repo_path, timeout=60,
+        )
+    except subprocess.SubprocessError:
+        pass
+
     tags: list[str] = []
     try:
         result = subprocess.run(
