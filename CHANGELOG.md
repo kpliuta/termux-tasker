@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-31
+
 ### Fixed
 
 - Runner, task, and app version lists now fetch remote git tags before showing available versions, so newly released versions appear on the Update screens.
