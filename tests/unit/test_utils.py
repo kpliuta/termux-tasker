@@ -75,6 +75,40 @@ class TestFetchGitTags:
             tags = fetch_git_tags(tmp_dir)
         assert isinstance(tags, list)
 
+    def test_fetches_remote_tags_before_listing(self, tmp_dir: Path) -> None:
+        fetch_result = MagicMock(returncode=0, stdout="")
+        list_result = MagicMock(returncode=0, stdout="0.1.0\n0.2.0\n")
+        with patch(
+            "subprocess.run", side_effect=[fetch_result, list_result]
+        ) as mock_run:
+            tags = fetch_git_tags(tmp_dir)
+        assert tags == ["0.1.0", "0.2.0"]
+        first_cmd = mock_run.call_args_list[0][0][0]
+        assert first_cmd[:3] == ["git", "fetch", "--tags"]
+
+    def test_returns_newly_pushed_tag(self, tmp_dir: Path) -> None:
+        fetch_result = MagicMock(returncode=0, stdout="")
+        list_result = MagicMock(returncode=0, stdout="1.0.0\n2.0.0\n")
+        with patch("subprocess.run", side_effect=[fetch_result, list_result]):
+            tags = fetch_git_tags(tmp_dir)
+        assert "2.0.0" in tags
+
+    def test_falls_back_to_local_tags_when_fetch_fails(self, tmp_dir: Path) -> None:
+        fetch_result = MagicMock(returncode=128, stderr="fatal: not a git repository")
+        list_result = MagicMock(returncode=0, stdout="1.0.0\n")
+        with patch("subprocess.run", side_effect=[fetch_result, list_result]):
+            tags = fetch_git_tags(tmp_dir)
+        assert tags == ["1.0.0"]
+
+    def test_falls_back_when_fetch_raises(self, tmp_dir: Path) -> None:
+        list_result = MagicMock(returncode=0, stdout="1.0.0\n")
+        with patch(
+            "subprocess.run",
+            side_effect=[SubprocessError, list_result],
+        ):
+            tags = fetch_git_tags(tmp_dir)
+        assert tags == ["1.0.0"]
+
 
 # --- get_installed_runner_version ---
 
