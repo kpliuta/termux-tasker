@@ -8,8 +8,11 @@
 
 ## Todo
 
+* `high`   Bug: UI gets irresponsive while executing heavy tasks (during tt-selenium-runner initialization)
+* `high`   Bug: Acquire wake-lock on the startup
 * `high`   Bug: Runner doesn't change Enabled state to False after a critical error, even though State changes to Off correctly. Termination step should play "finally" block role
 * `high`   Bug: Ghost processes are still hanging in the process list even though the runner is terminated (or tasker was killed)
+* `high`   Bug: Task's default_timeout is not taken into account
 * `high`   Doc: Establish repo/project naming for runners/tasks
 * `high`   Doc: Simplify docs - separate User from Developer docs
 * `high`   Implement possibility to kill the runner (1) from termination modal screen and (2) from runner menu
@@ -18,6 +21,10 @@
 * `medium` Bug: Local Storage should open FileBrowserScreen at /sdcard/ instead of ~/ in Termux env
 * `medium` Bug: TUI hangs on picking up ~/.termux-tasker as Local Storage install
 * `medium` Implement runner/task validation tools for external use
+* `low`    Bug: "Failed to check out tag" message on update if any change was made to codebase manually
+* `low`    Create ./run shortcut in ~/.shortcuts in ./install.sh for a Termux shortcut widget
+* `low`    Line lenght is too long and doesn't fit to the screen when LogScreen's word-wrap is on
+* `low`    Add an app alias creation to install.sh
 * `low`    Add an indicator to LogScreen showing watcher instance type when Auto-scroll is on
 * `low`    Backspace key should behave the same way as Esc key
 * `low`    ConfirmationScreen arrow keys navigation
