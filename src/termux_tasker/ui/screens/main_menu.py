@@ -3,7 +3,7 @@ from __future__ import annotations
 from textual import on
 from textual.widgets import Button
 
-from termux_tasker.ui.base import MenuScreen
+from termux_tasker.ui.base import ButtonConfig, MenuScreen
 from termux_tasker.config import AppConfig
 from termux_tasker.ui.screens.settings_screen import SettingsScreen
 from termux_tasker.ui.screens.runners_screen import RunnersScreen
@@ -13,10 +13,10 @@ from termux_tasker.ui.screens._utils import termux_app
 class MainMenuScreen(MenuScreen):
     def __init__(self) -> None:
         super().__init__(
-            menu_items={
-                "Show Runners": "show_runners",
-                "Settings": "settings",
-            },
+            menu_items=[
+                ButtonConfig("show_runners", "Show Runners"),
+                ButtonConfig("settings", "Settings"),
+            ],
             show_exit_button=True,
         )
         self.title = "Main Menu"

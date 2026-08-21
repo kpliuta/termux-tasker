@@ -6,7 +6,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata
-from termux_tasker.ui.base import MenuScreen
+from termux_tasker.ui.base import ButtonConfig, MenuScreen
 from termux_tasker.ui.screens._utils import termux_app
 
 
@@ -17,7 +17,7 @@ class InstallTaskScreen(MenuScreen):
         meta = TaskMetadata.load(tmp_task_folder / "metadata.toml")
 
         super().__init__(
-            menu_items={"Install": "install"},
+            menu_items=[ButtonConfig("install", "Install")],
             description=meta.general.description or "",
             show_back_button=True,
         )

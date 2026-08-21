@@ -4,7 +4,6 @@ from pathlib import Path
 from subprocess import SubprocessError
 from unittest.mock import patch, MagicMock
 
-import pytest
 
 from termux_tasker.ui.screens._utils import (
     fetch_git_tags,
@@ -12,7 +11,6 @@ from termux_tasker.ui.screens._utils import (
     get_installed_task_version,
     sanitize_id,
 )
-from termux_tasker.config import RunnerMetadata, RunnerSettings, TaskMetadata
 
 
 # --- sanitize_id ---

@@ -6,7 +6,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import AppConfig
-from termux_tasker.ui.base import MenuScreen, InputScreen
+from termux_tasker.ui.base import ButtonConfig, MenuScreen, InputScreen
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.update_app_version import UpdateAppVersionScreen
 
@@ -22,11 +22,14 @@ class SettingsScreen(MenuScreen):
         self.title = "Settings"
 
     @staticmethod
-    def _build_menu_items(upgrade_on_startup: bool) -> dict[str, str]:
-        return {
-            rf"Termux upgrade on startup \[{upgrade_on_startup}]": "upgrade_on_startup",
-            "Update App": "update_app",
-        }
+    def _build_menu_items(upgrade_on_startup: bool) -> list[ButtonConfig]:
+        return [
+            ButtonConfig(
+                "upgrade_on_startup",
+                rf"Termux upgrade on startup \[{upgrade_on_startup}]",
+            ),
+            ButtonConfig("update_app", "Update App"),
+        ]
 
     @on(Button.Pressed, "#upgrade_on_startup")
     def on_upgrade(self, event: Button.Pressed) -> None:

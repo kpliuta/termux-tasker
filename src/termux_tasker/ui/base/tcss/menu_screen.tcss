@@ -1,9 +1,13 @@
-#description {
+#description-scroll {
     width: 1fr;
-    margin: 1;
-    content-align: center middle;
+    height: auto;
+    margin: 1 2;
     border: tall $primary;
     background: $surface;
+}
+
+#description {
+    content-align: center middle;
 }
 
 Button {
@@ -11,6 +15,19 @@ Button {
     margin: 1 2;
 }
 
-#bottom-bar {
+.btn-title {
+    width: 1fr;
+    margin: 0 4;
+}
+
+.button-row {
+    height: auto;
+    margin: 1 0;
+}
+.button-row > Button {
+    margin: 0 2;
+}
+
+#bottom-container {
     height: auto;
 }

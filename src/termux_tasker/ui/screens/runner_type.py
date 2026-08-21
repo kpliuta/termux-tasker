@@ -7,7 +7,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.ui.base import (
-    MenuScreen, InputScreen, InfoScreen, FileBrowserScreen,
+    ButtonConfig, MenuScreen, InputScreen, InfoScreen, FileBrowserScreen,
 )
 from termux_tasker.ui.screens._utils import (
     termux_app, clone_repo, copy_to_tmp, GITHUB_URL_RE,
@@ -17,11 +17,11 @@ from termux_tasker.ui.screens._utils import (
 class RunnerTypeScreen(MenuScreen):
     def __init__(self) -> None:
         super().__init__(
-            menu_items={
-                "Bundled": "bundled",
-                "GitHub URL": "github_url",
-                "Local Storage": "local_storage",
-            },
+            menu_items=[
+                ButtonConfig("bundled", "Bundled"),
+                ButtonConfig("github_url", "GitHub URL"),
+                ButtonConfig("local_storage", "Local Storage"),
+            ],
             show_back_button=True,
         )
         self.title = "Runner Type"

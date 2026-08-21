@@ -29,7 +29,12 @@
 
 [//]: # (textual)
 
-- Subclass `MenuScreen` for feature screens; pass `menu_items: dict[str, str]` (label→button_id).
+- Subclass `MenuScreen` for feature screens; pass `menu_items: list[ButtonConfig]` (import `ButtonConfig` from `termux_tasker.ui.base`).
+- Use `ButtonConfig(id, label, variant, disabled, layout, title)` for button configuration.
+- `ButtonLayout.TOP` (default) places buttons in the scroll area; `ButtonLayout.BOTTOM` places them in the bottom bar.
+- `column_count` (default 1) controls how many buttons appear per row — applies uniformly to all buttons including Back/Exit.
+- Set `title="[b]Header[/b]"` on a `ButtonConfig` to show formatted text above the button (Rich markup supported).
+- Set `disabled=True` to disable a button — empty `id` no longer implies disabled.
 - Handle button events with `@on(Button.Pressed, "#button_id")` — always `event.stop()`.
 - Use `termux_app(self)` from `_utils.py` for typed app access — prefer over `self.app` everywhere in feature screens (but `self.app` is fine in base screens in `ui/base/`).
 - `BINDINGS` list for keyboard shortcuts: `[("escape", "press_back", "Back")]`.
@@ -41,6 +46,8 @@
   CSS_PATH = _HERE / "tcss" / "menu_screen.tcss"
   ```
 - Import all base screen types from `termux_tasker.ui.base` (never re-import from individual files).
+- Description can be `str` (with Rich markup) or a `Widget` instance — use `description` and `description_widget` params.
+- `description_max_height` controls the description area height (default "100%").
 
 [//]: # (testing — BDD)
 

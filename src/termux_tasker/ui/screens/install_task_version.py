@@ -15,6 +15,7 @@ from termux_tasker.config import (
 )
 from termux_tasker.task_validator import TaskValidator, TaskValidatorException
 from termux_tasker.ui.base import (
+    ButtonConfig,
     MenuScreen,
     LoadingScreen,
     InfoScreen,
@@ -41,7 +42,7 @@ class InstallTaskVersionScreen(MenuScreen):
         self._task_meta = meta
         self._id_to_tag: dict[str, str] = {}
 
-        super().__init__({}, show_back_button=True)
+        super().__init__([], show_back_button=True)
         self.title = "Task Version"
         self.sub_title = meta.general.name
         self._loaded = False
@@ -60,7 +61,7 @@ class InstallTaskVersionScreen(MenuScreen):
             self.runner_path / "tasks", meta.general.id
         )
 
-        items: dict[str, str] = {}
+        items: list[ButtonConfig] = []
 
         if is_git:
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
@@ -74,7 +75,7 @@ class InstallTaskVersionScreen(MenuScreen):
                     label += " \\[Installed]"
                 safe = sanitize_id(tag)
                 self._id_to_tag[safe] = tag
-                items[label] = f"version_{safe}"
+                items.append(ButtonConfig(f"version_{safe}", label))
 
             await loading.dismiss(None)
         else:
@@ -84,7 +85,7 @@ class InstallTaskVersionScreen(MenuScreen):
                 label += " \\[Installed]"
             safe = sanitize_id(tag)
             self._id_to_tag[safe] = tag
-            items[label] = f"version_{safe}"
+            items.append(ButtonConfig(label=label, id=f"version_{safe}"))
 
         self.menu_items = items
 

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Refactored `MenuScreen` to use `list[ButtonConfig]` instead of `dict[str, str]` for menu items. New `ButtonConfig` dataclass supports `label`, `id`, `variant`, `disabled`, `layout` (TOP/BOTTOM), and `title` (Rich markup above button).
+- Description area now supports Rich markup formatting, arbitrary `Widget` content via `description_widget` param, and configurable max height via `description_max_height`.
+- Button disabled state is now explicit via `ButtonConfig(disabled=True)` instead of implicit empty ID.
+- Added `ButtonLayout` (TOP/BOTTOM) enum for flexible button placement.
+- Replaced per-button style (`ButtonStyle`) with `column_count` on `MenuScreen` — all buttons (including Back/Exit) are arranged in uniform rows of `column_count` columns.
+
 ## [0.2.2] - 2026-07-31
 
 ### Fixed

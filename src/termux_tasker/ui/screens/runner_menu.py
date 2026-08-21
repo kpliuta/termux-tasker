@@ -10,6 +10,7 @@ from termux_tasker.config import RunnerMetadata, RunnerSettings
 from termux_tasker.runner_process import RunnerProcess
 from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base import (
+    ButtonConfig,
     MenuScreen,
     LoadingScreen,
     InputScreen,
@@ -68,11 +69,6 @@ class RunnerMenuScreen(MenuScreen):
     ) -> None:
         self.menu_items = self._build_items(meta, settings)
         self.description = self._build_description(meta, settings)
-        id_to_label = {v: k for k, v in self.menu_items.items()}
-        for btn in self.query(Button):
-            btn_id = btn.id
-            if btn_id is not None and btn_id in id_to_label:
-                btn.label = id_to_label[btn_id]
 
     def _fix_session(self, settings: RunnerSettings, runner_path: Path) -> None:
         """Reset stale session state (same pattern as TaskMenuScreen).
@@ -103,18 +99,18 @@ class RunnerMenuScreen(MenuScreen):
     @staticmethod
     def _build_items(
         meta: RunnerMetadata, settings: RunnerSettings
-    ) -> dict[str, str]:
-        items: dict[str, str] = {}
+    ) -> list[ButtonConfig]:
+        items: list[ButtonConfig] = []
         toggle_label = "Disable" if settings.general.enabled else "Enable"
-        items[toggle_label] = "toggle"
-        items["Show Tasks"] = "show_tasks"
-        items["Show Runner Logs"] = "show_logs"
-        items["Show metadata.toml"] = "show_metadata"
-        items["Show settings.toml"] = "show_settings"
+        items.append(ButtonConfig("toggle", toggle_label))
+        items.append(ButtonConfig("show_tasks", "Show Tasks"))
+        items.append(ButtonConfig("show_logs", "Show Runner Logs"))
+        items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
+        items.append(ButtonConfig("show_settings", "Show settings.toml"))
         for prop in meta.properties:
-            items[f"Set {prop.name}"] = f"set_{prop.name}"
-        items["Update"] = "update"
-        items["Uninstall"] = "uninstall"
+            items.append(ButtonConfig(f"set_{prop.name}", f"Set {prop.name}"))
+        items.append(ButtonConfig("update", "Update"))
+        items.append(ButtonConfig("uninstall", "Uninstall"))
         return items
 
     @on(Button.Pressed, "#toggle")

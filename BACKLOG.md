@@ -22,8 +22,9 @@
 * `medium` Bug: TUI hangs on picking up ~/.termux-tasker as Local Storage install
 * `medium` Implement runner/task validation tools for external use
 * `low`    Bug: "Failed to check out tag" message on update if any change was made to codebase manually
+* `low`    Bug: Add root element to tcss of each base screen, as it can affect parent screen style
 * `low`    Create ./run shortcut in ~/.shortcuts in ./install.sh for a Termux shortcut widget
-* `low`    Line lenght is too long and doesn't fit to the screen when LogScreen's word-wrap is on
+* `low`    Line length is too long and doesn't fit to the screen when LogScreen's word-wrap is on
 * `low`    Add an app alias creation to install.sh
 * `low`    Add an indicator to LogScreen showing watcher instance type when Auto-scroll is on
 * `low`    Backspace key should behave the same way as Esc key

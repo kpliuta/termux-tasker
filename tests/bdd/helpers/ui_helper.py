@@ -49,9 +49,9 @@ class UIHelper:
         """
         screen = self.app.screen
         if hasattr(screen, "menu_items"):
-            for lbl, btn_id in screen.menu_items.items():
-                if str(lbl).strip() == label and btn_id:
-                    self._pilot.click(f"#{btn_id}")
+            for btn_cfg in screen.menu_items:
+                if str(btn_cfg.label).strip() == label and btn_cfg.id:
+                    self._pilot.click(f"#{btn_cfg.id}")
                     self._pilot.pause()
                     return
         for btn in screen.query("Button"):

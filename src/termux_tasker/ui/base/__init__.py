@@ -13,9 +13,15 @@ from termux_tasker.ui.base.log_screen import (
     LogSettingsScreen,
     LogScreen,
 )
-from termux_tasker.ui.base.menu_screen import MenuScreen
+from termux_tasker.ui.base.menu_screen import (
+    ButtonConfig,
+    ButtonLayout,
+    MenuScreen,
+)
 
 __all__ = [
+    "ButtonConfig",
+    "ButtonLayout",
     "ConfirmationScreen",
     "FileBrowserScreen",
     "FileWatcher",

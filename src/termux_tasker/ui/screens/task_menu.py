@@ -12,6 +12,7 @@ from textual.widgets import Button
 from termux_tasker.config import TaskMetadata, TaskSettings
 from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base import (
+    ButtonConfig,
     MenuScreen,
     LoadingScreen,
     InputScreen,
@@ -73,11 +74,6 @@ class TaskMenuScreen(MenuScreen):
     ) -> None:
         self.menu_items = self._build_items(meta, settings)
         self.description = self._build_description(meta, settings)
-        id_to_label = {v: k for k, v in self.menu_items.items()}
-        for btn in self.query(Button):
-            btn_id = btn.id
-            if btn_id is not None and btn_id in id_to_label:
-                btn.label = id_to_label[btn_id]
 
     def _fix_session(self, settings: TaskSettings, task_path: Path) -> None:
         """Reset stale session state on app restart.
@@ -109,20 +105,20 @@ class TaskMenuScreen(MenuScreen):
 
     def _build_items(
         self, meta: TaskMetadata, settings: TaskSettings
-    ) -> dict[str, str]:
-        items: dict[str, str] = {}
+    ) -> list[ButtonConfig]:
+        items: list[ButtonConfig] = []
         toggle_label = "Disable" if settings.general.enabled else "Enable"
-        items[toggle_label] = "toggle"
-        items["Show metadata.toml"] = "show_metadata"
-        items["Show settings.toml"] = "show_settings"
-        items["Set Timeout"] = "set_timeout"
+        items.append(ButtonConfig("toggle", toggle_label))
+        items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
+        items.append(ButtonConfig("show_settings", "Show settings.toml"))
+        items.append(ButtonConfig("set_timeout", "Set Timeout"))
         for prop in meta.properties:
-            items[f"Set {prop.name}"] = f"set_{prop.name}"
-        items["Update"] = "update"
-        items["Uninstall"] = "uninstall"
+            items.append(ButtonConfig(f"set_{prop.name}", f"Set {prop.name}"))
+        items.append(ButtonConfig("update", "Update"))
+        items.append(ButtonConfig("uninstall", "Uninstall"))
         output_dir = self.task_path / "output"
         if output_dir.exists():
-            items["Show output"] = "show_output"
+            items.append(ButtonConfig("show_output", "Show output"))
         return items
 
     @on(Button.Pressed, "#toggle")
