@@ -13,6 +13,7 @@ from termux_tasker.config import TaskMetadata, TaskSettings
 from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base import (
     ButtonConfig,
+    ButtonLayout,
     MenuScreen,
     LoadingScreen,
     InputScreen,
@@ -108,14 +109,14 @@ class TaskMenuScreen(MenuScreen):
     ) -> list[ButtonConfig]:
         items: list[ButtonConfig] = []
         toggle_label = "Disable" if settings.general.enabled else "Enable"
-        items.append(ButtonConfig("toggle", toggle_label))
+        items.append(ButtonConfig("toggle", toggle_label, variant="warning"))
         items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
         items.append(ButtonConfig("show_settings", "Show settings.toml"))
         items.append(ButtonConfig("set_timeout", "Set Timeout"))
         for prop in meta.properties:
             items.append(ButtonConfig(f"set_{prop.name}", f"Set {prop.name}"))
-        items.append(ButtonConfig("update", "Update"))
-        items.append(ButtonConfig("uninstall", "Uninstall"))
+        items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))
+        items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM))
         output_dir = self.task_path / "output"
         if output_dir.exists():
             items.append(ButtonConfig("show_output", "Show output"))

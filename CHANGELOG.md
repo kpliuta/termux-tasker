@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Button disabled state is now explicit via `ButtonConfig(disabled=True)` instead of implicit empty ID.
 - Added `ButtonLayout` (TOP/BOTTOM) enum for flexible button placement.
 - Replaced per-button style (`ButtonStyle`) with `column_count` on `MenuScreen` — all buttons (including Back/Exit) are arranged in uniform rows of `column_count` columns.
+- Change buttons coloring and layout.
 
 ## [0.2.2] - 2026-07-31
 

@@ -43,8 +43,8 @@ class ConfirmationScreen(ModalScreen[Union[str, None]]):
         with Vertical(id="confirmation_dialog"):
             yield Static(self.message, id="confirmation_message")
             with Horizontal(id="confirmation_buttons"):
-                yield Button(self.cancel_button_text, id="cancel_button", variant="error")
                 yield Button(self.ok_button_text, id=self.ok_button_id, variant="primary")
+                yield Button(self.cancel_button_text, id="cancel_button", variant="error")
 
     @on(Button.Pressed)
     def on_button_pressed(self, event: Button.Pressed) -> None:

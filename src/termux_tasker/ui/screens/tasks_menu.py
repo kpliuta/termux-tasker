@@ -6,7 +6,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, TaskSettings
-from termux_tasker.ui.base import ButtonConfig, MenuScreen
+from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.task_type import TaskTypeScreen
 from termux_tasker.ui.screens.task_menu import TaskMenuScreen
@@ -15,7 +15,7 @@ class TasksMenuScreen(MenuScreen):
     def __init__(self, runner_path: Path) -> None:
         self.runner_path = runner_path
         super().__init__([
-            ButtonConfig("install_task", "Install Task"),
+            ButtonConfig("install_task", "Install Task", variant="primary", layout=ButtonLayout.BOTTOM),
         ], show_back_button=True)
         self.title = "Tasks"
         self._refresh()
@@ -39,7 +39,7 @@ class TasksMenuScreen(MenuScreen):
                     rf"{meta.general.name} \[{status}]",
                 ))
 
-        items.append(ButtonConfig("install_task", "Install Task"))
+        items.append(ButtonConfig("install_task", "Install Task", variant="primary", layout=ButtonLayout.BOTTOM))
         self.menu_items = items
 
     @on(Button.Pressed, "#install_task")

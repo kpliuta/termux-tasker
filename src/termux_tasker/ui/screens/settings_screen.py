@@ -6,7 +6,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import AppConfig
-from termux_tasker.ui.base import ButtonConfig, MenuScreen, InputScreen
+from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen, InputScreen
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.update_app_version import UpdateAppVersionScreen
 
@@ -28,7 +28,7 @@ class SettingsScreen(MenuScreen):
                 "upgrade_on_startup",
                 rf"Termux upgrade on startup \[{upgrade_on_startup}]",
             ),
-            ButtonConfig("update_app", "Update App"),
+            ButtonConfig("update_app", "Update App", variant="primary", layout=ButtonLayout.BOTTOM),
         ]
 
     @on(Button.Pressed, "#upgrade_on_startup")

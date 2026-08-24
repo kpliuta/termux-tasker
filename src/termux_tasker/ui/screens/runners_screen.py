@@ -7,7 +7,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import RunnerMetadata, RunnerSettings
-from termux_tasker.ui.base import ButtonConfig, MenuScreen
+from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
 
@@ -55,7 +55,7 @@ class RunnersScreen(MenuScreen):
                 rf"{meta.general.name} \[{status}]",
             ))
 
-        items.append(ButtonConfig("install_runner", "Install Runner"))
+        items.append(ButtonConfig("install_runner", "Install Runner", variant="primary", layout=ButtonLayout.BOTTOM))
         self.menu_items = items
 
     @staticmethod

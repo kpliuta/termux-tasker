@@ -11,6 +11,7 @@ from termux_tasker.runner_process import RunnerProcess
 from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base import (
     ButtonConfig,
+    ButtonLayout,
     MenuScreen,
     LoadingScreen,
     InputScreen,
@@ -102,15 +103,15 @@ class RunnerMenuScreen(MenuScreen):
     ) -> list[ButtonConfig]:
         items: list[ButtonConfig] = []
         toggle_label = "Disable" if settings.general.enabled else "Enable"
-        items.append(ButtonConfig("toggle", toggle_label))
+        items.append(ButtonConfig("toggle", toggle_label, variant="warning"))
         items.append(ButtonConfig("show_tasks", "Show Tasks"))
         items.append(ButtonConfig("show_logs", "Show Runner Logs"))
         items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
         items.append(ButtonConfig("show_settings", "Show settings.toml"))
         for prop in meta.properties:
             items.append(ButtonConfig(f"set_{prop.name}", f"Set {prop.name}"))
-        items.append(ButtonConfig("update", "Update"))
-        items.append(ButtonConfig("uninstall", "Uninstall"))
+        items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))
+        items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM))
         return items
 
     @on(Button.Pressed, "#toggle")

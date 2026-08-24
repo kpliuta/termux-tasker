@@ -84,7 +84,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                 label += " \\[Installed]"
             safe = sanitize_id(tag)
             self._id_to_tag[safe] = tag
-            items.append(ButtonConfig(label=label, id=f"version_{safe}"))
+            items.append(ButtonConfig(f"version_{safe}", label))
 
         self.menu_items = items
 
