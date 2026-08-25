@@ -3,7 +3,10 @@ from __future__ import annotations
 import shutil
 import time
 
+from textual.widgets import Button
+
 from tests.bdd.steps_common import *  # noqa
+from termux_tasker.config import RunnerMetadata, TaskMetadata  # noqa
 from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
 
 
@@ -40,6 +43,7 @@ def then_tasks_shown(pilot) -> None:
 
 
 @then("the Task Menu screen is shown")
+@then("the Task Menu screen is shown again")
 def then_task_menu_shown(pilot) -> None:
     ui(pilot).assert_screen(TaskMenuScreen)
 
@@ -251,6 +255,11 @@ def then_set_timeout_button(pilot) -> None:
     ui(pilot).assert_has_button("Set Timeout")
 
 
+@then('it contains "Properties" button')
+def then_contains_properties_button(pilot) -> None:
+    ui(pilot).assert_has_button("Properties")
+
+
 @then('it contains "{label}" button')
 def then_contains_button(pilot, label: str) -> None:
     ui(pilot).assert_has_button(label)
@@ -311,10 +320,90 @@ def then_label_updates(pilot) -> None:
 def then_set_property_buttons(pilot) -> None:
     buttons = [
         b
-        for b in ui(pilot).app.screen.query("Button")
+        for b in ui(pilot).app.screen.query(Button)
         if b.id and b.id.startswith("set_")
     ]
     assert len(buttons) >= 1
+
+
+@then("the Properties screen is shown")
+def then_properties_screen_shown(pilot) -> None:
+    ui(pilot).assert_screen(PropertiesScreen)
+
+
+@then('it contains no "Set <property>" buttons')
+def then_no_set_property_buttons(pilot) -> None:
+    buttons = [
+        b
+        for b in ui(pilot).app.screen.query(Button)
+        if b.id and b.id.startswith("set_")
+    ]
+    assert not buttons, f"Unexpected property buttons: {[b.id for b in buttons]}"
+
+
+def _properties_context(pilot) -> tuple[Path, RunnerMetadata | TaskMetadata]:
+    """Return the item path and metadata of the runner/task that owns
+    the currently open Properties screen (found below it in the stack)."""
+    for screen in ui(pilot).app.screen_stack:
+        if isinstance(screen, TaskMenuScreen):
+            meta = TaskMetadata.load(screen.task_path / "metadata.toml")
+            return screen.task_path, meta
+    for screen in ui(pilot).app.screen_stack:
+        if isinstance(screen, RunnerMenuScreen):
+            meta = RunnerMetadata.load(screen.runner_path / "metadata.toml")
+            return screen.runner_path, meta
+    raise AssertionError("No Runner/Task menu found under the Properties screen")
+
+
+def _property_title_text(pilot, prop_name: str) -> str:
+    btn = ui(pilot).app.screen.query_one(f"#set_{prop_name}", Button)
+    siblings = list(btn.parent.children)
+    title_static = siblings[siblings.index(btn) - 1]
+    return str(title_static.render())
+
+
+@then('the title is "Properties"')
+def then_properties_title(pilot) -> None:
+    assert ui(pilot).title() == "Properties"
+
+
+@then('each property button shows "<property>: <value>" as its title')
+def then_property_titles_show_values(pilot) -> None:
+    _path, meta = _properties_context(pilot)
+    s = settings().load_runner_settings(_path)
+    for prop in meta.properties:
+        expected = s.properties.get(prop.name) or "(not set)"
+        assert _property_title_text(pilot, prop.name) == f"{prop.name}: {expected}"
+
+
+@then("the description shows no properties")
+def then_description_no_properties(pilot) -> None:
+    desc = getattr(ui(pilot).app.screen, "description", "") or ""
+    _path, meta = _properties_context(pilot)
+    shown = [prop.name for prop in meta.properties if prop.name in desc]
+    assert not shown, f"Properties leaked into description: {shown}"
+
+
+@then("the property value is saved in settings.toml")
+def then_property_saved(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
+    assert len(s.properties) > 0
+
+
+@then("the task property value is saved in settings.toml")
+def then_task_property_saved(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    s = settings().load_task_settings(task_path)
+    assert len(s.properties) > 0
+
+
+@then("the property button title shows the saved value")
+def then_property_title_shows_saved_value(pilot) -> None:
+    then_property_titles_show_values(pilot)
 
 
 @then("the runner list is updated within 1 second")
@@ -416,13 +505,6 @@ def then_enabled_still_false(pilot) -> None:
     runner_path = ui(pilot).app.state.runners_path / "sh_runner"
     s = settings().load_runner_settings(runner_path)
     assert s.general.enabled is False
-
-
-@then("the property value is saved in settings.toml")
-def then_property_saved(pilot) -> None:
-    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
-    s = settings().load_runner_settings(runner_path)
-    assert len(s.properties) > 0
 
 
 @then("the timeout value is saved in settings.toml")

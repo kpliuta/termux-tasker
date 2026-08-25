@@ -14,6 +14,7 @@ from termux_tasker.ui.screens.bundled_task import BundledTaskScreen
 from termux_tasker.ui.screens.install_task import InstallTaskScreen
 from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
 from termux_tasker.ui.screens.task_menu import TaskMenuScreen
+from termux_tasker.ui.screens.properties import PropertiesScreen
 from termux_tasker.ui.screens.update_app_version import UpdateAppVersionScreen
 
 __all__ = [
@@ -31,5 +32,6 @@ __all__ = [
     "InstallTaskScreen",
     "InstallTaskVersionScreen",
     "TaskMenuScreen",
+    "PropertiesScreen",
     "UpdateAppVersionScreen",
 ]

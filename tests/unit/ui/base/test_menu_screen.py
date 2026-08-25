@@ -299,6 +299,50 @@ class TestMenuScreenWatchers:
             assert "b" in ids
 
     @pytest.mark.asyncio
+    async def test_watch_menu_items_updates_title_in_place(self) -> None:
+        """Same button ids with a changed title must update the caption
+        without rebuilding the DOM."""
+        screen = MenuScreen(
+            menu_items=[ButtonConfig(label="Set p", id="set_p", title="[b]p[/b]: old")]
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            btn_before = pilot.app.screen.query_one("#set_p", Button)
+            screen.menu_items = [
+                ButtonConfig(label="Set p", id="set_p", title="[b]p[/b]: new")
+            ]
+            await pilot.pause()
+            btn_after = pilot.app.screen.query_one("#set_p", Button)
+            assert btn_after is btn_before
+            titles = pilot.app.screen.query(".btn-title")
+            assert len(titles) == 1
+            assert "new" in str(titles[0].render())
+
+    @pytest.mark.asyncio
+    async def test_bottom_bar_label_updates_in_place(self) -> None:
+        """Bottom-bar-only changes must not force a full rebuild."""
+        items = [ButtonConfig(label="Update", id="update", layout=ButtonLayout.BOTTOM)]
+        screen = MenuScreen(menu_items=items, show_back_button=True)
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            btn_before = pilot.app.screen.query_one("#update", Button)
+            screen.menu_items = [
+                ButtonConfig(label="Update!", id="update", layout=ButtonLayout.BOTTOM)
+            ]
+            await pilot.pause()
+            btn_after = pilot.app.screen.query_one("#update", Button)
+            assert btn_after is btn_before
+            assert str(btn_after.label).strip() == "Update!"
+
+    @pytest.mark.asyncio
     async def test_watch_description_updates_text(self) -> None:
         screen = MenuScreen(menu_items=[], description="old")
 

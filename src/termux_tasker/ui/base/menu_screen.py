@@ -77,6 +77,9 @@ class MenuScreen(Screen[None]):
         self._column_count = column_count
         self.show_back_button = show_back_button
         self.show_exit_button = show_exit_button
+        # Last title rendered per button id — used to skip redundant
+        # in-place title updates in watch_menu_items.
+        self._active_titles: dict[str, str] = {}
 
     # ── Compose ───────────────────────────────────────────────────────
 
@@ -98,6 +101,18 @@ class MenuScreen(Screen[None]):
                     yield self._description_widget
                 elif self.description:
                     yield Static(self.description, id="description")
+
+    def _make_title_static(self, btn: ButtonConfig) -> Static | None:
+        """Build the caption rendered above a button, if it has a title.
+
+        Records the rendered title so watch_menu_items can skip
+        redundant updates later.
+        """
+        if not btn.title:
+            return None
+        if btn.id:
+            self._active_titles[btn.id] = btn.title
+        return Static(btn.title, classes="btn-title")
 
     def _compose_top_buttons(self) -> ComposeResult:
         top = [b for b in self.menu_items if b.layout == ButtonLayout.TOP]
@@ -124,8 +139,9 @@ class MenuScreen(Screen[None]):
                     id=f"button-row-{row_idx}", classes="button-row"
                 ):
                     for btn in row_buttons:
-                        if btn.title:
-                            yield Static(btn.title, classes="btn-title")
+                        title_static = self._make_title_static(btn)
+                        if title_static is not None:
+                            yield title_static
                         yield Button(
                             btn.label,
                             id=btn.id or None,
@@ -133,10 +149,10 @@ class MenuScreen(Screen[None]):
                             disabled=btn.disabled,
                         )
 
-    @staticmethod
-    def _compose_single_button(btn: ButtonConfig) -> ComposeResult:
-        if btn.title:
-            yield Static(btn.title, classes="btn-title")
+    def _compose_single_button(self, btn: ButtonConfig) -> ComposeResult:
+        title_static = self._make_title_static(btn)
+        if title_static is not None:
+            yield title_static
         yield Button(
             btn.label,
             id=btn.id or None,
@@ -150,33 +166,51 @@ class MenuScreen(Screen[None]):
         """Reactive watcher — called automatically when self.menu_items changes.
 
         Optimization: if the set of button IDs is unchanged,
-        mutate labels/titles in-place to preserve focus and avoid flicker.
-        Otherwise, tear down and rebuild the entire DOM.
+        mutate labels/titles/disabled in-place to preserve focus and avoid
+        flicker.  Otherwise, tear down and rebuild the entire DOM.
         """
         try:
-            scroll = self.query_one(VerticalScroll)
+            self.query_one(VerticalScroll)
         except NoMatches:
             return  # widget tree may not exist yet (triggered via init=False)
-        existing_ids = {
-            btn.id for btn in scroll.query(Button) if btn.id
-        }
-        needed_ids = {
-            btn.id for btn in self.menu_items if btn.id
-        }
-        action_buttons = list(scroll.query(Button))
+
+        action_buttons = [
+            btn for btn in self.query(Button)
+            if btn.id not in ("back", "exit")
+        ]
+        existing_ids = {btn.id for btn in action_buttons if btn.id}
+        needed_ids = {btn.id for btn in self.menu_items if btn.id}
 
         if (
             needed_ids == existing_ids
             and len(self.menu_items) == len(action_buttons)
         ):
             id_to_config = {btn.id: btn for btn in self.menu_items if btn.id}
-            for btn in action_buttons:
-                if btn.id and btn.id in id_to_config:
-                    cfg = id_to_config[btn.id]
-                    btn.label = cfg.label
-                    btn.disabled = cfg.disabled
+            for widget in action_buttons:
+                if not widget.id or widget.id not in id_to_config:
+                    continue
+                cfg = id_to_config[widget.id]
+                widget.label = cfg.label
+                widget.disabled = cfg.disabled
+                self._update_button_title(widget, cfg)
         else:
             self.run_worker(self._rebuild_menu())
+
+    def _update_button_title(self, btn: Button, cfg: ButtonConfig) -> None:
+        """Sync the caption above *btn* with ``cfg.title`` (in-place)."""
+        btn_id = btn.id
+        if not btn_id or self._active_titles.get(btn_id) == cfg.title:
+            return
+        parent = btn.parent
+        siblings = list(parent.children) if parent else []
+        idx = siblings.index(btn)
+        prev = siblings[idx - 1] if idx > 0 else None
+        if isinstance(prev, Static) and "btn-title" in prev.classes:
+            if cfg.title:
+                prev.update(cfg.title)
+            else:
+                prev.display = False
+        self._active_titles[btn_id] = cfg.title
 
     async def _rebuild_menu(self) -> None:
         """Full DOM teardown and rebuild of the button menu."""
@@ -216,8 +250,9 @@ class MenuScreen(Screen[None]):
         per_row = self._column_count
         if per_row <= 1:
             for btn in buttons:
-                if btn.title:
-                    await parent.mount(Static(btn.title, classes="btn-title"))
+                title_static = self._make_title_static(btn)
+                if title_static is not None:
+                    await parent.mount(title_static)
                 await parent.mount(
                     Button(
                         btn.label,
@@ -232,8 +267,9 @@ class MenuScreen(Screen[None]):
                 row = Horizontal(id=f"button-row-{i}", classes="button-row")
                 await parent.mount(row)
                 for btn in row_buttons:
-                    if btn.title:
-                        await row.mount(Static(btn.title, classes="btn-title"))
+                    title_static = self._make_title_static(btn)
+                    if title_static is not None:
+                        await row.mount(title_static)
                     await row.mount(
                         Button(
                             btn.label,

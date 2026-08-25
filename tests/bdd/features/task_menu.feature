@@ -11,16 +11,16 @@ Feature: Task Menu
       - Enabled status
       - Session state
       - Timeout value
-      - All configured properties with their values
       """
     And it contains "Enable"/"Disable" toggle button
+    And it contains "Properties" button
     And it contains "Show metadata.toml" button
     And it contains "Show settings.toml" button
     And it contains "Set Timeout" button
     And it contains "Update" button
     And it contains "Uninstall" button
     And it contains "Back" button
-    And for each property defined in metadata it contains "Set <property>" button
+    And it contains no "Set <property>" buttons
 
   Scenario: Toggle a task on/off
     Given the Task Menu screen is shown for a task

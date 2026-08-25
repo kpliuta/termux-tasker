@@ -28,6 +28,7 @@ from termux_tasker.ui.screens.install_runner_version import InstallRunnerVersion
 from termux_tasker.ui.screens.install_task import InstallTaskScreen
 from termux_tasker.ui.screens.install_task_version import InstallTaskVersionScreen
 from termux_tasker.ui.screens.dashboard import DashboardScreen
+from termux_tasker.ui.screens.properties import PropertiesScreen
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
 from termux_tasker.ui.screens.runners_screen import RunnersScreen
 from termux_tasker.ui.screens.runner_type import RunnerTypeScreen
@@ -57,6 +58,7 @@ __all__ = [
     "DashboardScreen", "RunnerMenuScreen", "RunnersScreen",
     "RunnerTypeScreen", "SettingsScreen", "TaskMenuScreen",
     "TaskTypeScreen", "TasksMenuScreen", "UpdateAppVersionScreen",
+    "PropertiesScreen",
     "ui", "settings", "fs", "val", "TEST_PROPERTIES",
 ]
 

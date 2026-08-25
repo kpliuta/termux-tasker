@@ -17,7 +17,7 @@ Button {
 
 .btn-title {
     width: 1fr;
-    margin: 0 4;
+    margin: 1 2;
 }
 
 .button-row {

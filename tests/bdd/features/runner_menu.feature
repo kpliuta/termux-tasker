@@ -10,9 +10,9 @@ Feature: Runner Menu
       - Version
       - Enabled status
       - Session state
-      - All configured properties with their values
       """
     And it contains "Enable"/"Disable" toggle button
+    And it contains "Properties" button
     And it contains "Show Tasks" button
     And it contains "Show Runner Logs" button
     And it contains "Show metadata.toml" button
@@ -20,7 +20,7 @@ Feature: Runner Menu
     And it contains "Update" button
     And it contains "Uninstall" button
     And it contains "Back" button
-    And for each property defined in metadata it contains "Set <property>" button
+    And it contains no "Set <property>" buttons
 
   Scenario: Enable a runner
     Given the Runner Menu screen is shown
@@ -69,34 +69,6 @@ Feature: Runner Menu
     When I press "Update" button
     Then the runner directory is copied to a temporary location
     And the Install Runner Version screen is shown
-
-  Scenario: Set a runner property
-    Given the Runner Menu screen is shown
-    And the runner metadata defines a property
-    When I press "Set <property>" button
-    Then an InputScreen is shown for that property
-    And the correct input type (text/radio/checkbox)
-    And the current value is pre-populated
-    And the property description is shown
-    When I enter a valid value and press Ok
-    Then the property value is saved in settings.toml
-    And the runner description is updated
-
-  Scenario: Set required runner property with empty value shows warning
-    Given the Runner Menu screen is shown
-    And the property is non-optional
-    When I press "Set <property>" button
-    And I clear the value and press Ok
-    Then a warning InfoScreen is shown
-    And it says "'<property>' is required and must have a value."
-    When I dismiss the warning
-    Then the InputScreen is shown again to retry
-
-  Scenario: Cancel setting a runner property
-    Given the Runner Menu screen is shown
-    When I press "Set <property>" button
-    And I press "Cancel" (or Escape)
-    Then the property value is unchanged
 
   Scenario: Uninstall a runner
     Given the Runner Menu screen is shown for a runner

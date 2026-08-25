@@ -48,6 +48,8 @@
 - Import all base screen types from `termux_tasker.ui.base` (never re-import from individual files).
 - Description can be `str` (with Rich markup) or a `Widget` instance — use `description` and `description_widget` params.
 - `description_max_height` controls the description area height (default "100%").
+- Reassigning `self.menu_items` updates labels/disabled/titles **in place** when button ids are unchanged (no rebuild, focus preserved); changing the id set triggers a full DOM rebuild.
+- Runner/task property editing lives in the unified `PropertiesScreen` (`ui/screens/properties.py`); menus only push it via a "Properties" button. Button ids prefixed `set_` are reserved for property buttons.
 
 [//]: # (testing — BDD)
 

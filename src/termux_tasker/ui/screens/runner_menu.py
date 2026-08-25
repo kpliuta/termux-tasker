@@ -14,16 +14,13 @@ from termux_tasker.ui.base import (
     ButtonLayout,
     MenuScreen,
     LoadingScreen,
-    InputScreen,
-    InfoScreen,
     ConfirmationScreen,
 )
 from termux_tasker.ui.screens._utils import (
     termux_app,
     copy_to_tmp,
-    parse_property_value,
-    is_property_value_empty,
 )
+from termux_tasker.ui.screens.properties import PropertiesScreen
 from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
 
 
@@ -93,8 +90,6 @@ class RunnerMenuScreen(MenuScreen):
             f"Enabled: {settings.general.enabled}",
             f"State: {settings.session.state}",
         ]
-        for prop_name, prop_val in settings.properties.items():
-            parts.append(f"{prop_name}: {prop_val}")
         return "\n".join(parts)
 
     @staticmethod
@@ -104,12 +99,11 @@ class RunnerMenuScreen(MenuScreen):
         items: list[ButtonConfig] = []
         toggle_label = "Disable" if settings.general.enabled else "Enable"
         items.append(ButtonConfig("toggle", toggle_label, variant="warning"))
+        items.append(ButtonConfig("properties", "Properties"))
         items.append(ButtonConfig("show_tasks", "Show Tasks"))
         items.append(ButtonConfig("show_logs", "Show Runner Logs"))
         items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
         items.append(ButtonConfig("show_settings", "Show settings.toml"))
-        for prop in meta.properties:
-            items.append(ButtonConfig(f"set_{prop.name}", f"Set {prop.name}"))
         items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))
         items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM))
         return items
@@ -161,6 +155,16 @@ class RunnerMenuScreen(MenuScreen):
             self._start_polling()
         else:
             self._stop_polling()
+
+    @on(Button.Pressed, "#properties")
+    def on_properties(self, event: Button.Pressed) -> None:
+        event.stop()
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
+        termux_app(self).push_screen(
+            PropertiesScreen(
+                self.runner_path, meta.properties, meta.general.name
+            )
+        )
 
     @on(Button.Pressed, "#show_tasks")
     def on_show_tasks(self, event: Button.Pressed) -> None:
@@ -253,60 +257,3 @@ class RunnerMenuScreen(MenuScreen):
         shutil.rmtree(self.runner_path, ignore_errors=True)
 
         termux_app(self).pop_screen()   # noqa
-
-    @on(Button.Pressed)
-    def on_set_property(self, event: Button.Pressed) -> None:
-        btn_id = event.button.id or ""
-        if btn_id.startswith("set_"):
-            event.stop()
-            prop_name = btn_id[4:]
-            self._set_property(prop_name)
-
-    def _set_property(self, prop_name: str) -> None:
-        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
-        settings = RunnerSettings.load(self.runner_path / "settings.toml")
-        try:
-            prop = next(p for p in meta.properties if p.name == prop_name)
-        except StopIteration:
-            return
-
-        raw = settings.properties.get(prop.name, "")
-        cur_val = parse_property_value(raw, prop.input_type)
-
-        def _show_input() -> None:
-            termux_app(self).push_screen(
-                InputScreen(
-                    title=prop.name,
-                    description=prop.description or "",
-                    input_type=prop.input_type,
-                    options=prop.options or [],
-                    current_value=cur_val,
-                ),
-                _on_result,
-            )
-
-        def _warn_and_retry() -> None:
-            termux_app(self).push_screen(
-                InfoScreen(
-                    message=f"'{prop.name}' is required and must have a value.",
-                    severity="warning",
-                ),
-                lambda _: _show_input(),
-            )
-
-        def _on_result(result: Any) -> None:
-            if result is None:
-                return
-            if not prop.optional and is_property_value_empty(result, prop.input_type):
-                _warn_and_retry()
-                return
-            current_settings = RunnerSettings.load(self.runner_path / "settings.toml")
-            if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
-                current_settings.properties[prop.name] = ",".join(str(v) for v in result)
-            else:
-                current_settings.properties[prop.name] = str(result)
-            current_settings.save(self.runner_path / "settings.toml")
-            current_meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
-            self._refresh_ui(current_meta, current_settings)
-
-        _show_input()

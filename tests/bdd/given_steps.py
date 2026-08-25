@@ -86,6 +86,20 @@ def given_task_menu(pilot) -> None:
     ui(pilot).assert_screen(TaskMenuScreen)
 
 
+@given("the Properties screen is shown from the runner menu")
+def given_runner_properties_screen(pilot) -> None:
+    ui(pilot).nav_to_runner_menu()
+    ui(pilot).click_label("Properties")
+    ui(pilot).wait_until_screen(PropertiesScreen)
+
+
+@given("the Properties screen is shown from the task menu")
+def given_task_properties_screen(pilot) -> None:
+    ui(pilot).nav_to_task_menu()
+    ui(pilot).click_label("Properties")
+    ui(pilot).wait_until_screen(PropertiesScreen)
+
+
 @given("the Task Type screen is shown")
 def given_task_type_screen(pilot) -> None:
     ui(pilot).nav_to_tasks()

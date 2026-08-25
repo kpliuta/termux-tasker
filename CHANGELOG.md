@@ -8,15 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Unified **Properties** screen for runners and tasks: "Set <property>" buttons with live values shown as "**property**: value"; opened via a new "Properties" button on both menus.
+
 ### Changed
 
-- Refactored `MenuScreen` to use `list[ButtonConfig]` instead of `dict[str, str]` for menu items. New `ButtonConfig` dataclass supports `label`, `id`, `variant`, `disabled`, `layout` (TOP/BOTTOM), and `title` (Rich markup above button).
-- Description area now supports Rich markup formatting, arbitrary `Widget` content via `description_widget` param, and configurable max height via `description_max_height`.
-- Button disabled state is now explicit via `ButtonConfig(disabled=True)` instead of implicit empty ID.
-- Added `ButtonLayout` (TOP/BOTTOM) enum for flexible button placement.
-- Replaced per-button style (`ButtonStyle`) with `column_count` on `MenuScreen` — all buttons (including Back/Exit) are arranged in uniform rows of `column_count` columns.
-- Changed buttons coloring and layout.
-- Renamed the entry screen from Main Menu to Dashboard: `MainMenuScreen` → `DashboardScreen`, module `main_menu.py` → `dashboard.py`. The visible screen title is now "Dashboard".
+- Property editing moved off Runner/Task menus into the Properties screen; property values no longer shown in menu descriptions.
+- `MenuScreen` updates button labels/disabled/titles in place instead of rebuilding the menu.
+- Task Menu button id `set_timeout` → `timeout` (`set_` prefix now reserved for properties).
+- Refactored `MenuScreen` to use `list[ButtonConfig]`; added `column_count`, `title`, Rich-markup descriptions, explicit disabled state, and TOP/BOTTOM layout.
+- Renamed Main Menu → Dashboard (`DashboardScreen`).
 
 ## [0.2.2] - 2026-07-31
 

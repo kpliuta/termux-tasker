@@ -70,9 +70,14 @@ def when_press_label(pilot, label: str) -> None:
     ui(pilot).click_label(label)
 
 
+@when('I press "Properties" button')
+def when_press_properties(pilot) -> None:
+    ui(pilot).click_label("Properties")
+
+
 @when('I press "Set Timeout" button')
 def when_set_timeout(pilot) -> None:
-    ui(pilot).click_id("#set_timeout")
+    ui(pilot).click_id("#timeout")
 
 
 @when('I press "Set <property>" button')
