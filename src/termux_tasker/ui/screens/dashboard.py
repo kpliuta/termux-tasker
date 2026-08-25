@@ -10,7 +10,7 @@ from termux_tasker.ui.screens.runners_screen import RunnersScreen
 from termux_tasker.ui.screens._utils import termux_app
 
 
-class MainMenuScreen(MenuScreen):
+class DashboardScreen(MenuScreen):
     def __init__(self) -> None:
         super().__init__(
             menu_items=[
@@ -19,7 +19,7 @@ class MainMenuScreen(MenuScreen):
             ],
             show_exit_button=True,
         )
-        self.title = "Main Menu"
+        self.title = "Dashboard"
 
     @on(Button.Pressed, "#show_runners")
     def on_show_runners(self, event: Button.Pressed) -> None:

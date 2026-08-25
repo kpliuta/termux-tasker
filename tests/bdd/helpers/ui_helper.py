@@ -111,7 +111,7 @@ class UIHelper:
     # ── Navigation ──────────────────────────────────────────────────────
 
     def nav_to_runners(self) -> None:
-        """From the main menu, navigate to the Runners screen."""
+        """From the dashboard, navigate to the Runners screen."""
         self._pilot.click("#show_runners")
 
     def nav_to_runner_menu(self, runner_id: str = "sh_runner") -> None:
@@ -155,7 +155,7 @@ class UIHelper:
         self._pilot.click(f"#open_{task_id}")
 
     def nav_to_settings(self) -> None:
-        """From the main menu, navigate to the Settings screen."""
+        """From the dashboard, navigate to the Settings screen."""
         screen = self.app.screen
         if isinstance(screen, SettingsScreen):
             return

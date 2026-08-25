@@ -7,10 +7,10 @@ from tests.bdd.steps_common import *  # noqa
 from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
 
 
-@then("the main menu screen is shown")
-@then("the main menu screen is shown again")
-def then_main_menu_shown(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+@then("the dashboard screen is shown")
+@then("the dashboard screen is shown again")
+def then_dashboard_shown(pilot) -> None:
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @then("the Runners screen is shown")
@@ -97,7 +97,7 @@ def then_new_runner_menu_shown(pilot) -> None:
 @then("I am returned to the previous screen")
 def then_previous_screen(pilot) -> None:
     assert ui(pilot).screen_is(
-        (RunnersScreen, RunnerMenuScreen, MainMenuScreen,
+        (RunnersScreen, RunnerMenuScreen, DashboardScreen,
          InstallRunnerScreen, InstallTaskScreen)
     )
 
@@ -116,9 +116,9 @@ def then_new_task_visible(pilot) -> None:
     assert ui(pilot).screen_is((TasksMenuScreen, TaskMenuScreen))
 
 
-@then('the title is "Main Menu"')
-def then_title_main_menu(pilot) -> None:
-    assert ui(pilot).title() == "Main Menu"
+@then('the title is "Dashboard"')
+def then_title_dashboard(pilot) -> None:
+    assert ui(pilot).title() == "Dashboard"
 
 
 @then('the title is "Runners"')
@@ -456,11 +456,11 @@ def then_all_runners_shutdown(pilot) -> None:
     raise AssertionError("App did not exit within 10s")
 
 
-@then('the same exit flow is triggered as pressing "Exit" on the main menu')
+@then('the same exit flow is triggered as pressing "Exit" on the dashboard')
 def then_same_exit_flow(pilot) -> None:
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
-        if ui(pilot).screen_is((ConfirmationScreen, MainMenuScreen)):
+        if ui(pilot).screen_is((ConfirmationScreen, DashboardScreen)):
             return
         if ui(pilot).app._exit: # noqa
             return
@@ -898,9 +898,9 @@ def then_same_action_triggered(pilot) -> None:
     ui(pilot).pause()
 
 
-@then('Exception: the "Exit" button on Main Menu is NOT triggered by Escape')
+@then('Exception: the "Exit" button on Dashboard is NOT triggered by Escape')
 def then_exit_not_triggered(pilot) -> None:
-    assert ui(pilot).screen_is((MainMenuScreen, RunnersScreen))
+    assert ui(pilot).screen_is((DashboardScreen, RunnersScreen))
 
 
 @then("focus moves to the previous Button widget")

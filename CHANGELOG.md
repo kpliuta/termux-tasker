@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Button disabled state is now explicit via `ButtonConfig(disabled=True)` instead of implicit empty ID.
 - Added `ButtonLayout` (TOP/BOTTOM) enum for flexible button placement.
 - Replaced per-button style (`ButtonStyle`) with `column_count` on `MenuScreen` — all buttons (including Back/Exit) are arranged in uniform rows of `column_count` columns.
-- Change buttons coloring and layout.
+- Changed buttons coloring and layout.
+- Renamed the entry screen from Main Menu to Dashboard: `MainMenuScreen` → `DashboardScreen`, module `main_menu.py` → `dashboard.py`. The visible screen title is now "Dashboard".
 
 ## [0.2.2] - 2026-07-31
 
@@ -31,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Remove main branch option from `install.sh`.
+- Removed main branch option from `install.sh`.
 
 ## [0.2.0] - 2026-07-15
 
@@ -51,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update AGENTS.md and README.md.
+- Updated AGENTS.md and README.md.
 
 ### Fixed
 

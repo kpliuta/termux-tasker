@@ -1,10 +1,10 @@
-Feature: Main Menu Navigation
+Feature: Dashboard Navigation
   As a user
-  I want to navigate the main menu
+  I want to navigate the dashboard
   So that I can access runners, settings, and exit
 
   Scenario: Navigate to Runners screen
-    Given the main menu screen is shown
+    Given the dashboard screen is shown
     When I press "Show Runners" button
     Then the Runners screen is shown
     And the title is "Runners"
@@ -12,21 +12,21 @@ Feature: Main Menu Navigation
     And it contains "Back" button
 
   Scenario: Navigate to Settings screen
-    Given the main menu screen is shown
+    Given the dashboard screen is shown
     When I press "Settings" button
     Then the Settings screen is shown
     And the title is "Settings"
     And it shows "Termux upgrade on startup" option
     And it contains "Back" button
 
-  Scenario: Exit app from main menu (no runners)
-    Given the main menu screen is shown
+  Scenario: Exit app from dashboard (no runners)
+    Given the dashboard screen is shown
     And no runners are running
     When I press "Exit" button
     Then the app exits immediately
 
   Scenario: Exit app with running runners shows confirmation
-    Given the main menu screen is shown
+    Given the dashboard screen is shown
     And at least one runner is running
     When I press "Exit" button
     Then a confirmation dialog is shown with message "Are you sure you want terminate runners in progress and exit?"
@@ -46,10 +46,10 @@ Feature: Main Menu Navigation
     Given a confirmation dialog is shown for exiting with running runners
     When I press "No" button
     Then the confirmation dialog is dismissed
-    And the main menu screen is shown again
+    And the dashboard screen is shown again
     And runners continue running
 
   Scenario: Exit via Ctrl+Q from any screen
     Given any screen is shown
     When I press Ctrl+Q
-    Then the same exit flow is triggered as pressing "Exit" on the main menu
+    Then the same exit flow is triggered as pressing "Exit" on the dashboard

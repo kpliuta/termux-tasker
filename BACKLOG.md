@@ -23,6 +23,7 @@
 * `medium` Implement runner/task validation tools for external use
 * `low`    Bug: "Failed to check out tag" message on update if any change was made to codebase manually
 * `low`    Bug: Add root element to tcss of each base screen, as it can affect parent screen style
+* `low`    Add Home button beside Back that will lead back to the dashboard
 * `low`    Create ./run shortcut in ~/.shortcuts in ./install.sh for a Termux shortcut widget
 * `low`    Line length is too long and doesn't fit to the screen when LogScreen's word-wrap is on
 * `low`    Add an app alias creation to install.sh
@@ -44,6 +45,7 @@
 * `medium` How to sync git version and poetry version?
 * `low`    Explore task-to-runner data sharing (install packages, patches, set runner settings)
 * `low`    Investigate replacing timeout with cron-based scheduling
+* `low`    UI/UX best practices course (TUI in particular?)
 
 ## Done
 

@@ -30,7 +30,7 @@ src/termux_tasker/
     │                     #   LogScreen, FileBrowserScreen)
     └── screens/
         ├── _utils.py                   # Git operations, property helpers
-        ├── main_menu.py                # Entry screen
+        ├── dashboard.py                # Entry screen
         ├── settings.py                 # App settings screen
         ├── runners.py                  # Installed runners list screen
         ├── runner_menu.py              # Runner management screen
@@ -48,7 +48,7 @@ src/termux_tasker/
 
 ### Data flow
 
-1. App starts → Android init checks (Termux environment, storage, dependencies) with a **Loading Screen** → shows **Main Menu** (or error screen if critical issues).
+1. App starts → Android init checks (Termux environment, storage, dependencies) with a **Loading Screen** → shows **Dashboard** (or error screen if critical issues).
 2. User navigates to **Runners** → sees installed runners (polled every 1s from disk).
 3. User presses **Install Runner** → selects source (Bundled / GitHub URL / Local) → repository is cloned/copied → metadata validated → version selected → runner installed under `runners/<id>/`.
 4. From **Runner Menu**, user can enable/disable, view logs, set properties, or open **Tasks**.
@@ -135,7 +135,7 @@ poetry run python -m termux_tasker.app --skip-android-init
 ### Screen flow
 
 ```
-Main Menu
+Dashboard
 ├── Show Runners → Runners Screen 
 │   ├── [Runner] → Runner Menu
 │   │   ├── Enable/Disable (starts/stops the runner loop)

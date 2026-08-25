@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from termux_tasker.ui.screens.main_menu import MainMenuScreen
+from termux_tasker.ui.screens.dashboard import DashboardScreen
 from termux_tasker.ui.screens.settings_screen import SettingsScreen
 from termux_tasker.ui.screens.runners_screen import RunnersScreen
 from termux_tasker.ui.screens.runner_type import RunnerTypeScreen
@@ -17,7 +17,7 @@ from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 from termux_tasker.ui.screens.update_app_version import UpdateAppVersionScreen
 
 __all__ = [
-    "MainMenuScreen",
+    "DashboardScreen",
     "SettingsScreen",
     "RunnersScreen",
     "RunnerTypeScreen",

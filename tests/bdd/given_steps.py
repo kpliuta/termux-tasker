@@ -15,15 +15,15 @@ def given_app_launched(pilot) -> None:
     assert app.state.app_config_file.exists()
 
 
-@given("the main menu screen is shown")
-@given("the main menu screen is shown again")
-def given_main_menu(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+@given("the dashboard screen is shown")
+@given("the dashboard screen is shown again")
+def given_dashboard(pilot) -> None:
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @given("any screen is shown")
 def given_any_screen(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @given("the Runners screen is shown")
@@ -107,7 +107,7 @@ def given_screen_with_back(pilot) -> None:
 
 @given("a MenuScreen with multiple buttons")
 def given_menu_with_buttons(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @given("no runners are running")
