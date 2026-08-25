@@ -26,6 +26,7 @@ from termux_tasker.ui.screens._utils import (
     fetch_git_tags,
     git_checkout,
     get_installed_runner_version,
+    make_unique,
     merge_runner_properties,
     fill_default_properties,
     sanitize_id,
@@ -61,6 +62,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         )
 
         items: list[ButtonConfig] = []
+        taken_ids: set[str] = set()
 
         if is_git:
             loading = LoadingScreen(f"Fetching {meta.general.name} versions")
@@ -72,7 +74,7 @@ class InstallRunnerVersionScreen(MenuScreen):
                 label = tag
                 if tag == installed_version:
                     label += " \\[Installed]"
-                safe = sanitize_id(tag)
+                safe = make_unique(sanitize_id(tag), taken_ids)
                 self._id_to_tag[safe] = tag
                 items.append(ButtonConfig(f"version_{safe}", label))
 
@@ -82,7 +84,7 @@ class InstallRunnerVersionScreen(MenuScreen):
             label = tag
             if tag == installed_version:
                 label += " \\[Installed]"
-            safe = sanitize_id(tag)
+            safe = make_unique(sanitize_id(tag), taken_ids)
             self._id_to_tag[safe] = tag
             items.append(ButtonConfig(f"version_{safe}", label))
 

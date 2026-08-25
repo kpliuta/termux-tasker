@@ -34,7 +34,8 @@
 - `ButtonLayout.TOP` (default) places buttons in the scroll area; `ButtonLayout.BOTTOM` places them in the bottom bar.
 - `column_count` (default 1) controls how many buttons appear per row — applies uniformly to all buttons including Back/Exit.
 - Set `title="[b]Header[/b]"` on a `ButtonConfig` to show formatted text above the button (Rich markup supported).
-- Set `disabled=True` to disable a button — empty `id` no longer implies disabled.
+- `ButtonConfig.id` is **required**: non-empty and a valid Textual identifier (validated in `__post_init__`). Ids must be unique per screen — `MenuScreen` raises `ValueError` on duplicates at construction and on every runtime `menu_items` reassignment.
+- Never name helpers `_validate_<reactive>` / `validate_<reactive>` inside `MenuScreen` subclasses — Textual treats them as reactive value validators and their return value replaces the attribute.
 - Handle button events with `@on(Button.Pressed, "#button_id")` — always `event.stop()`.
 - Use `termux_app(self)` from `_utils.py` for typed app access — prefer over `self.app` everywhere in feature screens (but `self.app` is fine in base screens in `ui/base/`).
 - `BINDINGS` list for keyboard shortcuts: `[("escape", "press_back", "Back")]`.

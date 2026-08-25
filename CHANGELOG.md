@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Task Menu button id `set_timeout` → `timeout` (`set_` prefix now reserved for properties).
 - Refactored `MenuScreen` to use `list[ButtonConfig]`; added `column_count`, `title`, Rich-markup descriptions, explicit disabled state, and TOP/BOTTOM layout.
 - Renamed Main Menu → Dashboard (`DashboardScreen`).
+- `ButtonConfig.id` is now required and unique per screen; version buttons dedupe sanitized git tags.
 
 ## [0.2.2] - 2026-07-31
 

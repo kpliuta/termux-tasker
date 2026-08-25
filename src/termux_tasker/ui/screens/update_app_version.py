@@ -20,6 +20,7 @@ from termux_tasker.ui.screens._utils import (
     fetch_git_tags,
     git_checkout,
     poetry_install,
+    make_unique,
     sanitize_id,
 )
 
@@ -80,11 +81,12 @@ class UpdateAppVersionScreen(MenuScreen):
         tags = fetch_git_tags(app_root)
 
         items: list[ButtonConfig] = []
+        taken_ids: set[str] = set()
         for tag in tags:
             label = tag
             if tag == current_version:
                 label += " \\[Installed]"
-            safe = sanitize_id(tag)
+            safe = make_unique(sanitize_id(tag), taken_ids)
             self._id_to_tag[safe] = tag
             items.append(ButtonConfig(f"version_{safe}", label))
 

@@ -60,10 +60,14 @@ class BundledRunnerScreen(MenuScreen):
             label = meta.general.name
             if is_installed:
                 label += " \\[Installed]"
-                btn_id = ""
-            else:
-                btn_id = f"install_{meta.general.id}"
-            items.append(ButtonConfig(btn_id, label, variant="default", disabled=is_installed))
+            items.append(
+                ButtonConfig(
+                    f"install_{meta.general.id}",
+                    label,
+                    variant="default",
+                    disabled=is_installed,
+                )
+            )
 
         if self._loading is not None:
             await self._loading.dismiss(None)

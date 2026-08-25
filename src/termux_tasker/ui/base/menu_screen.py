@@ -3,12 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Sequence, Literal
+from typing import Sequence, Literal, cast
 
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.css.query import NoMatches
+from textual.dom import check_identifiers
 from textual.events import Key, ScreenResume
 from textual.reactive import reactive
 from textual.screen import Screen
@@ -27,9 +28,31 @@ class ButtonLayout(Enum):
     BOTTOM = "bottom"
 
 
+def check_unique_button_ids(items: Sequence[ButtonConfig]) -> None:
+    """Reject duplicate button ids.
+
+    Ids are the key for event handlers and in-place updates — two
+    buttons sharing one would silently break both.
+
+    Note: must not be named ``_validate_*`` — Textual treats methods
+    with that prefix as reactive value validators.
+    """
+    seen: set[str] = set()
+    for item in items:
+        if item.id in seen:
+            raise ValueError(f"Duplicate button id: {item.id!r}")
+        seen.add(item.id)
+
+
 @dataclass
 class ButtonConfig:
-    """Configuration for a single button in MenuScreen."""
+    """Configuration for a single button in MenuScreen.
+
+    ``id`` is required: it must be non-empty and a valid Textual
+    identifier (letters, digits, underscores, hyphens; must not start
+    with a digit).  It is used for event handlers and in-place menu
+    updates.
+    """
 
     id: str
     label: str
@@ -37,6 +60,13 @@ class ButtonConfig:
     disabled: bool = False
     layout: ButtonLayout = ButtonLayout.TOP
     title: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.id.strip():
+            raise ValueError(
+                "ButtonConfig.id is required and must be a non-empty string"
+            )
+        check_identifiers("button id", self.id)
 
 
 class MenuScreen(Screen[None]):
@@ -70,6 +100,7 @@ class MenuScreen(Screen[None]):
             classes: str | None = None,
     ) -> None:
         super().__init__(name=name, id=id, classes=classes)
+        check_unique_button_ids(menu_items)
         self.menu_items = list(menu_items)
         self.description = description
         self._description_widget = description_widget
@@ -110,8 +141,7 @@ class MenuScreen(Screen[None]):
         """
         if not btn.title:
             return None
-        if btn.id:
-            self._active_titles[btn.id] = btn.title
+        self._active_titles[btn.id] = btn.title
         return Static(btn.title, classes="btn-title")
 
     def _compose_top_buttons(self) -> ComposeResult:
@@ -144,7 +174,7 @@ class MenuScreen(Screen[None]):
                             yield title_static
                         yield Button(
                             btn.label,
-                            id=btn.id or None,
+                            id=btn.id,
                             variant=btn.variant,
                             disabled=btn.disabled,
                         )
@@ -155,7 +185,7 @@ class MenuScreen(Screen[None]):
             yield title_static
         yield Button(
             btn.label,
-            id=btn.id or None,
+            id=btn.id,
             variant=btn.variant,
             disabled=btn.disabled,
         )
@@ -174,25 +204,30 @@ class MenuScreen(Screen[None]):
         except NoMatches:
             return  # widget tree may not exist yet (triggered via init=False)
 
+        # Runtime reassignments are validated too; __init__ validated
+        # its list explicitly before assigning.
+        check_unique_button_ids(self.menu_items)
+
         action_buttons = [
             btn for btn in self.query(Button)
             if btn.id not in ("back", "exit")
         ]
-        existing_ids = {btn.id for btn in action_buttons if btn.id}
-        needed_ids = {btn.id for btn in self.menu_items if btn.id}
+        existing_ids = {btn.id for btn in action_buttons}
+        needed_ids = {btn.id for btn in self.menu_items}
 
         if (
             needed_ids == existing_ids
             and len(self.menu_items) == len(action_buttons)
         ):
-            id_to_config = {btn.id: btn for btn in self.menu_items if btn.id}
-            for widget in action_buttons:
-                if not widget.id or widget.id not in id_to_config:
-                    continue
-                cfg = id_to_config[widget.id]
-                widget.label = cfg.label
-                widget.disabled = cfg.disabled
-                self._update_button_title(widget, cfg)
+            id_to_config = {btn.id: btn for btn in self.menu_items}
+            for btn in action_buttons:
+                # Back/Exit are excluded above; every mounted action
+                # button comes from a validated config, so id is set.
+                btn_id = cast(str, btn.id)
+                cfg = id_to_config[btn_id]
+                btn.label = cfg.label
+                btn.disabled = cfg.disabled
+                self._update_button_title(btn, cfg)
         else:
             self.run_worker(self._rebuild_menu())
 
@@ -256,7 +291,7 @@ class MenuScreen(Screen[None]):
                 await parent.mount(
                     Button(
                         btn.label,
-                        id=btn.id or None,
+                        id=btn.id,
                         variant=btn.variant,
                         disabled=btn.disabled,
                     )
@@ -273,7 +308,7 @@ class MenuScreen(Screen[None]):
                     await row.mount(
                         Button(
                             btn.label,
-                            id=btn.id or None,
+                            id=btn.id,
                             variant=btn.variant,
                             disabled=btn.disabled,
                         )

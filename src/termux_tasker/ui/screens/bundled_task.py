@@ -62,10 +62,14 @@ class BundledTaskScreen(MenuScreen):
             label = meta.general.name
             if is_installed:
                 label += " \\[Installed]"
-                btn_id = ""
-            else:
-                btn_id = f"install_{meta.general.id}"
-            items.append(ButtonConfig(btn_id, label, variant="default", disabled=is_installed))
+            items.append(
+                ButtonConfig(
+                    f"install_{meta.general.id}",
+                    label,
+                    variant="default",
+                    disabled=is_installed,
+                )
+            )
 
         await loading.dismiss(None)
         self.menu_items = items

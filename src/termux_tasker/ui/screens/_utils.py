@@ -41,6 +41,22 @@ def sanitize_id(name: str) -> str:
     return result if result else "_"
 
 
+def make_unique(safe_id: str, taken: set[str]) -> str:
+    """Return *safe_id*, or a ``_2``/``_3``… suffixed variant not in *taken*.
+
+    The returned id is registered in *taken*.  Used when generating
+    widget ids from external data (e.g. git tags) where two distinct
+    values can sanitize to the same identifier.
+    """
+    candidate = safe_id
+    counter = 2
+    while candidate in taken:
+        candidate = f"{safe_id}_{counter}"
+        counter += 1
+    taken.add(candidate)
+    return candidate
+
+
 def termux_app(screen: Screen[Any]) -> TermuxTaskerApp:
     return cast("TermuxTaskerApp", screen.app)
 

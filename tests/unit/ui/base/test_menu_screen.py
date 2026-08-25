@@ -4,6 +4,7 @@ import pytest
 from textual.app import App
 from textual.containers import VerticalScroll
 from textual.css.query import NoMatches
+from textual.dom import BadIdentifier
 from textual.widgets import Button, Static
 
 from termux_tasker.ui.base.menu_screen import (
@@ -15,9 +16,9 @@ from termux_tasker.ui.base.menu_screen import (
 
 class TestButtonConfig:
     def test_defaults(self) -> None:
-        cfg = ButtonConfig(id="", label="OK")
+        cfg = ButtonConfig(id="ok", label="OK")
+        assert cfg.id == "ok"
         assert cfg.label == "OK"
-        assert cfg.id == ""
         assert cfg.variant == "default"
         assert cfg.disabled is False
         assert cfg.layout == ButtonLayout.TOP
@@ -38,6 +39,22 @@ class TestButtonConfig:
         assert cfg.disabled is True
         assert cfg.layout == ButtonLayout.BOTTOM
         assert cfg.title == "[b]Title[/b]"
+
+    def test_empty_id_rejected(self) -> None:
+        with pytest.raises(ValueError, match="non-empty"):
+            ButtonConfig(id="", label="OK")
+
+    def test_blank_id_rejected(self) -> None:
+        with pytest.raises(ValueError, match="non-empty"):
+            ButtonConfig(id="   ", label="OK")
+
+    def test_invalid_identifier_rejected(self) -> None:
+        with pytest.raises(BadIdentifier):
+            ButtonConfig(id="1abc", label="OK")
+
+    def test_valid_identifiers_accepted(self) -> None:
+        for btn_id in ("a", "_x", "set_property-1", "version_v1_0_0"):
+            assert ButtonConfig(id=btn_id, label="L").id == btn_id
 
 
 class TestMenuScreenInit:
@@ -84,6 +101,18 @@ class TestMenuScreenInit:
     def test_show_exit_button_default(self) -> None:
         screen = MenuScreen(menu_items=[])
         assert screen.show_exit_button is False
+
+    def test_duplicate_ids_rejected(self) -> None:
+        items = [
+            ButtonConfig(label="A", id="dup"),
+            ButtonConfig(label="B", id="dup"),
+        ]
+        with pytest.raises(ValueError, match="Duplicate button id"):
+            MenuScreen(menu_items=items)
+
+    def test_empty_id_item_rejected(self) -> None:
+        with pytest.raises(ValueError, match="non-empty"):
+            MenuScreen(menu_items=[ButtonConfig(id="", label="A")])
 
 
 class TestMenuScreenCompose:
@@ -341,6 +370,22 @@ class TestMenuScreenWatchers:
             btn_after = pilot.app.screen.query_one("#update", Button)
             assert btn_after is btn_before
             assert str(btn_after.label).strip() == "Update!"
+
+    @pytest.mark.asyncio
+    async def test_watch_menu_items_rejects_duplicate_ids(self) -> None:
+        screen = MenuScreen(menu_items=[ButtonConfig(label="A", id="a")])
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            with pytest.raises(ValueError, match="Duplicate button id"):
+                screen.menu_items = [
+                    ButtonConfig(label="B", id="b"),
+                    ButtonConfig(label="C", id="b"),
+                ]
+            await pilot.pause()
 
     @pytest.mark.asyncio
     async def test_watch_description_updates_text(self) -> None:
