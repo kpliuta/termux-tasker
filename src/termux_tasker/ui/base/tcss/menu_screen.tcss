@@ -2,7 +2,7 @@
     width: 1fr;
     height: auto;
     margin: 1 2;
-    border: tall $primary;
+    border: round $primary;
     background: $surface;
 }
 

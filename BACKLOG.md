@@ -21,6 +21,9 @@
 * `medium` Bug: Local Storage should open FileBrowserScreen at /sdcard/ instead of ~/ in Termux env
 * `medium` Bug: TUI hangs on picking up ~/.termux-tasker as Local Storage install
 * `medium` Implement runner/task validation tools for external use
+* `medium` Show time to sleep left for a runner in the description section in RunnerScreen
+* `medium` Show the task in progress in the description section in RunnerScreen
+* `medium` Add last_run_status to the description section in TaskScreen
 * `low`    Bug: "Failed to check out tag" message on update if any change was made to codebase manually
 * `low`    Bug: Add root element to tcss of each base screen, as it can affect parent screen style
 * `low`    Add Home button beside Back that will lead back to the dashboard
