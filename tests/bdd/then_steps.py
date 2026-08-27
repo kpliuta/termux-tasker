@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import time
 
+from textual.css.query import NoMatches
 from textual.widgets import Button
 
 from tests.bdd.steps_common import *  # noqa
@@ -286,10 +287,41 @@ def then_yes_no_buttons(pilot) -> None:
     )
 
 
+def _description_content(screen) -> str:
+    """Return the textual content of a screen's description.
+
+    Handles both the ``StatusWidget`` (``#description-widget``) and a plain
+    ``description`` string (e.g. the Settings screen).
+    """
+    try:
+        widget = screen.query_one("#description-widget")
+    except NoMatches:
+        desc = getattr(screen, "description", "") or ""
+        return desc if isinstance(desc, str) else ""
+    return " ".join(str(s.render()) for s in widget.query("Static"))
+
+
 @then("the description shows:")
-def then_description_shows(pilot) -> None:
-    desc_widget = ui(pilot).app.screen.query_one("#description")
-    assert desc_widget is not None
+def then_description_shows(pilot, docstring) -> None:
+    screen = ui(pilot).app.screen
+    content = _description_content(screen)
+    assert content.strip(), "Description is empty"
+    # Each bullet describes a field that must be present in the rendered description.
+    for line in docstring.strip().splitlines():
+        line = line.strip().lstrip("- ").strip()
+        if not line:
+            continue
+        token = line.split()[0]
+        expected = {
+            "Version": "Version",
+            "Enabled": "Enabled",
+            "Timeout": "Timeout",
+        }.get(token)
+        if expected:
+            assert expected in content, f"Description missing {line!r}: {content!r}"
+    # The lifecycle state list must be rendered.
+    if screen.query("#description-widget"):
+        assert len(screen.query(".state-row")) > 0, "State list not rendered"
 
 
 @then('it shows "Termux upgrade on startup" option')
@@ -476,8 +508,10 @@ def then_task_not_in_list(pilot) -> None:
 
 @then("`settings.general.enabled` is set to True")
 def then_enabled_true(pilot) -> None:
-    desc = getattr(ui(pilot).app.screen, "description", "") or ""
-    assert "Enabled: True" in desc, f"Description does not show Enabled: True: {desc}"
+    content = _description_content(ui(pilot).app.screen)
+    assert "Enabled" in content and "True" in content, (
+        f"Description does not show Enabled: True: {content}"
+    )
 
 
 @then("`settings.general.enabled` is set to False")
@@ -489,8 +523,19 @@ def then_enabled_false(pilot) -> None:
 
 @then("`settings.general.enabled` is toggled")
 def then_enabled_toggled(pilot) -> None:
-    desc = getattr(ui(pilot).app.screen, "description", "") or ""
-    assert "Enabled:" in desc
+    """Verify the description widget reflects the toggled (persisted) state."""
+    screen = ui(pilot).app.screen
+    content = _description_content(screen)
+    if hasattr(screen, "task_path"):
+        s = settings().load_task_settings(screen.task_path)
+    elif hasattr(screen, "runner_path"):
+        s = settings().load_runner_settings(screen.runner_path)
+    else:
+        raise AssertionError("Screen has no runner/task path")
+    expected = "True" if s.general.enabled else "False"
+    assert "Enabled" in content and expected in content, (
+        f"Description does not reflect enabled={expected}: {content}"
+    )
 
 
 @then("each runner's settings have `enabled = False`")
@@ -1349,8 +1394,15 @@ def then_single_version(pilot) -> None:
 @then("the description is updated")
 @then("the Settings screen description is updated")
 def then_description_updated(pilot) -> None:
-    desc = getattr(ui(pilot).app.screen, "description", "") or ""
-    assert len(desc) > 0
+    """Verify the description re-rendered with populated content.
+
+    For the StatusWidget this confirms the info rows (Version/Enabled/...)
+    are present; for a plain string description it confirms non-empty text.
+    """
+    content = _description_content(ui(pilot).app.screen)
+    assert content.strip(), "Description is empty after update"
+    if ui(pilot).app.screen.query("#description-widget"):
+        assert "Version" in content, f"Status widget not populated: {content!r}"
 
 
 @then("the property value is unchanged")

@@ -16,8 +16,6 @@ from termux_tasker.ui.base import (
     ButtonLayout,
     MenuScreen,
     LoadingScreen,
-    InputScreen,
-    InfoScreen,
     ConfirmationScreen,
     FileBrowserScreen,
 )
@@ -25,12 +23,23 @@ from termux_tasker.ui.screens._utils import (
     termux_app,
     copy_to_tmp,
 )
+from termux_tasker.ui.screens._ui_utils import ask_validated_input
 from termux_tasker.ui.screens.properties import PropertiesScreen
+from termux_tasker.ui.screens.widgets.status_description import (
+    InfoRow,
+    StateEntry,
+    StatusWidget,
+)
 
 _TIMEOUT_RE = re.compile(r"^[0-9]+[hms]$")
 
 
 class TaskMenuScreen(MenuScreen):
+    _TASK_STATES: tuple[StateEntry, ...] = (
+        StateEntry("stopped", "stopped", color="$error"),
+        StateEntry("running", "running"),
+    )
+
     def __init__(self, task_path: Path) -> None:
         self.task_path = task_path
         self.runner_path = task_path.parent.parent
@@ -38,10 +47,19 @@ class TaskMenuScreen(MenuScreen):
         settings = TaskSettings.load(task_path / "settings.toml")
 
         self._fix_session(settings, task_path)
-        desc = self._build_description(meta, settings)
+        self._status = StatusWidget(
+            id="description-widget",
+            info_rows=(
+                InfoRow("Version", meta.general.version),
+                InfoRow("Enabled", str(settings.general.enabled)),
+                InfoRow("Timeout", settings.general.timeout or "(not set)"),
+            ),
+            current_state=settings.session.state,
+            states_entries=self._TASK_STATES,
+        )
         items = self._build_items(meta, settings)
 
-        super().__init__(items, description=desc, show_back_button=True)
+        super().__init__(items, description_widget=self._status, show_back_button=True)
         self.title = "Task"
         self.sub_title = meta.general.name
         self._poll_timer: Any = None
@@ -73,7 +91,12 @@ class TaskMenuScreen(MenuScreen):
         self, meta: TaskMetadata, settings: TaskSettings
     ) -> None:
         self.menu_items = self._build_items(meta, settings)
-        self.description = self._build_description(meta, settings)
+        self._status.info_rows = (
+            InfoRow("Version", meta.general.version),
+            InfoRow("Enabled", str(settings.general.enabled)),
+            InfoRow("Timeout", settings.general.timeout or "(not set)"),
+        )
+        self._status.current_state = settings.session.state
 
     def _fix_session(self, settings: TaskSettings, task_path: Path) -> None:
         """Reset stale session state on app restart.
@@ -88,18 +111,6 @@ class TaskMenuScreen(MenuScreen):
         if app:
             settings.session.session_id = app.state.session_id
             settings.save(task_path / "settings.toml")
-
-    @staticmethod
-    def _build_description(
-        meta: TaskMetadata, settings: TaskSettings
-    ) -> str:
-        parts = [
-            f"Version: {meta.general.version}",
-            f"Enabled: {settings.general.enabled}",
-            f"State: {settings.session.state}",
-            f"Timeout: {settings.general.timeout}",
-        ]
-        return "\n".join(parts)
 
     def _build_items(
         self, meta: TaskMetadata, settings: TaskSettings
@@ -118,16 +129,6 @@ class TaskMenuScreen(MenuScreen):
             items.append(ButtonConfig("show_output", "Show output"))
         return items
 
-    @on(Button.Pressed, "#properties")
-    def on_properties(self, event: Button.Pressed) -> None:
-        event.stop()
-        meta = TaskMetadata.load(self.task_path / "metadata.toml")
-        termux_app(self).push_screen(
-            PropertiesScreen(
-                self.task_path, meta.properties, meta.general.name
-            )
-        )
-
     @on(Button.Pressed, "#toggle")
     def on_toggle(self, event: Button.Pressed) -> None:
         event.stop()
@@ -141,6 +142,16 @@ class TaskMenuScreen(MenuScreen):
             self._start_polling()
         else:
             self._stop_polling()
+
+    @on(Button.Pressed, "#properties")
+    def on_properties(self, event: Button.Pressed) -> None:
+        event.stop()
+        meta = TaskMetadata.load(self.task_path / "metadata.toml")
+        termux_app(self).push_screen(
+            PropertiesScreen(
+                self.task_path, meta.properties, meta.general.name
+            )
+        )
 
     @on(Button.Pressed, "#show_metadata")
     def on_show_metadata(self, event: Button.Pressed) -> None:
@@ -168,64 +179,33 @@ class TaskMenuScreen(MenuScreen):
     def on_set_timeout(self, event: Button.Pressed) -> None:
         """Open timeout input with interactive validation.
 
-        Uses a closure chain to create a multistep dialog:
-          _show_input → InputScreen[1] ─(on result)─→ _on_result
-               ↑                                            │
-               └──── _warn_xxx ─→ InfoScreen ───────────────┘
-
-        [1] Shows the current value as prefill.
-        On empty or invalid format: warning InfoScreen → re-prompt.
-        On valid format: save and refresh.
+        Delegates the prompt/validate/re-prompt loop to
+        ``ask_validated_input``: empty or format-invalid values show a
+        warning ``InfoScreen`` and re-prompt; a valid value is saved and
+        the screen refreshed.
         """
         event.stop()
 
-        def _show_input() -> None:
-            settings = TaskSettings.load(self.task_path / "settings.toml")
-            termux_app(self).push_screen(
-                InputScreen(
-                    title="Timeout",
-                    input_type="text",
-                    current_value=settings.general.timeout,
-                ),
-                _on_result,
-            )
-
-        def _warn_empty() -> None:
-            termux_app(self).push_screen(
-                InfoScreen(
-                    message="Timeout is required and must have a value.",
-                    severity="warning",
-                ),
-                lambda _: _show_input(),
-            )
-
-        def _warn_format() -> None:
-            termux_app(self).push_screen(
-                InfoScreen(
-                    message="Invalid timeout format. Use e.g. 30s, 5m, 1h.",
-                    severity="warning",
-                ),
-                lambda _: _show_input(),
-            )
-
-        def _on_result(result: Any) -> None:
-            if result is None:
-                return
+        def _on_valid(result: Any) -> None:
             val = str(result).strip()
-            if not val:
-                _warn_empty()
-                return
-            if not _TIMEOUT_RE.match(val):
-                _warn_format()
-                return
-            settings = TaskSettings.load(self.task_path / "settings.toml")
-            settings.general.timeout = val
-            settings.save(self.task_path / "settings.toml")
+            ts = TaskSettings.load(self.task_path / "settings.toml")
+            ts.general.timeout = val
+            ts.save(self.task_path / "settings.toml")
             meta = TaskMetadata.load(self.task_path / "metadata.toml")
-            settings = TaskSettings.load(self.task_path / "settings.toml")
-            self._refresh_ui(meta, settings)
+            ts = TaskSettings.load(self.task_path / "settings.toml")
+            self._refresh_ui(meta, ts)
 
-        _show_input()
+        settings = TaskSettings.load(self.task_path / "settings.toml")
+        ask_validated_input(
+            termux_app(self),
+            title="Timeout",
+            input_type="text",
+            current_value=settings.general.timeout,
+            is_valid=lambda r: bool(_TIMEOUT_RE.match(str(r).strip())),
+            on_valid=_on_valid,
+            empty_message="Timeout is required and must have a value.",
+            invalid_message="Invalid timeout format. Use e.g. 30s, 5m, 1h.",
+        )
 
     @on(Button.Pressed, "#update")
     def on_update(self, event: Button.Pressed) -> None:

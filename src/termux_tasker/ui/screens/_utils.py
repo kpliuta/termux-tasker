@@ -1,3 +1,14 @@
+"""General-purpose helpers for runners, tasks, and the app.
+
+This module collects low-level, non-UI utilities used across the project:
+git operations (tag fetching/checkout), filesystem and temp-dir handling,
+id sanitization/dedup, property-value (de)serialization, etc.
+
+It deliberately contains **no Textual screen logic** — anything that pushes
+or drives screens (e.g. interactive input prompts) lives in
+``termux_tasker.ui.screens._ui_utils`` instead.
+"""
+
 from __future__ import annotations
 
 import ast

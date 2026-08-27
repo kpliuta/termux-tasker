@@ -9,15 +9,13 @@ from textual.widgets import Button
 from termux_tasker.config import PropertyDef, RunnerSettings
 from termux_tasker.ui.base import (
     ButtonConfig,
-    InputScreen,
-    InfoScreen,
     MenuScreen,
 )
 from termux_tasker.ui.screens._utils import (
     termux_app,
     parse_property_value,
-    is_property_value_empty,
 )
+from termux_tasker.ui.screens._ui_utils import ask_validated_input
 
 _SET_PREFIX = "set_"
 _NOT_SET = "(not set)"
@@ -87,34 +85,11 @@ class PropertiesScreen(MenuScreen):
         cur_val = parse_property_value(
             settings.properties.get(prop.name, ""), prop.input_type
         )
+        empty_message = None if prop.optional else (
+            f"'{prop.name}' is required and must have a value."
+        )
 
-        def _show_input() -> None:
-            termux_app(self).push_screen(
-                InputScreen(
-                    title=prop.name,
-                    description=prop.description or "",
-                    input_type=prop.input_type,
-                    options=prop.options or [],
-                    current_value=cur_val,
-                ),
-                _on_result,
-            )
-
-        def _warn_and_retry() -> None:
-            termux_app(self).push_screen(
-                InfoScreen(
-                    message=f"'{prop.name}' is required and must have a value.",
-                    severity="warning",
-                ),
-                lambda _: _show_input(),
-            )
-
-        def _on_result(result: Any) -> None:
-            if result is None:
-                return
-            if not prop.optional and is_property_value_empty(result, prop.input_type):
-                _warn_and_retry()
-                return
+        def _on_valid(result: Any) -> None:
             current_settings = self._load_settings()
             if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
                 current_settings.properties[prop.name] = ",".join(str(v) for v in result)
@@ -123,4 +98,15 @@ class PropertiesScreen(MenuScreen):
             current_settings.save(self._settings_file())
             self._refresh_items()
 
-        _show_input()
+        ask_validated_input(
+            termux_app(self),
+            title=prop.name,
+            input_type=prop.input_type,
+            current_value=cur_val,
+            description=prop.description or "",
+            options=prop.options or [],
+            is_valid=lambda _: True,
+            on_valid=_on_valid,
+            empty_message=empty_message,
+            invalid_message=empty_message,
+        )
