@@ -221,14 +221,14 @@ def then_toggle_button(pilot) -> None:
     assert ui(pilot).has_button("Enable") or ui(pilot).has_button("Disable")
 
 
-@then('it contains "Show Tasks" button')
+@then('it contains "Tasks" button')
 def then_show_tasks_button(pilot) -> None:
-    ui(pilot).assert_has_button("Show Tasks")
+    ui(pilot).assert_has_button("Tasks")
 
 
-@then('it contains "Show Runner Logs" button')
+@then('it contains "Logs" button')
 def then_show_logs_button(pilot) -> None:
-    ui(pilot).assert_has_button("Show Runner Logs")
+    ui(pilot).assert_has_button("Logs")
 
 
 @then('it contains "Show metadata.toml" button')

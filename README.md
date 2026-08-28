@@ -141,7 +141,7 @@ Dashboard
 │   │   ├── Enable/Disable (starts/stops the runner loop)
 │   │   ├── Properties → Properties Screen (Set <property> buttons,
 │   │   │   each showing its live value as "<property>: <value>")
-│   │   ├── Show Tasks → Tasks Screen
+│   │   ├── Tasks → Tasks Screen
 │   │   │   ├── [Task] → Task Menu
 │   │   │   │   ├── Enable/Disable
 │   │   │   │   ├── Properties → Properties Screen (same as runner)
@@ -151,7 +151,7 @@ Dashboard
 │   │   │   │   ├── Update (version selection)
 │   │   │   │   └── Uninstall
 │   │   │   └── Install Task (source selection → install flow)
-│   │   ├── Show Runner Logs (follow mode)
+│   │   ├── Logs (follow mode)
 │   │   ├── Show metadata/settings (view files)
 │   │   ├── Update (version selection)
 │   │   └── Uninstall

@@ -127,14 +127,14 @@ def when_open_task(pilot) -> None:
     ui(pilot).click_id("#open_sh_runner_task")
 
 
-@when('I press "Show Tasks" button')
+@when('I press "Tasks" button')
 def when_show_tasks(pilot) -> None:
-    ui(pilot).click_label("Show Tasks")
+    ui(pilot).click_label("Tasks")
 
 
-@when('I press "Show Runner Logs" button')
+@when('I press "Logs" button')
 def when_show_logs(pilot) -> None:
-    ui(pilot).click_label("Show Runner Logs")
+    ui(pilot).click_label("Logs")
 
 
 @when('I press "Show metadata.toml" button')

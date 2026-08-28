@@ -57,8 +57,8 @@ class PropertiesScreen(MenuScreen):
             value = settings.properties.get(prop.name) or _NOT_SET
             items.append(ButtonConfig(
                 f"{_SET_PREFIX}{prop.name}",
-                f"Set {prop.name}",
-                title=f"[b]{prop.name}[/b]: {value}",
+                f"Set [b $text-primary]{prop.name}[/b $text-primary]",
+                title=f"[b $text-primary]{prop.name}[/b $text-primary]: {value}",
             ))
         return items
 

@@ -100,7 +100,7 @@ class StateWidget(Widget):
     update child widgets in place.
     """
 
-    _DEFAULT_ACTIVE_COLOR = "$success"
+    _DEFAULT_ACTIVE_COLOR = "$text-success"
     _ACTIVE_MARKER = "▶ "
     _INACTIVE_MARKER = "  "
 

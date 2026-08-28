@@ -34,9 +34,10 @@ class TasksMenuScreen(MenuScreen):
                 meta = TaskMetadata.load(meta_path)
                 settings = TaskSettings.load(task_path / "settings.toml")
                 status = "enabled" if settings.general.enabled else "disabled"
+                status_color = "$text-success" if settings.general.enabled else "$text-error"
                 items.append(ButtonConfig(
                     f"open_{meta.general.id}",
-                    rf"{meta.general.name} \[{status}]",
+                    rf"{meta.general.name} [{status_color}]\[{status}][/{status_color}]",
                 ))
 
         items.append(ButtonConfig("install_task", "Install Task", variant="primary", layout=ButtonLayout.BOTTOM))

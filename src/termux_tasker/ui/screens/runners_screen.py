@@ -50,9 +50,10 @@ class RunnersScreen(MenuScreen):
             meta = RunnerMetadata.load(meta_path)
             settings = RunnerSettings.load(runner_path / "settings.toml")
             status = self._status_str(settings)
+            status_color = "$text-error" if not settings.general.enabled else "$text-success"
             items.append(ButtonConfig(
                 f"open_{meta.general.id}",
-                rf"{meta.general.name} \[{status}]",
+                rf"{meta.general.name} [{status_color}]\[{status}][/{status_color}]",
             ))
 
         items.append(ButtonConfig("install_runner", "Install Runner", variant="primary", layout=ButtonLayout.BOTTOM))

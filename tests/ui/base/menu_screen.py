@@ -36,11 +36,11 @@ INITIAL_ACTIVE_INDEX = 5  # task-exec, as in the mockup
 ACTIVE_MARKER = "▶ "
 INACTIVE_MARKER = "  "
 ACTIVE_STATE_COLORS: dict[str, str] = {
-    "off": "$error",
-    "idle": "$warning",
-    "termination": "$error",
+    "off": "$text-error",
+    "idle": "$text-warning",
+    "termination": "$text-error",
 }
-DEFAULT_ACTIVE_COLOR = "$success"
+DEFAULT_ACTIVE_COLOR = "$text-success"
 
 
 def render_state_cell(state: str, is_active: bool) -> Text:

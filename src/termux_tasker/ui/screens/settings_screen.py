@@ -31,10 +31,11 @@ class SettingsScreen(MenuScreen):
 
     @staticmethod
     def _build_menu_items(upgrade_on_startup: bool) -> list[ButtonConfig]:
+        value_color = "$text-success" if upgrade_on_startup else "$text-error"
         return [
             ButtonConfig(
                 "upgrade_on_startup",
-                rf"Termux upgrade on startup \[{upgrade_on_startup}]",
+                rf"Termux upgrade on startup [{value_color}]\[{upgrade_on_startup}][/{value_color}]",
             ),
             ButtonConfig("update_app", "Update App", variant="primary", layout=ButtonLayout.BOTTOM),
         ]

@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MenuScreen`: `list[ButtonConfig]`, in-place updates, `column_count`, `title`, Rich-markup descriptions, disabled state, TOP/BOTTOM layout.
 - Extracted shared `ask_validated_input` helper (validated input with re-prompt) for `PropertiesScreen` and `TaskMenuScreen`.
 - `SettingsScreen` shows App Version / Session ID via `KeyValueWidget` instead of a plain description string.
+- Runner menu buttons renamed: "Show Tasks" → "Tasks", "Show Runner Logs" → "Logs".
+- Bracketed status captions colored: `[enabled]`/`[Installed]`/`[true]` → `$text-success`, `[disabled]`/`[false]` → `$text-error`.
+- Migrated state colors from `$success`/`$warning`/`$error` to `$text-success`/`$text-warning`/`$text-error`.
 
 ## [0.2.2] - 2026-07-31
 

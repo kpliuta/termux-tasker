@@ -13,8 +13,8 @@ Feature: Runner Menu
       """
     And it contains "Enable"/"Disable" toggle button
     And it contains "Properties" button
-    And it contains "Show Tasks" button
-    And it contains "Show Runner Logs" button
+    And it contains "Tasks" button
+    And it contains "Logs" button
     And it contains "Show metadata.toml" button
     And it contains "Show settings.toml" button
     And it contains "Update" button
@@ -45,7 +45,7 @@ Feature: Runner Menu
 
   Scenario: Navigate to Tasks from Runner menu
     Given the Runner Menu screen is shown
-    When I press "Show Tasks" button
+    When I press "Tasks" button
     Then the Tasks screen is shown
     And the title is "Tasks"
     And it shows all installed tasks for this runner (if any)
@@ -54,7 +54,7 @@ Feature: Runner Menu
 
   Scenario: View runner logs
     Given the Runner Menu screen is shown
-    When I press "Show Runner Logs" button
+    When I press "Logs" button
     Then a LogScreen is shown with the runner's stdout file
     And dynamic mode is enabled
 

@@ -36,7 +36,7 @@ _TIMEOUT_RE = re.compile(r"^[0-9]+[hms]$")
 
 class TaskMenuScreen(MenuScreen):
     _TASK_STATES: tuple[StateEntry, ...] = (
-        StateEntry("stopped", "stopped", color="$error"),
+        StateEntry("stopped", "stopped", color="$text-error"),
         StateEntry("running", "running"),
     )
 
@@ -119,9 +119,9 @@ class TaskMenuScreen(MenuScreen):
         toggle_label = "Disable" if settings.general.enabled else "Enable"
         items.append(ButtonConfig("toggle", toggle_label, variant="warning"))
         items.append(ButtonConfig("properties", "Properties"))
+        items.append(ButtonConfig("timeout", "Set Timeout"))
         items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
         items.append(ButtonConfig("show_settings", "Show settings.toml"))
-        items.append(ButtonConfig("timeout", "Set Timeout"))
         items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))
         items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM))
         output_dir = self.task_path / "output"

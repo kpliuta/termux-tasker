@@ -74,7 +74,7 @@ class InstallTaskVersionScreen(MenuScreen):
             for tag in tags:
                 label = tag
                 if tag == installed_version:
-                    label += " \\[Installed]"
+                    label += " [$text-success]\\[Installed][/$text-success]"
                 safe = make_unique(sanitize_id(tag), taken_ids)
                 self._id_to_tag[safe] = tag
                 items.append(ButtonConfig(f"version_{safe}", label))
@@ -84,7 +84,7 @@ class InstallTaskVersionScreen(MenuScreen):
             tag = meta.general.version
             label = tag
             if tag == installed_version:
-                label += " \\[Installed]"
+                label += " [$text-success]\\[Installed][/$text-success]"
             safe = make_unique(sanitize_id(tag), taken_ids)
             self._id_to_tag[safe] = tag
             items.append(ButtonConfig(f"version_{safe}", label))

@@ -31,7 +31,7 @@ from termux_tasker.ui.screens.widgets.description import (
 
 class RunnerMenuScreen(MenuScreen):
     _RUNNER_STATES: tuple[StateEntry, ...] = (
-        StateEntry("off", "off", color="$error"),
+        StateEntry("off", "off", color="$text-error"),
         StateEntry("initialization", "initialization"),
         StateEntry("before-exec", "before-exec"),
         StateEntry("exec", "exec", children=("before-task", "task-exec", "after-task")),
@@ -39,8 +39,8 @@ class RunnerMenuScreen(MenuScreen):
         StateEntry("task-exec", "├─ task-exec"),
         StateEntry("after-task", "└─ after-task"),
         StateEntry("after-exec", "after-exec"),
-        StateEntry("idle", "idle", color="$warning"),
-        StateEntry("termination", "termination", color="$error"),
+        StateEntry("idle", "idle", color="$text-warning"),
+        StateEntry("termination", "termination", color="$text-error"),
     )
 
     def __init__(self, runner_path: Path) -> None:
@@ -119,8 +119,8 @@ class RunnerMenuScreen(MenuScreen):
         toggle_label = "Disable" if settings.general.enabled else "Enable"
         items.append(ButtonConfig("toggle", toggle_label, variant="warning"))
         items.append(ButtonConfig("properties", "Properties"))
-        items.append(ButtonConfig("show_tasks", "Show Tasks"))
-        items.append(ButtonConfig("show_logs", "Show Runner Logs"))
+        items.append(ButtonConfig("show_tasks", "Tasks"))
+        items.append(ButtonConfig("show_logs", "Logs"))
         items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
         items.append(ButtonConfig("show_settings", "Show settings.toml"))
         items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))

@@ -61,7 +61,7 @@ class BundledTaskScreen(MenuScreen):
             is_installed = meta.general.id in installed_tasks
             label = meta.general.name
             if is_installed:
-                label += " \\[Installed]"
+                label += " [$text-success]\\[Installed][/$text-success]"
             items.append(
                 ButtonConfig(
                     f"install_{meta.general.id}",

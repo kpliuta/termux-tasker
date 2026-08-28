@@ -108,7 +108,7 @@ class TestStateWidget:
             key_value_entries=(KeyValueEntry("Version", "1.2.3"),),
             current_state="running",
             states_entries=(
-                StateEntry("stopped", "stopped", color="$error"),
+                StateEntry("stopped", "stopped", color="$text-error"),
                 StateEntry("running", "running"),
             ),
         )
@@ -140,7 +140,7 @@ class TestStateWidget:
             key_value_entries=(KeyValueEntry("Version", "1.2.3"),),
             current_state="stopped",
             states_entries=(
-                StateEntry("stopped", "stopped", color="$error"),
+                StateEntry("stopped", "stopped", color="$text-error"),
                 StateEntry("running", "running"),
             ),
         )
