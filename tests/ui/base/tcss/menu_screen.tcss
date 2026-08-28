@@ -1,0 +1,29 @@
+.info-row {
+    height: auto;
+}
+.info-key {
+    width: 1fr;
+    padding: 0 1;
+    content-align-horizontal: right;
+    text-style: bold;
+    color: $text-primary;
+}
+.info-value {
+    width: 1fr;
+    padding: 0 1;
+
+}
+.hr {
+    margin: 0;
+    color: $primary;
+}
+.state {
+    width: 1fr;
+    align-horizontal: center;
+}
+.state-rows {
+    width: auto;
+}
+.state-row {
+    width: auto;
+}

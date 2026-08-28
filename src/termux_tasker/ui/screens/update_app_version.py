@@ -9,6 +9,7 @@ from textual.widgets import Button
 
 from termux_tasker.config import RunnerMetadata
 from termux_tasker.ui.base import (
+    ButtonConfig,
     MenuScreen,
     LoadingScreen,
     InfoScreen,
@@ -19,6 +20,7 @@ from termux_tasker.ui.screens._utils import (
     fetch_git_tags,
     git_checkout,
     poetry_install,
+    make_unique,
     sanitize_id,
 )
 
@@ -58,7 +60,7 @@ class UpdateAppVersionScreen(MenuScreen):
     def __init__(self) -> None:
         self._id_to_tag: dict[str, str] = {}
 
-        super().__init__({}, show_back_button=True)
+        super().__init__([], show_back_button=True)
         self.title = "App Version"
         self.sub_title = termux_app(self).state.app_version
         self._loaded = False
@@ -78,14 +80,15 @@ class UpdateAppVersionScreen(MenuScreen):
 
         tags = fetch_git_tags(app_root)
 
-        items: dict[str, str] = {}
+        items: list[ButtonConfig] = []
+        taken_ids: set[str] = set()
         for tag in tags:
             label = tag
             if tag == current_version:
-                label += " \\[Installed]"
-            safe = sanitize_id(tag)
+                label += " [$text-success]\\[Installed][/$text-success]"
+            safe = make_unique(sanitize_id(tag), taken_ids)
             self._id_to_tag[safe] = tag
-            items[label] = f"version_{safe}"
+            items.append(ButtonConfig(f"version_{safe}", label))
 
         await loading.dismiss(None)
         self.menu_items = items

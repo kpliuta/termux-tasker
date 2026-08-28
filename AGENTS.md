@@ -26,10 +26,17 @@
 - `@dataclass` for data models; `tomlkit` for TOML I/O via `_write_toml` helper.
 - `Path` for all filesystem paths — never raw strings.
 - Prefer modules+functions over classes; use classes primarily for UI screens.
+- Never use broad exception clauses (`except Exception:` / bare `except:`). Catch only the specific exception(s) you expect (e.g. `NoMatches` from `textual.widget`). A broad clause is acceptable only when immediately re-raising a wrapped, domain-specific exception.
 
 [//]: # (textual)
 
-- Subclass `MenuScreen` for feature screens; pass `menu_items: dict[str, str]` (label→button_id).
+- Subclass `MenuScreen` for feature screens; pass `menu_items: list[ButtonConfig]` (import `ButtonConfig` from `termux_tasker.ui.base`).
+- Use `ButtonConfig(id, label, variant, disabled, layout, title)` for button configuration.
+- `ButtonLayout.TOP` (default) places buttons in the scroll area; `ButtonLayout.BOTTOM` places them in the bottom bar.
+- `column_count` (default 1) controls how many buttons appear per row — applies uniformly to all buttons including Back/Exit.
+- Set `title="[b]Header[/b]"` on a `ButtonConfig` to show formatted text above the button (Rich markup supported).
+- `ButtonConfig.id` is **required**: non-empty and a valid Textual identifier (validated in `__post_init__`). Ids must be unique per screen — `MenuScreen` raises `ValueError` on duplicates at construction and on every runtime `menu_items` reassignment.
+- Never name helpers `_validate_<reactive>` / `validate_<reactive>` inside `MenuScreen` subclasses — Textual treats them as reactive value validators and their return value replaces the attribute.
 - Handle button events with `@on(Button.Pressed, "#button_id")` — always `event.stop()`.
 - Use `termux_app(self)` from `_utils.py` for typed app access — prefer over `self.app` everywhere in feature screens (but `self.app` is fine in base screens in `ui/base/`).
 - `BINDINGS` list for keyboard shortcuts: `[("escape", "press_back", "Back")]`.
@@ -41,6 +48,10 @@
   CSS_PATH = _HERE / "tcss" / "menu_screen.tcss"
   ```
 - Import all base screen types from `termux_tasker.ui.base` (never re-import from individual files).
+- Description can be `str` (with Rich markup) or a `Widget` instance — use `description` and `description_widget` params.
+- `description_max_height` controls the description area height (default "100%").
+- Reassigning `self.menu_items` updates labels/disabled/titles **in place** when button ids are unchanged (no rebuild, focus preserved); changing the id set triggers a full DOM rebuild.
+- Runner/task property editing lives in the unified `PropertiesScreen` (`ui/screens/properties.py`); menus only push it via a "Properties" button. Button ids prefixed `set_` are reserved for property buttons.
 
 [//]: # (testing — BDD)
 

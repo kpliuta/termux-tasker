@@ -21,11 +21,11 @@ InfoScreen {
 }
 
 #info_message.warning {
-    color: $warning;
+    color: $text-warning;
 }
 
 #info_message.error {
-    color: $error;
+    color: $text-error;
 }
 
 #info_button {

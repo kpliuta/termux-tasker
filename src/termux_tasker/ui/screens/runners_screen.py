@@ -7,14 +7,15 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import RunnerMetadata, RunnerSettings
-from termux_tasker.ui.base import MenuScreen
+from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
+from termux_tasker.ui.screens._state_colors import runner_state_color
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
 
 
 class RunnersScreen(MenuScreen):
     def __init__(self) -> None:
-        super().__init__({}, show_back_button=True)
+        super().__init__([], show_back_button=True)
         self.title = "Runners"
         self._poll_timer: Any = None
 
@@ -38,7 +39,7 @@ class RunnersScreen(MenuScreen):
 
     def _refresh(self) -> None:
         app = termux_app(self)
-        items: dict[str, str] = {}
+        items: list[ButtonConfig] = []
         runners_path = app.state.runners_path
         runner_paths: list[Path] = sorted(runners_path.iterdir())
         for runner_path in runner_paths:
@@ -50,9 +51,13 @@ class RunnersScreen(MenuScreen):
             meta = RunnerMetadata.load(meta_path)
             settings = RunnerSettings.load(runner_path / "settings.toml")
             status = self._status_str(settings)
-            items[rf"{meta.general.name} \[{status}]"] = f"open_{meta.general.id}"
+            color = runner_state_color(settings)
+            items.append(ButtonConfig(
+                f"open_{meta.general.id}",
+                rf"{meta.general.name} [{color}]\[{status}][/{color}]",
+            ))
 
-        items["Install Runner"] = "install_runner"
+        items.append(ButtonConfig("install_runner", "Install Runner", variant="primary", layout=ButtonLayout.BOTTOM))
         self.menu_items = items
 
     @staticmethod

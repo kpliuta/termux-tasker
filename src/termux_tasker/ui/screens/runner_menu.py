@@ -10,32 +10,58 @@ from termux_tasker.config import RunnerMetadata, RunnerSettings
 from termux_tasker.runner_process import RunnerProcess
 from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base import (
+    ButtonConfig,
+    ButtonLayout,
     MenuScreen,
     LoadingScreen,
-    InputScreen,
-    InfoScreen,
     ConfirmationScreen,
 )
+from termux_tasker.ui.screens._state_colors import RUNNER_STATE_COLORS
 from termux_tasker.ui.screens._utils import (
     termux_app,
     copy_to_tmp,
-    parse_property_value,
-    is_property_value_empty,
 )
+from termux_tasker.ui.screens.properties import PropertiesScreen
 from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
+from termux_tasker.ui.screens.widgets.description import (
+    KeyValueEntry,
+    StateEntry,
+    StateWidget,
+)
 
 
 class RunnerMenuScreen(MenuScreen):
+    _RUNNER_STATES: tuple[StateEntry, ...] = (
+        StateEntry("off", "off", color=RUNNER_STATE_COLORS["off"]),
+        StateEntry("initialization", "initialization"),
+        StateEntry("before-exec", "before-exec"),
+        StateEntry("exec", "exec", children=("before-task", "task-exec", "after-task")),
+        StateEntry("before-task", "├─ before-task"),
+        StateEntry("task-exec", "├─ task-exec"),
+        StateEntry("after-task", "└─ after-task"),
+        StateEntry("after-exec", "after-exec"),
+        StateEntry("idle", "idle", color=RUNNER_STATE_COLORS["idle"]),
+        StateEntry("termination", "termination", color=RUNNER_STATE_COLORS["termination"]),
+    )
+
     def __init__(self, runner_path: Path) -> None:
         self.runner_path = runner_path
         meta = RunnerMetadata.load(runner_path / "metadata.toml")
         settings = RunnerSettings.load(runner_path / "settings.toml")
 
         self._fix_session(settings, runner_path)
-        desc = self._build_description(meta, settings)
+        self._state = StateWidget(
+            id="description-widget",
+            key_value_entries=(
+                KeyValueEntry("Version", meta.general.version),
+                KeyValueEntry("Enabled", str(settings.general.enabled)),
+            ),
+            current_state=settings.session.state,
+            states_entries=self._RUNNER_STATES,
+        )
         items = self._build_items(meta, settings)
 
-        super().__init__(items, description=desc, show_back_button=True)
+        super().__init__(items, description_widget=self._state, show_back_button=True)
         self.title = "Runner"
         self.sub_title = meta.general.name
         self._poll_timer: Any = None
@@ -67,12 +93,11 @@ class RunnerMenuScreen(MenuScreen):
         self, meta: RunnerMetadata, settings: RunnerSettings
     ) -> None:
         self.menu_items = self._build_items(meta, settings)
-        self.description = self._build_description(meta, settings)
-        id_to_label = {v: k for k, v in self.menu_items.items()}
-        for btn in self.query(Button):
-            btn_id = btn.id
-            if btn_id is not None and btn_id in id_to_label:
-                btn.label = id_to_label[btn_id]
+        self._state.key_value_entries = (
+            KeyValueEntry("Version", meta.general.version),
+            KeyValueEntry("Enabled", str(settings.general.enabled)),
+        )
+        self._state.current_state = settings.session.state
 
     def _fix_session(self, settings: RunnerSettings, runner_path: Path) -> None:
         """Reset stale session state (same pattern as TaskMenuScreen).
@@ -88,33 +113,19 @@ class RunnerMenuScreen(MenuScreen):
             settings.save(runner_path / "settings.toml")
 
     @staticmethod
-    def _build_description(
-        meta: RunnerMetadata, settings: RunnerSettings
-    ) -> str:
-        parts = [
-            f"Version: {meta.general.version}",
-            f"Enabled: {settings.general.enabled}",
-            f"State: {settings.session.state}",
-        ]
-        for prop_name, prop_val in settings.properties.items():
-            parts.append(f"{prop_name}: {prop_val}")
-        return "\n".join(parts)
-
-    @staticmethod
     def _build_items(
         meta: RunnerMetadata, settings: RunnerSettings
-    ) -> dict[str, str]:
-        items: dict[str, str] = {}
+    ) -> list[ButtonConfig]:
+        items: list[ButtonConfig] = []
         toggle_label = "Disable" if settings.general.enabled else "Enable"
-        items[toggle_label] = "toggle"
-        items["Show Tasks"] = "show_tasks"
-        items["Show Runner Logs"] = "show_logs"
-        items["Show metadata.toml"] = "show_metadata"
-        items["Show settings.toml"] = "show_settings"
-        for prop in meta.properties:
-            items[f"Set {prop.name}"] = f"set_{prop.name}"
-        items["Update"] = "update"
-        items["Uninstall"] = "uninstall"
+        items.append(ButtonConfig("toggle", toggle_label, variant="warning"))
+        items.append(ButtonConfig("properties", "Properties"))
+        items.append(ButtonConfig("show_tasks", "Tasks"))
+        items.append(ButtonConfig("show_logs", "Logs"))
+        items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
+        items.append(ButtonConfig("show_settings", "Show settings.toml"))
+        items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))
+        items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM))
         return items
 
     @on(Button.Pressed, "#toggle")
@@ -164,6 +175,16 @@ class RunnerMenuScreen(MenuScreen):
             self._start_polling()
         else:
             self._stop_polling()
+
+    @on(Button.Pressed, "#properties")
+    def on_properties(self, event: Button.Pressed) -> None:
+        event.stop()
+        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
+        termux_app(self).push_screen(
+            PropertiesScreen(
+                self.runner_path, meta.properties, meta.general.name
+            )
+        )
 
     @on(Button.Pressed, "#show_tasks")
     def on_show_tasks(self, event: Button.Pressed) -> None:
@@ -256,60 +277,3 @@ class RunnerMenuScreen(MenuScreen):
         shutil.rmtree(self.runner_path, ignore_errors=True)
 
         termux_app(self).pop_screen()   # noqa
-
-    @on(Button.Pressed)
-    def on_set_property(self, event: Button.Pressed) -> None:
-        btn_id = event.button.id or ""
-        if btn_id.startswith("set_"):
-            event.stop()
-            prop_name = btn_id[4:]
-            self._set_property(prop_name)
-
-    def _set_property(self, prop_name: str) -> None:
-        meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
-        settings = RunnerSettings.load(self.runner_path / "settings.toml")
-        try:
-            prop = next(p for p in meta.properties if p.name == prop_name)
-        except StopIteration:
-            return
-
-        raw = settings.properties.get(prop.name, "")
-        cur_val = parse_property_value(raw, prop.input_type)
-
-        def _show_input() -> None:
-            termux_app(self).push_screen(
-                InputScreen(
-                    title=prop.name,
-                    description=prop.description or "",
-                    input_type=prop.input_type,
-                    options=prop.options or [],
-                    current_value=cur_val,
-                ),
-                _on_result,
-            )
-
-        def _warn_and_retry() -> None:
-            termux_app(self).push_screen(
-                InfoScreen(
-                    message=f"'{prop.name}' is required and must have a value.",
-                    severity="warning",
-                ),
-                lambda _: _show_input(),
-            )
-
-        def _on_result(result: Any) -> None:
-            if result is None:
-                return
-            if not prop.optional and is_property_value_empty(result, prop.input_type):
-                _warn_and_retry()
-                return
-            current_settings = RunnerSettings.load(self.runner_path / "settings.toml")
-            if prop.input_type == "checkbox" and isinstance(result, (list, tuple)):
-                current_settings.properties[prop.name] = ",".join(str(v) for v in result)
-            else:
-                current_settings.properties[prop.name] = str(result)
-            current_settings.save(self.runner_path / "settings.toml")
-            current_meta = RunnerMetadata.load(self.runner_path / "metadata.toml")
-            self._refresh_ui(current_meta, current_settings)
-
-        _show_input()

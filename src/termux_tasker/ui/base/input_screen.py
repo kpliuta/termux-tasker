@@ -80,8 +80,8 @@ class InputScreen(ModalScreen[Union[str, Sequence[str], None]]):
                                 value=option.lower() in selected_values
                             )
 
-            yield Button("Cancel", id="cancel", variant="error")
             yield Button("Ok", id="ok", variant="primary")
+            yield Button("Cancel", id="cancel", variant="error")
 
     @on(Button.Pressed, "#ok")
     def handle_ok(self, event: Button.Pressed) -> None:

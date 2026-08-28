@@ -119,7 +119,7 @@ class LogHelpScreen(ModalScreen[None]):
             with Vertical(id="log_help_text_container"):
                 yield Static(_HELP_TEXT, id="log_help_text")
             with Horizontal(id="log_help_close"):
-                yield Button("Close", id="close_button", variant="primary")
+                yield Button("Close", id="close_button", variant="error")
 
     @on(Button.Pressed, "#close_button")
     def on_close(self, event: Button.Pressed) -> None:
@@ -160,7 +160,7 @@ class LogSettingsScreen(ModalScreen[None]):
             with Horizontal(id="help_close_row"):
                 if ls.is_dynamic:
                     yield Button("Help", id="help_button", variant="default")
-                yield Button("Close", id="close_button", variant="primary")
+                yield Button("Close", id="close_button", variant="error")
 
     @on(Checkbox.Changed, "#wrap_checkbox")
     def on_wrap_changed(self, event: Checkbox.Changed) -> None:
@@ -344,7 +344,7 @@ class LogScreen(ModalScreen[None]):
             yield RichLog(highlight=True, markup=False, wrap=self.soft_wrap)
             with Horizontal(id="log_controls"):
                 yield Button("Settings", id="settings_button", variant="default")
-                yield Button("Close", id="close_button", variant="primary")
+                yield Button("Close", id="close_button", variant="error")
 
     def on_mount(self) -> None:
         self._load_content()

@@ -6,7 +6,8 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, TaskSettings
-from termux_tasker.ui.base import MenuScreen
+from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
+from termux_tasker.ui.screens._state_colors import DISABLED_COLOR, ENABLED_COLOR
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.task_type import TaskTypeScreen
 from termux_tasker.ui.screens.task_menu import TaskMenuScreen
@@ -14,12 +15,14 @@ from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 class TasksMenuScreen(MenuScreen):
     def __init__(self, runner_path: Path) -> None:
         self.runner_path = runner_path
-        super().__init__({"Install Task": "install_task"}, show_back_button=True)
+        super().__init__([
+            ButtonConfig("install_task", "Install Task", variant="primary", layout=ButtonLayout.BOTTOM),
+        ], show_back_button=True)
         self.title = "Tasks"
         self._refresh()
 
     def _refresh(self) -> None:
-        items: dict[str, str] = {}
+        items: list[ButtonConfig] = []
         tasks_path = self.runner_path / "tasks"
 
         if tasks_path.exists():
@@ -32,9 +35,13 @@ class TasksMenuScreen(MenuScreen):
                 meta = TaskMetadata.load(meta_path)
                 settings = TaskSettings.load(task_path / "settings.toml")
                 status = "enabled" if settings.general.enabled else "disabled"
-                items[rf"{meta.general.name} \[{status}]"] = f"open_{meta.general.id}"
+                status_color = ENABLED_COLOR if settings.general.enabled else DISABLED_COLOR
+                items.append(ButtonConfig(
+                    f"open_{meta.general.id}",
+                    rf"{meta.general.name} [{status_color}]\[{status}][/{status_color}]",
+                ))
 
-        items["Install Task"] = "install_task"
+        items.append(ButtonConfig("install_task", "Install Task", variant="primary", layout=ButtonLayout.BOTTOM))
         self.menu_items = items
 
     @on(Button.Pressed, "#install_task")

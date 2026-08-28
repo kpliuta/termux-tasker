@@ -49,9 +49,9 @@ class UIHelper:
         """
         screen = self.app.screen
         if hasattr(screen, "menu_items"):
-            for lbl, btn_id in screen.menu_items.items():
-                if str(lbl).strip() == label and btn_id:
-                    self._pilot.click(f"#{btn_id}")
+            for btn_cfg in screen.menu_items:
+                if str(btn_cfg.label).strip() == label and btn_cfg.id:
+                    self._pilot.click(f"#{btn_cfg.id}")
                     self._pilot.pause()
                     return
         for btn in screen.query("Button"):
@@ -111,8 +111,8 @@ class UIHelper:
     # ── Navigation ──────────────────────────────────────────────────────
 
     def nav_to_runners(self) -> None:
-        """From the main menu, navigate to the Runners screen."""
-        self._pilot.click("#show_runners")
+        """From the dashboard, navigate to the Runners screen."""
+        self._pilot.click("#runners")
 
     def nav_to_runner_menu(self, runner_id: str = "sh_runner") -> None:
         """Navigate to the Runner Menu screen for *runner_id*."""
@@ -155,7 +155,7 @@ class UIHelper:
         self._pilot.click(f"#open_{task_id}")
 
     def nav_to_settings(self) -> None:
-        """From the main menu, navigate to the Settings screen."""
+        """From the dashboard, navigate to the Settings screen."""
         screen = self.app.screen
         if isinstance(screen, SettingsScreen):
             return

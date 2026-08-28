@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Unified **Properties** screen for runners and tasks (new "Properties" button on both menus; "Set <property>" buttons show live `property: value`).
+- `DashboardScreen` now displays a live overview of all runners and tasks.
+
+### Changed
+
+- Main Menu renamed → Dashboard (`DashboardScreen`).
+- Property values removed from menu descriptions.
+- Reworked menu descriptions into reusable `MenuScreen` description widgets: `KeyValueWidget` and `StateWidget` (key/value rows + lifecycle state list).
+- `MenuScreen`: `list[ButtonConfig]`, in-place updates, `column_count`, `title`, Rich-markup descriptions, disabled state, TOP/BOTTOM layout.
+- Extracted shared `ask_validated_input` helper (validated input with re-prompt) for `PropertiesScreen` and `TaskMenuScreen`.
+- `SettingsScreen` shows App Version / Session ID via `KeyValueWidget` instead of a plain description string.
+- Runner menu buttons renamed: "Show Tasks" → "Tasks", "Show Runner Logs" → "Logs".
+- Bracketed status captions colored: `[enabled]`/`[Installed]`/`[true]` → `$text-success`, `[disabled]`/`[false]` → `$text-error`.
+- Migrated state colors from `$success`/`$warning`/`$error` to `$text-success`/`$text-warning`/`$text-error`.
+
 ## [0.2.2] - 2026-07-31
 
 ### Fixed
@@ -22,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Remove main branch option from `install.sh`.
+- Removed main branch option from `install.sh`.
 
 ## [0.2.0] - 2026-07-15
 
@@ -42,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update AGENTS.md and README.md.
+- Updated AGENTS.md and README.md.
 
 ### Fixed
 

@@ -4,15 +4,14 @@ from pathlib import Path
 from subprocess import SubprocessError
 from unittest.mock import patch, MagicMock
 
-import pytest
 
 from termux_tasker.ui.screens._utils import (
     fetch_git_tags,
     get_installed_runner_version,
     get_installed_task_version,
+    make_unique,
     sanitize_id,
 )
-from termux_tasker.config import RunnerMetadata, RunnerSettings, TaskMetadata
 
 
 # --- sanitize_id ---
@@ -41,6 +40,30 @@ class TestSanitizeId:
 
     def test_only_special_chars(self) -> None:
         assert sanitize_id("!@#") == "___"
+
+
+# --- make_unique ---
+
+class TestMakeUnique:
+    def test_first_use_unchanged(self) -> None:
+        taken: set[str] = set()
+        assert make_unique("v1", taken) == "v1"
+        assert taken == {"v1"}
+
+    def test_collision_gets_suffix(self) -> None:
+        taken = {"v1"}
+        assert make_unique("v1", taken) == "v1_2"
+
+    def test_double_collision_gets_next_suffix(self) -> None:
+        taken = {"v1", "v1_2"}
+        assert make_unique("v1", taken) == "v1_3"
+
+    def test_sanitized_tag_pair_scenario(self) -> None:
+        """`v1.0.0` and `v1_0_0` both sanitize to `v1_0_0` — both stay usable."""
+        taken: set[str] = set()
+        first = make_unique(sanitize_id("v1.0.0"), taken)
+        second = make_unique(sanitize_id("v1_0_0"), taken)
+        assert {first, second} == {"v1_0_0", "v1_0_0_2"}
 
 
 # --- fetch_git_tags ---

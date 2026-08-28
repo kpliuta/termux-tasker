@@ -7,13 +7,13 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import RunnerMetadata, BundledRunners
-from termux_tasker.ui.base import MenuScreen, LoadingScreen, InfoScreen
+from termux_tasker.ui.base import ButtonConfig, MenuScreen, LoadingScreen, InfoScreen
 from termux_tasker.ui.screens._utils import termux_app, clone_repo
 
 
 class BundledRunnerScreen(MenuScreen):
     def __init__(self) -> None:
-        super().__init__({}, show_back_button=True)
+        super().__init__([], show_back_button=True)
         self.title = "Bundled Runner"
         self._tmp_folders: list[Path] = []
         self._loaded = False
@@ -50,7 +50,7 @@ class BundledRunnerScreen(MenuScreen):
                     meta = RunnerMetadata.load(meta_path)
                     installed_runners.add(meta.general.id)
 
-        items: dict[str, str] = {}
+        items: list[ButtonConfig] = []
         for tmp_folder in self._tmp_folders:
             meta_path = tmp_folder / "metadata.toml"
             if not meta_path.exists():
@@ -59,11 +59,15 @@ class BundledRunnerScreen(MenuScreen):
             is_installed = meta.general.id in installed_runners
             label = meta.general.name
             if is_installed:
-                label += " \\[Installed]"
-                btn_id = ""
-            else:
-                btn_id = f"install_{meta.general.id}"
-            items[label] = btn_id
+                label += " [$text-success]\\[Installed][/$text-success]"
+            items.append(
+                ButtonConfig(
+                    f"install_{meta.general.id}",
+                    label,
+                    variant="default",
+                    disabled=is_installed,
+                )
+            )
 
         if self._loading is not None:
             await self._loading.dismiss(None)

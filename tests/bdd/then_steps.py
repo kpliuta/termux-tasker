@@ -3,14 +3,18 @@ from __future__ import annotations
 import shutil
 import time
 
+from textual.css.query import NoMatches
+from textual.widgets import Button
+
 from tests.bdd.steps_common import *  # noqa
+from termux_tasker.config import RunnerMetadata, TaskMetadata  # noqa
 from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
 
 
-@then("the main menu screen is shown")
-@then("the main menu screen is shown again")
-def then_main_menu_shown(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+@then("the dashboard screen is shown")
+@then("the dashboard screen is shown again")
+def then_dashboard_shown(pilot) -> None:
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @then("the Runners screen is shown")
@@ -40,6 +44,7 @@ def then_tasks_shown(pilot) -> None:
 
 
 @then("the Task Menu screen is shown")
+@then("the Task Menu screen is shown again")
 def then_task_menu_shown(pilot) -> None:
     ui(pilot).assert_screen(TaskMenuScreen)
 
@@ -97,7 +102,7 @@ def then_new_runner_menu_shown(pilot) -> None:
 @then("I am returned to the previous screen")
 def then_previous_screen(pilot) -> None:
     assert ui(pilot).screen_is(
-        (RunnersScreen, RunnerMenuScreen, MainMenuScreen,
+        (RunnersScreen, RunnerMenuScreen, DashboardScreen,
          InstallRunnerScreen, InstallTaskScreen)
     )
 
@@ -116,9 +121,9 @@ def then_new_task_visible(pilot) -> None:
     assert ui(pilot).screen_is((TasksMenuScreen, TaskMenuScreen))
 
 
-@then('the title is "Main Menu"')
-def then_title_main_menu(pilot) -> None:
-    assert ui(pilot).title() == "Main Menu"
+@then('the title is "Dashboard"')
+def then_title_dashboard(pilot) -> None:
+    assert ui(pilot).title() == "Dashboard"
 
 
 @then('the title is "Runners"')
@@ -156,9 +161,9 @@ def then_subtitle_task_name(pilot) -> None:
     assert bool(ui(pilot).sub_title())
 
 
-@then('it contains "Show Runners" button')
-def then_contains_show_runners(pilot) -> None:
-    ui(pilot).assert_has_button("Show Runners")
+@then('it contains "Runners" button')
+def then_contains_runners(pilot) -> None:
+    ui(pilot).assert_has_button("Runners")
 
 
 @then('it contains "Settings" button')
@@ -216,14 +221,14 @@ def then_toggle_button(pilot) -> None:
     assert ui(pilot).has_button("Enable") or ui(pilot).has_button("Disable")
 
 
-@then('it contains "Show Tasks" button')
+@then('it contains "Tasks" button')
 def then_show_tasks_button(pilot) -> None:
-    ui(pilot).assert_has_button("Show Tasks")
+    ui(pilot).assert_has_button("Tasks")
 
 
-@then('it contains "Show Runner Logs" button')
+@then('it contains "Logs" button')
 def then_show_logs_button(pilot) -> None:
-    ui(pilot).assert_has_button("Show Runner Logs")
+    ui(pilot).assert_has_button("Logs")
 
 
 @then('it contains "Show metadata.toml" button')
@@ -249,6 +254,11 @@ def then_uninstall_button(pilot) -> None:
 @then('it contains "Set Timeout" button')
 def then_set_timeout_button(pilot) -> None:
     ui(pilot).assert_has_button("Set Timeout")
+
+
+@then('it contains "Properties" button')
+def then_contains_properties_button(pilot) -> None:
+    ui(pilot).assert_has_button("Properties")
 
 
 @then('it contains "{label}" button')
@@ -277,10 +287,58 @@ def then_yes_no_buttons(pilot) -> None:
     )
 
 
+def _description_content(screen) -> str:
+    """Return the textual content of a screen's description.
+
+    Handles both the ``StateWidget``/``KeyValueWidget`` (``#description-widget``)
+    and a plain ``description`` string. ``Static`` widgets render either a
+    ``Content`` (``.plain``) or a ``RichVisual`` wrapping a Rich renderable
+    (e.g. the ``KeyValueWidget`` table), which is rendered to text via a console.
+    """
+    try:
+        widget = screen.query_one("#description-widget")
+    except NoMatches:
+        desc = getattr(screen, "description", "") or ""
+        return desc if isinstance(desc, str) else ""
+    from rich.console import Console
+    from rich.text import Text
+
+    def _static_plain(static: object) -> str:
+        rendered = static.render()  # type: ignore[attr-defined]
+        if isinstance(rendered, Text) or hasattr(rendered, "plain"):
+            return str(getattr(rendered, "plain", rendered))
+        # RichVisual wraps the original renderable (e.g. a Table).
+        renderable = getattr(rendered, "_renderable", rendered)
+        console = Console(width=screen.app.console.width, legacy_windows=False)
+        with console.capture() as capture:
+            console.print(renderable)
+        return capture.get()
+
+    return " ".join(_static_plain(s) for s in widget.query("Static"))
+
+
 @then("the description shows:")
-def then_description_shows(pilot) -> None:
-    desc_widget = ui(pilot).app.screen.query_one("#description")
-    assert desc_widget is not None
+def then_description_shows(pilot, docstring) -> None:
+    screen = ui(pilot).app.screen
+    content = _description_content(screen)
+    assert content.strip(), "Description is empty"
+    # Each bullet describes a field that must be present in the rendered description.
+    for line in docstring.strip().splitlines():
+        line = line.strip().lstrip("- ").strip()
+        if not line:
+            continue
+        token = line.split()[0]
+        expected = {
+            "Version": "Version",
+            "Enabled": "Enabled",
+            "Timeout": "Timeout",
+        }.get(token)
+        if expected:
+            assert expected in content, f"Description missing {line!r}: {content!r}"
+    # The lifecycle state list must be rendered when the description
+    # widget actually shows a state list (state screens only).
+    if screen.query("#description-widget") and screen.query(".state"):
+        assert len(screen.query(".state-row")) > 0, "State list not rendered"
 
 
 @then('it shows "Termux upgrade on startup" option')
@@ -311,10 +369,90 @@ def then_label_updates(pilot) -> None:
 def then_set_property_buttons(pilot) -> None:
     buttons = [
         b
-        for b in ui(pilot).app.screen.query("Button")
+        for b in ui(pilot).app.screen.query(Button)
         if b.id and b.id.startswith("set_")
     ]
     assert len(buttons) >= 1
+
+
+@then("the Properties screen is shown")
+def then_properties_screen_shown(pilot) -> None:
+    ui(pilot).assert_screen(PropertiesScreen)
+
+
+@then('it contains no "Set <property>" buttons')
+def then_no_set_property_buttons(pilot) -> None:
+    buttons = [
+        b
+        for b in ui(pilot).app.screen.query(Button)
+        if b.id and b.id.startswith("set_")
+    ]
+    assert not buttons, f"Unexpected property buttons: {[b.id for b in buttons]}"
+
+
+def _properties_context(pilot) -> tuple[Path, RunnerMetadata | TaskMetadata]:
+    """Return the item path and metadata of the runner/task that owns
+    the currently open Properties screen (found below it in the stack)."""
+    for screen in ui(pilot).app.screen_stack:
+        if isinstance(screen, TaskMenuScreen):
+            meta = TaskMetadata.load(screen.task_path / "metadata.toml")
+            return screen.task_path, meta
+    for screen in ui(pilot).app.screen_stack:
+        if isinstance(screen, RunnerMenuScreen):
+            meta = RunnerMetadata.load(screen.runner_path / "metadata.toml")
+            return screen.runner_path, meta
+    raise AssertionError("No Runner/Task menu found under the Properties screen")
+
+
+def _property_title_text(pilot, prop_name: str) -> str:
+    btn = ui(pilot).app.screen.query_one(f"#set_{prop_name}", Button)
+    siblings = list(btn.parent.children)
+    title_static = siblings[siblings.index(btn) - 1]
+    return str(title_static.render())
+
+
+@then('the title is "Properties"')
+def then_properties_title(pilot) -> None:
+    assert ui(pilot).title() == "Properties"
+
+
+@then('each property button shows "<property>: <value>" as its title')
+def then_property_titles_show_values(pilot) -> None:
+    _path, meta = _properties_context(pilot)
+    s = settings().load_runner_settings(_path)
+    for prop in meta.properties:
+        expected = s.properties.get(prop.name) or "(not set)"
+        assert _property_title_text(pilot, prop.name) == f"{prop.name}: {expected}"
+
+
+@then("the description shows no properties")
+def then_description_no_properties(pilot) -> None:
+    desc = getattr(ui(pilot).app.screen, "description", "") or ""
+    _path, meta = _properties_context(pilot)
+    shown = [prop.name for prop in meta.properties if prop.name in desc]
+    assert not shown, f"Properties leaked into description: {shown}"
+
+
+@then("the property value is saved in settings.toml")
+def then_property_saved(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    s = settings().load_runner_settings(runner_path)
+    assert len(s.properties) > 0
+
+
+@then("the task property value is saved in settings.toml")
+def then_task_property_saved(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    s = settings().load_task_settings(task_path)
+    assert len(s.properties) > 0
+
+
+@then("the property button title shows the saved value")
+def then_property_title_shows_saved_value(pilot) -> None:
+    then_property_titles_show_values(pilot)
 
 
 @then("the runner list is updated within 1 second")
@@ -387,8 +525,10 @@ def then_task_not_in_list(pilot) -> None:
 
 @then("`settings.general.enabled` is set to True")
 def then_enabled_true(pilot) -> None:
-    desc = getattr(ui(pilot).app.screen, "description", "") or ""
-    assert "Enabled: True" in desc, f"Description does not show Enabled: True: {desc}"
+    content = _description_content(ui(pilot).app.screen)
+    assert "Enabled" in content and "True" in content, (
+        f"Description does not show Enabled: True: {content}"
+    )
 
 
 @then("`settings.general.enabled` is set to False")
@@ -400,8 +540,19 @@ def then_enabled_false(pilot) -> None:
 
 @then("`settings.general.enabled` is toggled")
 def then_enabled_toggled(pilot) -> None:
-    desc = getattr(ui(pilot).app.screen, "description", "") or ""
-    assert "Enabled:" in desc
+    """Verify the description widget reflects the toggled (persisted) state."""
+    screen = ui(pilot).app.screen
+    content = _description_content(screen)
+    if hasattr(screen, "task_path"):
+        s = settings().load_task_settings(screen.task_path)
+    elif hasattr(screen, "runner_path"):
+        s = settings().load_runner_settings(screen.runner_path)
+    else:
+        raise AssertionError("Screen has no runner/task path")
+    expected = "True" if s.general.enabled else "False"
+    assert "Enabled" in content and expected in content, (
+        f"Description does not reflect enabled={expected}: {content}"
+    )
 
 
 @then("each runner's settings have `enabled = False`")
@@ -416,13 +567,6 @@ def then_enabled_still_false(pilot) -> None:
     runner_path = ui(pilot).app.state.runners_path / "sh_runner"
     s = settings().load_runner_settings(runner_path)
     assert s.general.enabled is False
-
-
-@then("the property value is saved in settings.toml")
-def then_property_saved(pilot) -> None:
-    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
-    s = settings().load_runner_settings(runner_path)
-    assert len(s.properties) > 0
 
 
 @then("the timeout value is saved in settings.toml")
@@ -456,11 +600,11 @@ def then_all_runners_shutdown(pilot) -> None:
     raise AssertionError("App did not exit within 10s")
 
 
-@then('the same exit flow is triggered as pressing "Exit" on the main menu')
+@then('the same exit flow is triggered as pressing "Exit" on the dashboard')
 def then_same_exit_flow(pilot) -> None:
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
-        if ui(pilot).screen_is((ConfirmationScreen, MainMenuScreen)):
+        if ui(pilot).screen_is((ConfirmationScreen, DashboardScreen)):
             return
         if ui(pilot).app._exit: # noqa
             return
@@ -898,9 +1042,9 @@ def then_same_action_triggered(pilot) -> None:
     ui(pilot).pause()
 
 
-@then('Exception: the "Exit" button on Main Menu is NOT triggered by Escape')
+@then('Exception: the "Exit" button on Dashboard is NOT triggered by Escape')
 def then_exit_not_triggered(pilot) -> None:
-    assert ui(pilot).screen_is((MainMenuScreen, RunnersScreen))
+    assert ui(pilot).screen_is((DashboardScreen, RunnersScreen))
 
 
 @then("focus moves to the previous Button widget")
@@ -1263,12 +1407,29 @@ def then_single_version(pilot) -> None:
     assert len(buttons) == 1
 
 
+@then("the settings description shows the app key/value widget")
+def then_settings_app_key_value_widget(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert len(screen.query("#description-widget")) > 0, "Key/value widget missing"
+    content = _description_content(screen)
+    assert "App Version" in content, f"App Version missing: {content!r}"
+    assert "Session ID" in content, f"Session ID missing: {content!r}"
+
+
 @then("the runner description is updated")
 @then("the description is updated")
 @then("the Settings screen description is updated")
 def then_description_updated(pilot) -> None:
-    desc = getattr(ui(pilot).app.screen, "description", "") or ""
-    assert len(desc) > 0
+    """Verify the description re-rendered with populated content.
+
+    For the StateWidget/KeyValueWidget this confirms the key/value rows
+    (Version/Enabled/...) are present; for a plain string description it
+    confirms non-empty text.
+    """
+    content = _description_content(ui(pilot).app.screen)
+    assert content.strip(), "Description is empty after update"
+    if ui(pilot).app.screen.query("#description-widget"):
+        assert "Version" in content, f"Status widget not populated: {content!r}"
 
 
 @then("the property value is unchanged")
@@ -1486,3 +1647,65 @@ def then_mentions_incompatible(pilot) -> None:
 def then_settings_has_update_app_button(pilot) -> None:
     ui(pilot).assert_screen(SettingsScreen)
     ui(pilot).assert_has_button("Update App")
+
+
+def _assert_dashboard_description_contains(pilot, text: str) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    desc = screen.description or ""
+    assert text in desc, f"Dashboard description missing {text!r}: {desc!r}"
+
+
+@then('the dashboard description contains "Overview"')
+def then_dashboard_desc_overview(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "Overview")
+
+
+@then('the dashboard description contains "No runners installed"')
+def then_dashboard_desc_no_runners(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "No runners installed")
+
+
+@then('the dashboard description contains "Simple sh runner"')
+def then_dashboard_desc_sh_runner(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "Simple sh runner")
+
+
+@then('the dashboard description contains "[off]"')
+def then_dashboard_desc_off(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "[off]")
+
+
+@then('the dashboard description contains "Simple sh runner task"')
+def then_dashboard_desc_simple_sh_runner_task(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "Simple sh runner task")
+
+
+@then('the dashboard description contains "[running]"')
+def then_dashboard_desc_running(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "[running]")
+
+
+@then("the dashboard has buttons arranged in 2 columns")
+def then_dashboard_two_columns(pilot) -> None:
+    from textual.containers import Horizontal
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    rows = screen.query(".button-row")
+    assert len(rows) >= 1, "Expected at least one button row for 2-column layout"
+    first_row = rows[0]
+    assert isinstance(first_row, Horizontal)
+    buttons_in_row = first_row.query("Button")
+    assert len(buttons_in_row) == 2, f"Expected 2 buttons in row, got {len(buttons_in_row)}"
+
+
+@then('the "Exit" button is in the bottom bar')
+def then_exit_in_bottom_bar(pilot) -> None:
+    screen = ui(pilot).app.screen
+    bottom = screen.query_one("#bottom-container")
+    found = False
+    for btn in bottom.query("Button"):
+        if str(btn.label).strip() == "Exit":
+            found = True
+            break
+    assert found, "Button 'Exit' not found in bottom bar"

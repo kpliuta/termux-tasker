@@ -15,15 +15,15 @@ def given_app_launched(pilot) -> None:
     assert app.state.app_config_file.exists()
 
 
-@given("the main menu screen is shown")
-@given("the main menu screen is shown again")
-def given_main_menu(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+@given("the dashboard screen is shown")
+@given("the dashboard screen is shown again")
+def given_dashboard(pilot) -> None:
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @given("any screen is shown")
 def given_any_screen(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @given("the Runners screen is shown")
@@ -86,6 +86,20 @@ def given_task_menu(pilot) -> None:
     ui(pilot).assert_screen(TaskMenuScreen)
 
 
+@given("the Properties screen is shown from the runner menu")
+def given_runner_properties_screen(pilot) -> None:
+    ui(pilot).nav_to_runner_menu()
+    ui(pilot).click_label("Properties")
+    ui(pilot).wait_until_screen(PropertiesScreen)
+
+
+@given("the Properties screen is shown from the task menu")
+def given_task_properties_screen(pilot) -> None:
+    ui(pilot).nav_to_task_menu()
+    ui(pilot).click_label("Properties")
+    ui(pilot).wait_until_screen(PropertiesScreen)
+
+
 @given("the Task Type screen is shown")
 def given_task_type_screen(pilot) -> None:
     ui(pilot).nav_to_tasks()
@@ -107,12 +121,22 @@ def given_screen_with_back(pilot) -> None:
 
 @given("a MenuScreen with multiple buttons")
 def given_menu_with_buttons(pilot) -> None:
-    ui(pilot).assert_screen(MainMenuScreen)
+    ui(pilot).assert_screen(DashboardScreen)
 
 
 @given("no runners are running")
 def given_no_runners(pilot) -> None:
     assert len(ui(pilot).app.state.runners) == 0
+
+
+@given("all runners are removed")
+def given_all_runners_removed(pilot) -> None:
+    import shutil
+    runners_path = ui(pilot).app.state.runners_path
+    if runners_path.exists():
+        shutil.rmtree(runners_path)
+    runners_path.mkdir(parents=True, exist_ok=True)
+    _refresh_dashboard(pilot)
 
 
 @given("at least one runner is running")
@@ -424,3 +448,62 @@ def given_incompatible_runner(pilot) -> None:
     content = meta_path.read_text()
     content = content.replace('app_min_version = ">=0.1.0"', 'app_min_version = ">=99.0.0"')
     meta_path.write_text(content)
+
+
+def _refresh_dashboard(pilot) -> None:
+    app = ui(pilot).app
+    for screen in app.screen_stack:
+        if hasattr(screen, "_refresh"):
+            screen._refresh()   # noqa
+            break
+
+
+def _create_runner_with_state(pilot, runner_id: str, state: str) -> None:
+    from termux_tasker.config import RunnerSettings
+    runners_path = ui(pilot).app.state.runners_path
+    runner_path = runners_path / runner_id
+    if not runner_path.exists():
+        runner_path.mkdir(parents=True, exist_ok=True)
+        (runner_path / "metadata.toml").write_text(
+            f'[general]\nid = "{runner_id}"\nname = "{runner_id}"\ndescription = ""\n'
+            f'version = "1.0.0"\napp_min_version = ">=0.1.0"\n\n[exec]\n'
+        )
+    rs = RunnerSettings.load(runner_path / "settings.toml")
+    rs.general.enabled = state != "off"
+    rs.session.session_id = pilot.app.state.session_id
+    rs.session.state = state
+    rs.save(runner_path / "settings.toml")
+    _refresh_dashboard(pilot)
+
+
+def _create_task_with_state(pilot, runner_id: str, task_id: str, state: str) -> None:
+    from termux_tasker.config import TaskSettings
+    runners_path = ui(pilot).app.state.runners_path
+    task_path = runners_path / runner_id / "tasks" / task_id
+    if not task_path.exists():
+        task_path.mkdir(parents=True, exist_ok=True)
+        (task_path / "metadata.toml").write_text(
+            f'[general]\nid = "{task_id}"\nname = "{task_id}"\ndescription = ""\n'
+            f'version = "1.0.0"\nrunner_id = "{runner_id}"\nrunner_min_version = ">=1.0.0"\n'
+        )
+    ts = TaskSettings.load(task_path / "settings.toml")
+    ts.general.enabled = state != "stopped"
+    ts.session.session_id = pilot.app.state.session_id
+    ts.session.state = state
+    ts.save(task_path / "settings.toml")
+    _refresh_dashboard(pilot)
+
+
+@given('a runner "sh_runner" is installed with state "off"')
+def given_sh_runner_off(pilot) -> None:
+    _create_runner_with_state(pilot, "sh_runner", "off")
+
+
+@given('a runner "sh_runner" is installed with state "idle"')
+def given_sh_runner_idle(pilot) -> None:
+    _create_runner_with_state(pilot, "sh_runner", "idle")
+
+
+@given('the runner "sh_runner" has a task "sh_runner_task" with state "running"')
+def given_sh_runner_task_running(pilot) -> None:
+    _create_task_with_state(pilot, "sh_runner", "sh_runner_task", "running")

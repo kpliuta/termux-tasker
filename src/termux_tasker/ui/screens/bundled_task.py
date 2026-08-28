@@ -7,7 +7,7 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, BundledTasks
-from termux_tasker.ui.base import MenuScreen, LoadingScreen, InfoScreen
+from termux_tasker.ui.base import ButtonConfig, MenuScreen, LoadingScreen, InfoScreen
 from termux_tasker.ui.screens._utils import termux_app, clone_repo
 
 
@@ -15,7 +15,7 @@ class BundledTaskScreen(MenuScreen):
     def __init__(self, runner_path: Path) -> None:
         self.runner_path = runner_path
         self._tmp_folders: list[Path] = []
-        super().__init__({}, show_back_button=True)
+        super().__init__([], show_back_button=True)
         self.title = "Bundled Task"
         self._loaded = False
 
@@ -52,7 +52,7 @@ class BundledTaskScreen(MenuScreen):
                     meta = TaskMetadata.load(meta_path)
                     installed_tasks.add(meta.general.id)
 
-        items: dict[str, str] = {}
+        items: list[ButtonConfig] = []
         for tmp_folder in self._tmp_folders:
             meta_path = tmp_folder / "metadata.toml"
             if not meta_path.exists():
@@ -61,11 +61,15 @@ class BundledTaskScreen(MenuScreen):
             is_installed = meta.general.id in installed_tasks
             label = meta.general.name
             if is_installed:
-                label += " \\[Installed]"
-                btn_id = ""
-            else:
-                btn_id = f"install_{meta.general.id}"
-            items[label] = btn_id
+                label += " [$text-success]\\[Installed][/$text-success]"
+            items.append(
+                ButtonConfig(
+                    f"install_{meta.general.id}",
+                    label,
+                    variant="default",
+                    disabled=is_installed,
+                )
+            )
 
         await loading.dismiss(None)
         self.menu_items = items

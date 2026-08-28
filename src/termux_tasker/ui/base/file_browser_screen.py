@@ -49,10 +49,10 @@ class FileBrowserScreen(ModalScreen[Union[Path, None]]):
             yield DirectoryTree(str(self._start_path))
             if self.read_only:
                 yield Static()
-                yield Button("Close", id="close", variant="primary")
+                yield Button("Close", id="close", variant="error")
             else:
                 yield Button("Select", id="select", variant="primary", disabled=True)
-                yield Button("Close", id="close", variant="primary")
+                yield Button("Close", id="close", variant="error")
 
     def on_mount(self) -> None:
         if self.expand:

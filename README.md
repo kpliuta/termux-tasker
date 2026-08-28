@@ -30,7 +30,7 @@ src/termux_tasker/
     │                     #   LogScreen, FileBrowserScreen)
     └── screens/
         ├── _utils.py                   # Git operations, property helpers
-        ├── main_menu.py                # Entry screen
+        ├── dashboard.py                # Entry screen
         ├── settings.py                 # App settings screen
         ├── runners.py                  # Installed runners list screen
         ├── runner_menu.py              # Runner management screen
@@ -48,10 +48,10 @@ src/termux_tasker/
 
 ### Data flow
 
-1. App starts → Android init checks (Termux environment, storage, dependencies) with a **Loading Screen** → shows **Main Menu** (or error screen if critical issues).
+1. App starts → Android init checks (Termux environment, storage, dependencies) with a **Loading Screen** → shows **Dashboard** (or error screen if critical issues).
 2. User navigates to **Runners** → sees installed runners (polled every 1s from disk).
 3. User presses **Install Runner** → selects source (Bundled / GitHub URL / Local) → repository is cloned/copied → metadata validated → version selected → runner installed under `runners/<id>/`.
-4. From **Runner Menu**, user can enable/disable, view logs, set properties, or open **Tasks**.
+4. From **Runner Menu**, user can enable/disable, view logs, edit properties in the **Properties** screen, or open **Tasks**.
 5. User presses **Install Task** from **Tasks Screen** → selects source (Bundled / GitHub URL / Local) → repository cloned/copied → metadata validated (runner compatibility + custom validators) → version selected → task installed under `runners/<runner_id>/tasks/<task_id>/`.
 6. When a runner is **enabled**, it starts an asyncio loop executing shell commands through its defined lifecycle phases.
 7. The runner iterates over all enabled tasks, skipping those whose timeout hasn't elapsed since last run.
@@ -135,23 +135,24 @@ poetry run python -m termux_tasker.app --skip-android-init
 ### Screen flow
 
 ```
-Main Menu
-├── Show Runners → Runners Screen 
+Dashboard
+├── Runners → Runners Screen 
 │   ├── [Runner] → Runner Menu
 │   │   ├── Enable/Disable (starts/stops the runner loop)
-│   │   ├── Show Tasks → Tasks Screen
+│   │   ├── Properties → Properties Screen (Set <property> buttons,
+│   │   │   each showing its live value as "<property>: <value>")
+│   │   ├── Tasks → Tasks Screen
 │   │   │   ├── [Task] → Task Menu
 │   │   │   │   ├── Enable/Disable
+│   │   │   │   ├── Properties → Properties Screen (same as runner)
 │   │   │   │   ├── Show metadata/settings (view files)
 │   │   │   │   ├── Show output (file browser, read-only)
 │   │   │   │   ├── Set Timeout
-│   │   │   │   ├── Set Properties
 │   │   │   │   ├── Update (version selection)
 │   │   │   │   └── Uninstall
 │   │   │   └── Install Task (source selection → install flow)
-│   │   ├── Show Runner Logs (follow mode)
+│   │   ├── Logs (follow mode)
 │   │   ├── Show metadata/settings (view files)
-│   │   ├── Set Properties
 │   │   ├── Update (version selection)
 │   │   └── Uninstall
 │   └── Install Runner (source selection → install flow)

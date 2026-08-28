@@ -7,9 +7,9 @@ import termux_tasker.ui.screens.install_runner_version as _irv_mod  # noqa
 from tests.bdd.steps_common import *  # noqa
 
 
-@when('I press "Show Runners" button')
-def when_show_runners(pilot) -> None:
-    ui(pilot).click_id("#show_runners")
+@when('I press "Runners" button')
+def when_runners(pilot) -> None:
+    ui(pilot).click_id("#runners")
 
 
 @when('I press "Settings" button')
@@ -70,9 +70,14 @@ def when_press_label(pilot, label: str) -> None:
     ui(pilot).click_label(label)
 
 
+@when('I press "Properties" button')
+def when_press_properties(pilot) -> None:
+    ui(pilot).click_label("Properties")
+
+
 @when('I press "Set Timeout" button')
 def when_set_timeout(pilot) -> None:
-    ui(pilot).click_id("#set_timeout")
+    ui(pilot).click_id("#timeout")
 
 
 @when('I press "Set <property>" button')
@@ -122,14 +127,14 @@ def when_open_task(pilot) -> None:
     ui(pilot).click_id("#open_sh_runner_task")
 
 
-@when('I press "Show Tasks" button')
+@when('I press "Tasks" button')
 def when_show_tasks(pilot) -> None:
-    ui(pilot).click_label("Show Tasks")
+    ui(pilot).click_label("Tasks")
 
 
-@when('I press "Show Runner Logs" button')
+@when('I press "Logs" button')
 def when_show_logs(pilot) -> None:
-    ui(pilot).click_label("Show Runner Logs")
+    ui(pilot).click_label("Logs")
 
 
 @when('I press "Show metadata.toml" button')

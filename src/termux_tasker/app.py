@@ -12,7 +12,7 @@ from termux_tasker.config import AppConfig, RunnerSettings
 from termux_tasker.ui.base import (
     ConfirmationScreen, InfoScreen, LoadingScreen,
 )
-from termux_tasker.ui.screens.main_menu import MainMenuScreen
+from termux_tasker.ui.screens.dashboard import DashboardScreen
 
 
 SKIP_ANDROID_FLAG = "--skip-android-init"
@@ -61,7 +61,7 @@ class TermuxTaskerApp(App[None]):
         self._ensure_app_config()
 
         if self.skip_android_init:
-            self.push_screen(MainMenuScreen())
+            self.push_screen(DashboardScreen())
         else:
             self.run_worker(self._android_init_flow())
 
@@ -93,13 +93,13 @@ class TermuxTaskerApp(App[None]):
                 self._on_noncritical_init_result,
             )
         else:
-            await self.push_screen(MainMenuScreen())
+            await self.push_screen(DashboardScreen())
 
     def _on_critical_init_result(self, _result: Optional[None]) -> None:
         self.exit()
 
     def _on_noncritical_init_result(self, _result: Optional[None]) -> None:
-        self.push_screen(MainMenuScreen())
+        self.push_screen(DashboardScreen())
 
     def _ensure_app_config(self) -> None:
         config_path = self.state.app_config_file
