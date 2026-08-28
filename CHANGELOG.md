@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-28
+
 ### Added
 
 - Unified **Properties** screen for runners and tasks (new "Properties" button on both menus; "Set <property>" buttons show live `property: value`).
