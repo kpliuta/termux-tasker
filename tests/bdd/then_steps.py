@@ -290,15 +290,31 @@ def then_yes_no_buttons(pilot) -> None:
 def _description_content(screen) -> str:
     """Return the textual content of a screen's description.
 
-    Handles both the ``StatusWidget`` (``#description-widget``) and a plain
-    ``description`` string (e.g. the Settings screen).
+    Handles both the ``StateWidget``/``KeyValueWidget`` (``#description-widget``)
+    and a plain ``description`` string. ``Static`` widgets render either a
+    ``Content`` (``.plain``) or a ``RichVisual`` wrapping a Rich renderable
+    (e.g. the ``KeyValueWidget`` table), which is rendered to text via a console.
     """
     try:
         widget = screen.query_one("#description-widget")
     except NoMatches:
         desc = getattr(screen, "description", "") or ""
         return desc if isinstance(desc, str) else ""
-    return " ".join(str(s.render()) for s in widget.query("Static"))
+    from rich.console import Console
+    from rich.text import Text
+
+    def _static_plain(static: object) -> str:
+        rendered = static.render()  # type: ignore[attr-defined]
+        if isinstance(rendered, Text) or hasattr(rendered, "plain"):
+            return str(getattr(rendered, "plain", rendered))
+        # RichVisual wraps the original renderable (e.g. a Table).
+        renderable = getattr(rendered, "_renderable", rendered)
+        console = Console(width=screen.app.console.width, legacy_windows=False)
+        with console.capture() as capture:
+            console.print(renderable)
+        return capture.get()
+
+    return " ".join(_static_plain(s) for s in widget.query("Static"))
 
 
 @then("the description shows:")
@@ -319,8 +335,9 @@ def then_description_shows(pilot, docstring) -> None:
         }.get(token)
         if expected:
             assert expected in content, f"Description missing {line!r}: {content!r}"
-    # The lifecycle state list must be rendered.
-    if screen.query("#description-widget"):
+    # The lifecycle state list must be rendered when the description
+    # widget actually shows a state list (state screens only).
+    if screen.query("#description-widget") and screen.query(".state"):
         assert len(screen.query(".state-row")) > 0, "State list not rendered"
 
 
@@ -1390,14 +1407,24 @@ def then_single_version(pilot) -> None:
     assert len(buttons) == 1
 
 
+@then("the settings description shows the app key/value widget")
+def then_settings_app_key_value_widget(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert len(screen.query("#description-widget")) > 0, "Key/value widget missing"
+    content = _description_content(screen)
+    assert "App Version" in content, f"App Version missing: {content!r}"
+    assert "Session ID" in content, f"Session ID missing: {content!r}"
+
+
 @then("the runner description is updated")
 @then("the description is updated")
 @then("the Settings screen description is updated")
 def then_description_updated(pilot) -> None:
     """Verify the description re-rendered with populated content.
 
-    For the StatusWidget this confirms the info rows (Version/Enabled/...)
-    are present; for a plain string description it confirms non-empty text.
+    For the StateWidget/KeyValueWidget this confirms the key/value rows
+    (Version/Enabled/...) are present; for a plain string description it
+    confirms non-empty text.
     """
     content = _description_content(ui(pilot).app.screen)
     assert content.strip(), "Description is empty after update"

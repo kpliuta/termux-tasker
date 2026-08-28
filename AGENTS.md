@@ -26,6 +26,7 @@
 - `@dataclass` for data models; `tomlkit` for TOML I/O via `_write_toml` helper.
 - `Path` for all filesystem paths — never raw strings.
 - Prefer modules+functions over classes; use classes primarily for UI screens.
+- Never use broad exception clauses (`except Exception:` / bare `except:`). Catch only the specific exception(s) you expect (e.g. `NoMatches` from `textual.widget`). A broad clause is acceptable only when immediately re-raising a wrapped, domain-specific exception.
 
 [//]: # (textual)
 

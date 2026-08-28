@@ -22,10 +22,10 @@ from termux_tasker.ui.screens._utils import (
 )
 from termux_tasker.ui.screens.properties import PropertiesScreen
 from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
-from termux_tasker.ui.screens.widgets.status_description import (
-    InfoRow,
+from termux_tasker.ui.screens.widgets.description import (
+    KeyValueEntry,
     StateEntry,
-    StatusWidget,
+    StateWidget,
 )
 
 
@@ -49,18 +49,18 @@ class RunnerMenuScreen(MenuScreen):
         settings = RunnerSettings.load(runner_path / "settings.toml")
 
         self._fix_session(settings, runner_path)
-        self._status = StatusWidget(
+        self._state = StateWidget(
             id="description-widget",
-            info_rows=(
-                InfoRow("Version", meta.general.version),
-                InfoRow("Enabled", str(settings.general.enabled)),
+            key_value_entries=(
+                KeyValueEntry("Version", meta.general.version),
+                KeyValueEntry("Enabled", str(settings.general.enabled)),
             ),
             current_state=settings.session.state,
             states_entries=self._RUNNER_STATES,
         )
         items = self._build_items(meta, settings)
 
-        super().__init__(items, description_widget=self._status, show_back_button=True)
+        super().__init__(items, description_widget=self._state, show_back_button=True)
         self.title = "Runner"
         self.sub_title = meta.general.name
         self._poll_timer: Any = None
@@ -92,11 +92,11 @@ class RunnerMenuScreen(MenuScreen):
         self, meta: RunnerMetadata, settings: RunnerSettings
     ) -> None:
         self.menu_items = self._build_items(meta, settings)
-        self._status.info_rows = (
-            InfoRow("Version", meta.general.version),
-            InfoRow("Enabled", str(settings.general.enabled)),
+        self._state.key_value_entries = (
+            KeyValueEntry("Version", meta.general.version),
+            KeyValueEntry("Enabled", str(settings.general.enabled)),
         )
-        self._status.current_state = settings.session.state
+        self._state.current_state = settings.session.state
 
     def _fix_session(self, settings: RunnerSettings, runner_path: Path) -> None:
         """Reset stale session state (same pattern as TaskMenuScreen).

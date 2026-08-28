@@ -7,3 +7,8 @@ Feature: Settings Screen
     When I select a value and press Ok
     Then the setting is saved to `app.toml`
     And the Settings screen description is updated
+
+  Scenario: Settings screen shows app key/value
+    Given the Settings screen is shown
+    Then the settings description shows the app key/value widget
+

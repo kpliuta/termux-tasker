@@ -9,14 +9,22 @@ from termux_tasker.config import AppConfig
 from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen, InputScreen
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.update_app_version import UpdateAppVersionScreen
+from termux_tasker.ui.screens.widgets.description import KeyValueEntry, KeyValueWidget
 
 
 class SettingsScreen(MenuScreen):
     def __init__(self, app_version: str, session_id: str, upgrade_on_startup: bool) -> None:
         self._upgrade_val = upgrade_on_startup
+        description = KeyValueWidget(
+            id="description-widget",
+            key_value_entries=(
+                KeyValueEntry("App Version", app_version),
+                KeyValueEntry("Session ID", session_id),
+            ),
+        )
         super().__init__(
             menu_items=self._build_menu_items(upgrade_on_startup),
-            description=f"App Version: {app_version}\nSession ID: {session_id}",
+            description_widget=description,
             show_back_button=True,
         )
         self.title = "Settings"

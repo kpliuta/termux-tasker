@@ -11,16 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Unified **Properties** screen for runners and tasks (new "Properties" button on both menus; "Set <property>" buttons show live `property: value`).
-- `StatusWidget` Runner/Task description widget (info rows + lifecycle state list).
 
 ### Changed
 
-- Property editing moved to the Properties screen; property values removed from menu descriptions.
-- `MenuScreen`: uses `list[ButtonConfig]`; updates labels/disabled/titles in place; added `column_count`, `title`, Rich-markup descriptions, disabled state, and TOP/BOTTOM layout.
 - Main Menu renamed → Dashboard (`DashboardScreen`).
-- `ButtonConfig.id` required and unique per screen; version buttons dedupe sanitized git tags.
-- Task Menu timeout button id `set_timeout` → `timeout` (`set_` reserved for properties).
+- Property values removed from menu descriptions.
+- Reworked menu descriptions into reusable `MenuScreen` description widgets: `KeyValueWidget` and `StateWidget` (key/value rows + lifecycle state list).
+- `MenuScreen`: `list[ButtonConfig]`, in-place updates, `column_count`, `title`, Rich-markup descriptions, disabled state, TOP/BOTTOM layout.
 - Extracted shared `ask_validated_input` helper (validated input with re-prompt) for `PropertiesScreen` and `TaskMenuScreen`.
+- `SettingsScreen` shows App Version / Session ID via `KeyValueWidget` instead of a plain description string.
 
 ## [0.2.2] - 2026-07-31
 

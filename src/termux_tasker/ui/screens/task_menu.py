@@ -25,10 +25,10 @@ from termux_tasker.ui.screens._utils import (
 )
 from termux_tasker.ui.screens._ui_utils import ask_validated_input
 from termux_tasker.ui.screens.properties import PropertiesScreen
-from termux_tasker.ui.screens.widgets.status_description import (
-    InfoRow,
+from termux_tasker.ui.screens.widgets.description import (
+    KeyValueEntry,
     StateEntry,
-    StatusWidget,
+    StateWidget,
 )
 
 _TIMEOUT_RE = re.compile(r"^[0-9]+[hms]$")
@@ -47,19 +47,19 @@ class TaskMenuScreen(MenuScreen):
         settings = TaskSettings.load(task_path / "settings.toml")
 
         self._fix_session(settings, task_path)
-        self._status = StatusWidget(
+        self._state = StateWidget(
             id="description-widget",
-            info_rows=(
-                InfoRow("Version", meta.general.version),
-                InfoRow("Enabled", str(settings.general.enabled)),
-                InfoRow("Timeout", settings.general.timeout or "(not set)"),
+            key_value_entries=(
+                KeyValueEntry("Version", meta.general.version),
+                KeyValueEntry("Enabled", str(settings.general.enabled)),
+                KeyValueEntry("Timeout", settings.general.timeout or "(not set)"),
             ),
             current_state=settings.session.state,
             states_entries=self._TASK_STATES,
         )
         items = self._build_items(meta, settings)
 
-        super().__init__(items, description_widget=self._status, show_back_button=True)
+        super().__init__(items, description_widget=self._state, show_back_button=True)
         self.title = "Task"
         self.sub_title = meta.general.name
         self._poll_timer: Any = None
@@ -91,12 +91,12 @@ class TaskMenuScreen(MenuScreen):
         self, meta: TaskMetadata, settings: TaskSettings
     ) -> None:
         self.menu_items = self._build_items(meta, settings)
-        self._status.info_rows = (
-            InfoRow("Version", meta.general.version),
-            InfoRow("Enabled", str(settings.general.enabled)),
-            InfoRow("Timeout", settings.general.timeout or "(not set)"),
+        self._state.key_value_entries = (
+            KeyValueEntry("Version", meta.general.version),
+            KeyValueEntry("Enabled", str(settings.general.enabled)),
+            KeyValueEntry("Timeout", settings.general.timeout or "(not set)"),
         )
-        self._status.current_state = settings.session.state
+        self._state.current_state = settings.session.state
 
     def _fix_session(self, settings: TaskSettings, task_path: Path) -> None:
         """Reset stale session state on app restart.
