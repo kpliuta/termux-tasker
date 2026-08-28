@@ -8,6 +8,7 @@ from textual.widgets import Button
 
 from termux_tasker.config import RunnerMetadata, RunnerSettings
 from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
+from termux_tasker.ui.screens._state_colors import runner_state_color
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.runner_menu import RunnerMenuScreen
 
@@ -50,10 +51,10 @@ class RunnersScreen(MenuScreen):
             meta = RunnerMetadata.load(meta_path)
             settings = RunnerSettings.load(runner_path / "settings.toml")
             status = self._status_str(settings)
-            status_color = "$text-error" if not settings.general.enabled else "$text-success"
+            color = runner_state_color(settings)
             items.append(ButtonConfig(
                 f"open_{meta.general.id}",
-                rf"{meta.general.name} [{status_color}]\[{status}][/{status_color}]",
+                rf"{meta.general.name} [{color}]\[{status}][/{color}]",
             ))
 
         items.append(ButtonConfig("install_runner", "Install Runner", variant="primary", layout=ButtonLayout.BOTTOM))

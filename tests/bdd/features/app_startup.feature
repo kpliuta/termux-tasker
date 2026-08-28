@@ -6,7 +6,7 @@ Feature: App Startup
   Scenario: App starts and creates directories
     Given the app is launched for the first time
     Then the dashboard screen is shown
-    And it contains "Show Runners" button
+    And it contains "Runners" button
     And it contains "Settings" button
     And it contains "Exit" button
     And the title is "Dashboard"

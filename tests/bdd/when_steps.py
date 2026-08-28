@@ -7,9 +7,9 @@ import termux_tasker.ui.screens.install_runner_version as _irv_mod  # noqa
 from tests.bdd.steps_common import *  # noqa
 
 
-@when('I press "Show Runners" button')
-def when_show_runners(pilot) -> None:
-    ui(pilot).click_id("#show_runners")
+@when('I press "Runners" button')
+def when_runners(pilot) -> None:
+    ui(pilot).click_id("#runners")
 
 
 @when('I press "Settings" button')

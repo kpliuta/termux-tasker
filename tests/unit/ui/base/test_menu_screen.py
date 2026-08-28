@@ -140,7 +140,7 @@ class TestMenuScreenCompose:
 
         async with TestApp().run_test() as pilot:
             desc = pilot.app.screen.query_one("#description", Static)
-            assert "Test desc" in str(desc.render())
+            assert "Test desc" in str(desc.render())    # noqa
 
     @pytest.mark.asyncio
     async def test_renders_description_widget(self) -> None:
@@ -399,7 +399,7 @@ class TestMenuScreenWatchers:
             screen.description = "new"
             await pilot.pause()
             desc = pilot.app.screen.query_one("#description", Static)
-            assert "new" in str(desc.render())
+            assert "new" in str(desc.render())  # noqa
 
     @pytest.mark.asyncio
     async def test_no_description_no_scroll(self) -> None:

@@ -161,9 +161,9 @@ def then_subtitle_task_name(pilot) -> None:
     assert bool(ui(pilot).sub_title())
 
 
-@then('it contains "Show Runners" button')
-def then_contains_show_runners(pilot) -> None:
-    ui(pilot).assert_has_button("Show Runners")
+@then('it contains "Runners" button')
+def then_contains_runners(pilot) -> None:
+    ui(pilot).assert_has_button("Runners")
 
 
 @then('it contains "Settings" button')
@@ -1647,3 +1647,65 @@ def then_mentions_incompatible(pilot) -> None:
 def then_settings_has_update_app_button(pilot) -> None:
     ui(pilot).assert_screen(SettingsScreen)
     ui(pilot).assert_has_button("Update App")
+
+
+def _assert_dashboard_description_contains(pilot, text: str) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    desc = screen.description or ""
+    assert text in desc, f"Dashboard description missing {text!r}: {desc!r}"
+
+
+@then('the dashboard description contains "Overview"')
+def then_dashboard_desc_overview(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "Overview")
+
+
+@then('the dashboard description contains "No runners installed"')
+def then_dashboard_desc_no_runners(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "No runners installed")
+
+
+@then('the dashboard description contains "Simple sh runner"')
+def then_dashboard_desc_sh_runner(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "Simple sh runner")
+
+
+@then('the dashboard description contains "[off]"')
+def then_dashboard_desc_off(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "[off]")
+
+
+@then('the dashboard description contains "Simple sh runner task"')
+def then_dashboard_desc_simple_sh_runner_task(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "Simple sh runner task")
+
+
+@then('the dashboard description contains "[running]"')
+def then_dashboard_desc_running(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "[running]")
+
+
+@then("the dashboard has buttons arranged in 2 columns")
+def then_dashboard_two_columns(pilot) -> None:
+    from textual.containers import Horizontal
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    rows = screen.query(".button-row")
+    assert len(rows) >= 1, "Expected at least one button row for 2-column layout"
+    first_row = rows[0]
+    assert isinstance(first_row, Horizontal)
+    buttons_in_row = first_row.query("Button")
+    assert len(buttons_in_row) == 2, f"Expected 2 buttons in row, got {len(buttons_in_row)}"
+
+
+@then('the "Exit" button is in the bottom bar')
+def then_exit_in_bottom_bar(pilot) -> None:
+    screen = ui(pilot).app.screen
+    bottom = screen.query_one("#bottom-container")
+    found = False
+    for btn in bottom.query("Button"):
+        if str(btn.label).strip() == "Exit":
+            found = True
+            break
+    assert found, "Button 'Exit' not found in bottom bar"

@@ -112,7 +112,7 @@ class UIHelper:
 
     def nav_to_runners(self) -> None:
         """From the dashboard, navigate to the Runners screen."""
-        self._pilot.click("#show_runners")
+        self._pilot.click("#runners")
 
     def nav_to_runner_menu(self, runner_id: str = "sh_runner") -> None:
         """Navigate to the Runner Menu screen for *runner_id*."""

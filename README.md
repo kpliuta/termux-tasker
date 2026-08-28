@@ -136,7 +136,7 @@ poetry run python -m termux_tasker.app --skip-android-init
 
 ```
 Dashboard
-├── Show Runners → Runners Screen 
+├── Runners → Runners Screen 
 │   ├── [Runner] → Runner Menu
 │   │   ├── Enable/Disable (starts/stops the runner loop)
 │   │   ├── Properties → Properties Screen (Set <property> buttons,

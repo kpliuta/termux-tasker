@@ -5,7 +5,7 @@ Feature: Dashboard Navigation
 
   Scenario: Navigate to Runners screen
     Given the dashboard screen is shown
-    When I press "Show Runners" button
+    When I press "Runners" button
     Then the Runners screen is shown
     And the title is "Runners"
     And it contains "Install Runner" button
@@ -53,3 +53,34 @@ Feature: Dashboard Navigation
     Given any screen is shown
     When I press Ctrl+Q
     Then the same exit flow is triggered as pressing "Exit" on the dashboard
+
+  Scenario: Dashboard shows overview heading
+    Given the dashboard screen is shown
+    Then the dashboard description contains "Overview"
+
+  Scenario: Dashboard shows no runners message when empty
+    Given all runners are removed
+    And the dashboard screen is shown
+    Then the dashboard description contains "No runners installed"
+
+  Scenario: Dashboard shows runner in overview
+    Given the dashboard screen is shown
+    And a runner "sh_runner" is installed with state "off"
+    Then the dashboard description contains "Simple sh runner"
+    And the dashboard description contains "[off]"
+
+  Scenario: Dashboard shows task under runner in overview
+    Given the dashboard screen is shown
+    And a runner "sh_runner" is installed with state "idle"
+    And the runner "sh_runner" has a task "sh_runner_task" with state "running"
+    Then the dashboard description contains "Simple sh runner"
+    And the dashboard description contains "Simple sh runner task"
+    And the dashboard description contains "[running]"
+
+  Scenario: Dashboard buttons are in 2 columns
+    Given the dashboard screen is shown
+    Then the dashboard has buttons arranged in 2 columns
+
+  Scenario: Dashboard exit button is in bottom bar
+    Given the dashboard screen is shown
+    Then the "Exit" button is in the bottom bar

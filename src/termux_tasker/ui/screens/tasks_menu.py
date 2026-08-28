@@ -7,6 +7,7 @@ from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, TaskSettings
 from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
+from termux_tasker.ui.screens._state_colors import DISABLED_COLOR, ENABLED_COLOR
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.task_type import TaskTypeScreen
 from termux_tasker.ui.screens.task_menu import TaskMenuScreen
@@ -34,7 +35,7 @@ class TasksMenuScreen(MenuScreen):
                 meta = TaskMetadata.load(meta_path)
                 settings = TaskSettings.load(task_path / "settings.toml")
                 status = "enabled" if settings.general.enabled else "disabled"
-                status_color = "$text-success" if settings.general.enabled else "$text-error"
+                status_color = ENABLED_COLOR if settings.general.enabled else DISABLED_COLOR
                 items.append(ButtonConfig(
                     f"open_{meta.general.id}",
                     rf"{meta.general.name} [{status_color}]\[{status}][/{status_color}]",

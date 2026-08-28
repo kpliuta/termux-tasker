@@ -16,6 +16,7 @@ from termux_tasker.ui.base import (
     LoadingScreen,
     ConfirmationScreen,
 )
+from termux_tasker.ui.screens._state_colors import RUNNER_STATE_COLORS
 from termux_tasker.ui.screens._utils import (
     termux_app,
     copy_to_tmp,
@@ -31,7 +32,7 @@ from termux_tasker.ui.screens.widgets.description import (
 
 class RunnerMenuScreen(MenuScreen):
     _RUNNER_STATES: tuple[StateEntry, ...] = (
-        StateEntry("off", "off", color="$text-error"),
+        StateEntry("off", "off", color=RUNNER_STATE_COLORS["off"]),
         StateEntry("initialization", "initialization"),
         StateEntry("before-exec", "before-exec"),
         StateEntry("exec", "exec", children=("before-task", "task-exec", "after-task")),
@@ -39,8 +40,8 @@ class RunnerMenuScreen(MenuScreen):
         StateEntry("task-exec", "├─ task-exec"),
         StateEntry("after-task", "└─ after-task"),
         StateEntry("after-exec", "after-exec"),
-        StateEntry("idle", "idle", color="$text-warning"),
-        StateEntry("termination", "termination", color="$text-error"),
+        StateEntry("idle", "idle", color=RUNNER_STATE_COLORS["idle"]),
+        StateEntry("termination", "termination", color=RUNNER_STATE_COLORS["termination"]),
     )
 
     def __init__(self, runner_path: Path) -> None:

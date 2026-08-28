@@ -37,15 +37,11 @@
 * `low`    Implement Beginning/End navigation buttons on the LogScreen.
 * `low`    Implement ability to install multiple similar tasks
 * `low`    Design autoupgrade mechanism, make it configurable (depends on deliverable format)
-* `low`    Consolidate TCSS and layout for basic components
-* `low`    Polish UI (TCSS) styling
-* `low`    Move screen classes from base/screen to separate files and inline tcss for each one
 * `low`    Gray-out installed version on Update App screen
 
 ## Investigation
 
 * `high`   Determine deliverable format and how it will be executed on device
-* `medium` How to sync git version and poetry version?
 * `low`    Explore task-to-runner data sharing (install packages, patches, set runner settings)
 * `low`    Investigate replacing timeout with cron-based scheduling
 * `low`    UI/UX best practices course (TUI in particular?)

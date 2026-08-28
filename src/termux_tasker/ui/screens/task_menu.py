@@ -19,6 +19,7 @@ from termux_tasker.ui.base import (
     ConfirmationScreen,
     FileBrowserScreen,
 )
+from termux_tasker.ui.screens._state_colors import TASK_STATE_COLORS
 from termux_tasker.ui.screens._utils import (
     termux_app,
     copy_to_tmp,
@@ -36,7 +37,7 @@ _TIMEOUT_RE = re.compile(r"^[0-9]+[hms]$")
 
 class TaskMenuScreen(MenuScreen):
     _TASK_STATES: tuple[StateEntry, ...] = (
-        StateEntry("stopped", "stopped", color="$text-error"),
+        StateEntry("stopped", "stopped", color=TASK_STATE_COLORS["stopped"]),
         StateEntry("running", "running"),
     )
 
