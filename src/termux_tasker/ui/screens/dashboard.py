@@ -69,11 +69,16 @@ class DashboardScreen(MenuScreen):
             for task_idx, (task_meta, task_settings) in enumerate(tasks):
                 is_last_task = task_idx == len(tasks) - 1
                 prefix = "\u2514\u2500" if is_last_task else "\u251c\u2500"
-                t_color = task_state_color(task_settings)
-                t_state = task_settings.session.state
-                lines.append(
-                    rf"  {prefix} {task_meta.general.name} [{t_color}]\[{t_state}][/{t_color}]"
-                )
+                if not task_settings.general.enabled:
+                    lines.append(
+                        rf"  {prefix} [$foreground-disabled]{task_meta.general.name} \[disabled][/$foreground-disabled]"
+                    )
+                else:
+                    t_color = task_state_color(task_settings)
+                    t_state = task_settings.session.state
+                    lines.append(
+                        rf"  {prefix} {task_meta.general.name} [{t_color}]\[{t_state}][/{t_color}]"
+                    )
         return "\n".join(lines)
 
     @staticmethod
