@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Dashboard now shows a live **System** block under the runners/tasks overview (refreshed every 1s): total CPU %, load averages, memory usage, live-runner count with aggregated RSS, and per-runner pid/RSS/CPU%/threads plus task running/total counts (plain text, stdlib `/proc`-based, no new dependencies).
+
 ### Changed
 
 - Disabled tasks on dashboard are now grayed out using `$foreground-disabled`.

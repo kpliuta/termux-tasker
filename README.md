@@ -8,6 +8,7 @@ Termux Tasker provides a terminal UI to run and monitor shell-based automation o
 
 - **Runner** — defines **how** to execute tasks. A runner is a shell script runner that follows a defined lifecycle (init → before-exec → task loop → after-exec → termination).
 - **Task** — defines **what** to execute. A task is a unit of work assigned to a runner.
+- **Dashboard** — entry screen showing the runners/tasks overview plus a live **System** block (total CPU %, load averages, memory usage, per-runner pid/RSS/CPU%/threads), refreshed every second.
 
 ## Architecture
 
@@ -17,6 +18,7 @@ src/termux_tasker/
 ├── app_state.py          # Global state (directories, runners, sessions)
 ├── android_init.py       # Termux/Android environment checks at startup
 ├── config.py             # TOML-based config models (dataclasses + caching)
+├── proc_stats.py         # Stdlib /proc-based system + process stats (no deps)
 ├── runner_process.py     # Runner execution loop (asyncio-based)
 ├── runner_validator.py   # Runner metadata & structure validation
 ├── task_validator.py     # Task metadata & runner-compatibility validation

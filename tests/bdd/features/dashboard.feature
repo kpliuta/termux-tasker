@@ -84,3 +84,15 @@ Feature: Dashboard Navigation
   Scenario: Dashboard exit button is in bottom bar
     Given the dashboard screen is shown
     Then the "Exit" button is in the bottom bar
+
+  Scenario: Dashboard shows system stats block
+    Given the dashboard screen is shown
+    Then the dashboard description contains "System"
+    And the dashboard description contains "CPU"
+    And the dashboard description contains "MEM"
+
+  Scenario: Dashboard shows live runner stats
+    Given the dashboard screen is shown
+    And a runner "sh_runner" is installed with state "off"
+    Then the dashboard description contains "Live 0/1 runners"
+    And the dashboard description contains "tasks 0/1 run"

@@ -167,6 +167,25 @@ class TestRunnerProcessRunLock:
         assert result is False
 
 
+class TestRunnerProcessLivePids:
+    def test_empty_when_idle(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        assert proc.live_pids == []
+
+    def test_returns_child_pids(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        first = MagicMock()
+        first.pid = 111
+        second = MagicMock()
+        second.pid = None
+        third = MagicMock()
+        third.pid = 333
+        proc._processes = [first, second, third]
+        assert proc.live_pids == [111, 333]
+
+
 class TestRunnerProcessTerminate:
     def test_terminate_calls_on_all_tracked_subprocesses(self, tmp_dir: Path) -> None:
         runner_path = _write_runner(tmp_dir)

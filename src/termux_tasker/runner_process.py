@@ -67,6 +67,11 @@ class RunnerProcess:
         self.metadata: RunnerMetadata = RunnerMetadata.load(self._metadata_path)
         self.settings: RunnerSettings = RunnerSettings.load(self._settings_path)
 
+    @property
+    def live_pids(self) -> list[int]:
+        """PIDs of currently executing child processes (empty when idle)."""
+        return [proc.pid for proc in self._processes if proc.pid is not None]
+
     def _log(self, msg: str) -> None:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         line = f"[{timestamp}] {msg}\n"

@@ -57,6 +57,7 @@ def _write_task(path: Path, metadata: str, enabled: bool = False, state: str = "
 def _make_mock_app(runners_path: Path) -> Any:
     app = MagicMock()
     app.state.runners_path = runners_path
+    app.state.runners = {}
     return app
 
 
@@ -128,7 +129,7 @@ class TestDashboardOverview:
         screen = DashboardScreen()
         result = screen._build_overview(runners_path)
         lines = result.split("\n")
-        task_lines = [l for l in lines if "Task" in l and ("running" in l or "stopped" in l)]
+        task_lines = [l for l in lines if "\u251c\u2500" in l or "\u2514\u2500" in l]
         assert len(task_lines) == 2
         assert "\u251c\u2500" in task_lines[0]
         assert "\u2514\u2500" in task_lines[1]
@@ -171,6 +172,103 @@ class TestDashboardOverview:
         assert len(runner_lines) == 2
         assert "A Runner" in runner_lines[0]
         assert "B Runner" in runner_lines[1]
+
+
+class TestDashboardStats:
+    def test_empty_runners_still_shows_system(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+
+        screen = DashboardScreen()
+        result = screen._build_overview(runners_path)
+        assert "No runners installed" in result
+        assert "System" in result
+        assert "CPU" in result
+        assert "MEM" in result
+        assert "Live 0/0 runners" in result
+
+    def test_offline_runner_shows_state_no_procs(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=False, state="off")
+
+        screen = DashboardScreen()
+        result = screen._build_overview(runners_path, {})
+        assert "Simple sh runner: - (off)" in result
+        assert "tasks 0/0 run" in result
+
+    def test_task_counts(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="idle")
+        _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=True, state="running")
+
+        screen = DashboardScreen()
+        result = screen._build_overview(runner_dir.parent, {})
+        assert "tasks 1/1 run" in result
+
+    def test_live_runner_shows_tree_stats(self, tmp_path: Path) -> None:
+        from termux_tasker.proc_stats import TreeStats
+
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="task-exec")
+
+        fake_tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024, cpu_s_total=12.4, threads_total=3)
+        screen = DashboardScreen()
+        with (
+            patch("termux_tasker.proc_stats.tree_stats", return_value=fake_tree),
+            patch("termux_tasker.proc_stats.cpu_percent_delta", return_value=12.0),
+        ):
+            result = screen._build_overview(runners_path, {"sh_runner": [4242]})
+        assert "pid 4242+1" in result
+        assert "RSS 30.0 MiB" in result
+        assert "CPU 12%" in result
+        assert "thr 3" in result
+        assert "Live 1/1 runners" in result
+        assert "procs 2" in result
+
+    def test_live_runner_omits_cpu_without_sample(self, tmp_path: Path) -> None:
+        from termux_tasker.proc_stats import TreeStats
+
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="task-exec")
+
+        fake_tree = TreeStats(pids=(4242,), num_procs=1, rss_total=10 * 1024 * 1024, cpu_s_total=0.0, threads_total=1)
+        screen = DashboardScreen()
+        with (
+            patch("termux_tasker.proc_stats.tree_stats", return_value=fake_tree),
+            patch("termux_tasker.proc_stats.cpu_percent_delta", return_value=None),
+        ):
+            result = screen._build_overview(runners_path, {"sh_runner": [4242]})
+        rss_lines = [line for line in result.splitlines() if "pid 4242" in line]
+        assert len(rss_lines) == 1
+        assert "CPU" not in rss_lines[0]
+        assert "thr 1" in rss_lines[0]
+
+    def test_system_line_unreadable(self) -> None:
+        from termux_tasker.proc_stats import SystemSummary
+
+        summary = SystemSummary(
+            cpu_percent=None, load_1=None, load_5=None, load_15=None, cpu_count=None,
+            mem_total=None, mem_available=None, mem_percent=None,
+        )
+        line = DashboardScreen._system_line(summary)
+        assert "n/a" in line
+        assert "SWAP" not in line
+
+    def test_system_line_values(self) -> None:
+        from termux_tasker.proc_stats import SystemSummary
+
+        summary = SystemSummary(
+            cpu_percent=37.4, load_1=1.0, load_5=0.5, load_15=0.25, cpu_count=8,
+            mem_total=8 * 1024**3, mem_available=4 * 1024**3,
+            mem_percent=50.0,
+        )
+        line = DashboardScreen._system_line(summary)
+        assert "CPU 37%" in line
+        assert "load 1.0 0.5 0.2" in line
+        assert "8 cores" in line
+        assert "4.0 GiB/8.0 GiB 50%" in line
+        assert "SWAP" not in line
 
 
 class TestDashboardCompose:

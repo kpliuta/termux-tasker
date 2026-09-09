@@ -1686,6 +1686,31 @@ def then_dashboard_desc_running(pilot) -> None:
     _assert_dashboard_description_contains(pilot, "[running]")
 
 
+@then('the dashboard description contains "System"')
+def then_dashboard_desc_system(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "System")
+
+
+@then('the dashboard description contains "CPU"')
+def then_dashboard_desc_cpu(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "CPU")
+
+
+@then('the dashboard description contains "MEM"')
+def then_dashboard_desc_mem(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "MEM")
+
+
+@then('the dashboard description contains "Live 0/1 runners"')
+def then_dashboard_desc_live_runners(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "Live 0/1 runners")
+
+
+@then('the dashboard description contains "tasks 0/1 run"')
+def then_dashboard_desc_tasks_run(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "tasks 0/1 run")
+
+
 @then("the dashboard has buttons arranged in 2 columns")
 def then_dashboard_two_columns(pilot) -> None:
     from textual.containers import Horizontal
