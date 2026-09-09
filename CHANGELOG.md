@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Dashboard total CPU % no longer sticks at `n/a` on kernels where the aggregate `cpu` line in `/proc/stat` is missing or not first: the parser scans all lines, falls back to summed per-core `cpuN` lines, and finally to summed per-PID counters (estimate) when `/proc/stat` itself is unreadable.
-- Per-runner CPU % no longer spikes into the hundreds of percent when short-lived children churn between ticks: deltas are computed per PID (newborns baselined, exited PIDs ignored) in a single-walk `tree_report()`.
+- Per-runner CPU % no longer spikes into the hundreds of percent when short-lived children churn between ticks: deltas are computed per PID (newborns baselined, exited PIDs ignored) in a single-walk `tree_report()`, which also reports the hottest child shown as `top <name> <pct>%` on the runner line.
 
 ### Changed
 

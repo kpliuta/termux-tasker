@@ -222,17 +222,31 @@ class TestCpuPercent:
         assert tree_cpu_percent([100], tmp_path, now=1001.0) == 50.0
 
     def test_tree_report_single_walk(self, tmp_path: Path) -> None:
-        from termux_tasker.proc_stats import tree_report
+        from termux_tasker.proc_stats import TopProc, tree_report
 
         _write_proc(tmp_path, 100, 1, rss_kb=2048)
-        stats, first = tree_report([100], tmp_path, now=1000.0)
+        stats, first, first_top = tree_report([100], tmp_path, now=1000.0)
         assert stats.num_procs == 1
         assert stats.rss_total == 2048 * 1024
         assert first is None
+        assert first_top is None
         _write_proc(tmp_path, 100, 1, rss_kb=2048, utime=150)
-        stats, second = tree_report([100], tmp_path, now=1001.0)
+        stats, second, second_top = tree_report([100], tmp_path, now=1001.0)
         assert stats.num_procs == 1
         assert second == 50.0
+        assert second_top == TopProc(pid=100, name="testproc", cpu_percent=50.0)
+
+    def test_tree_report_top_ignores_newborn(self, tmp_path: Path) -> None:
+        from termux_tasker.proc_stats import tree_report
+
+        _write_proc(tmp_path, 100, 1, utime=100)
+        tree_report([100], tmp_path, now=1000.0)
+        _write_proc(tmp_path, 100, 1, utime=150)
+        _write_proc(tmp_path, 101, 100, utime=500, stime=50)
+        _, percent, top = tree_report([100], tmp_path, now=1001.0)
+        assert percent == 50.0
+        assert top is not None
+        assert top.pid == 100
 
 
 class TestFormat:

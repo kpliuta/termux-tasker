@@ -53,6 +53,15 @@ class ProcStat:
 
 
 @dataclass(frozen=True)
+class TopProc:
+    """Hottest member of a PID tree over the last sampling interval."""
+
+    pid: int
+    name: str
+    cpu_percent: float
+
+
+@dataclass(frozen=True)
 class TreeStats:
     """Aggregate over a root PID plus all its recursive descendants."""
 
@@ -386,8 +395,10 @@ def tree_stats(roots: list[int], proc_root: Path = _PROC_ROOT) -> TreeStats:
 _pid_cpu: dict[str, dict[int, tuple[float, float]]] = {}
 
 
-def _tree_percent(key: str, current: dict[int, float], now: float) -> float | None:
-    """Busy % from per-PID deltas; churn-safe.
+def _tree_percent(
+    key: str, current: dict[int, tuple[float, str]], now: float
+) -> tuple[float | None, TopProc | None]:
+    """Busy % from per-PID deltas plus the hottest member; churn-safe.
 
     Only PIDs present in both the previous and current sample contribute:
     newborn PIDs are baselined (their lifetime CPU is not credited to one
@@ -395,18 +406,29 @@ def _tree_percent(key: str, current: dict[int, float], now: float) -> float | No
     child churn from inflating the number into the hundreds of percent.
     """
     previous = _pid_cpu.get(key, {})
-    _pid_cpu[key] = {pid: (cpu, now) for pid, cpu in current.items()}
+    _pid_cpu[key] = {pid: (cpu, now) for pid, (cpu, _) in current.items()}
     if len(_pid_cpu) > 64:
         _pid_cpu.clear()
-        _pid_cpu[key] = {pid: (cpu, now) for pid, cpu in current.items()}
+        _pid_cpu[key] = {pid: (cpu, now) for pid, (cpu, _) in current.items()}
     matched = [pid for pid in current if pid in previous]
     if not matched:
-        return None
+        return None, None
     wall_dt = now - previous[matched[0]][1]
     if wall_dt <= 0:
-        return None
-    delta = sum(max(0.0, current[pid] - previous[pid][0]) for pid in matched)
-    return round(delta / wall_dt * 100, 1)
+        return None, None
+    deltas = {
+        pid: max(0.0, current[pid][0] - previous[pid][0]) for pid in matched
+    }
+    total = sum(deltas.values())
+    top_pid = max(matched, key=lambda pid: deltas[pid])
+    top: TopProc | None = None
+    if deltas[top_pid] > 0:
+        top = TopProc(
+            pid=top_pid,
+            name=current[top_pid][1],
+            cpu_percent=round(deltas[top_pid] / wall_dt * 100, 1),
+        )
+    return round(total / wall_dt * 100, 1), top
 
 
 def tree_cpu_percent(
@@ -420,25 +442,24 @@ def tree_cpu_percent(
     if not roots:
         return None
     current = {
-        stat.pid: stat.cpu_s
+        stat.pid: (stat.cpu_s, stat.name or str(stat.pid))
         for stat in _walk_tree(roots, proc_root)
         if stat.cpu_s is not None
     }
     if not current:
         return None
     current_t = time.monotonic() if now is None else now
-    return _tree_percent(f"tree:{proc_root}", current, current_t)
+    percent, _ = _tree_percent(f"tree:{proc_root}", current, current_t)
+    return percent
 
 
 def tree_report(
     roots: list[int], proc_root: Path = _PROC_ROOT, now: float | None = None
-) -> tuple[TreeStats, float | None]:
-    """One-walk TreeStats plus churn-safe CPU % (dashboard fast path)."""
+) -> tuple[TreeStats, float | None, TopProc | None]:
+    """One-walk TreeStats plus churn-safe CPU % and top consumer (fast path)."""
+    empty = TreeStats(pids=(), num_procs=0, rss_total=0, cpu_s_total=0.0, threads_total=0)
     if not roots:
-        return (
-            TreeStats(pids=(), num_procs=0, rss_total=0, cpu_s_total=0.0, threads_total=0),
-            None,
-        )
+        return empty, None, None
     found = _walk_tree(roots, proc_root)
     stats = TreeStats(
         pids=tuple(stat.pid for stat in found),
@@ -448,12 +469,17 @@ def tree_report(
         threads_total=sum(stat.threads or 0 for stat in found),
     )
     if not found:
-        return stats, None
-    current = {stat.pid: stat.cpu_s for stat in found if stat.cpu_s is not None}
+        return stats, None, None
+    current = {
+        stat.pid: (stat.cpu_s, stat.name or str(stat.pid))
+        for stat in found
+        if stat.cpu_s is not None
+    }
     if not current:
-        return stats, None
+        return stats, None, None
     current_t = time.monotonic() if now is None else now
-    return stats, _tree_percent(f"tree:{proc_root}", current, current_t)
+    percent, top = _tree_percent(f"tree:{proc_root}", current, current_t)
+    return stats, percent, top
 
 
 def format_bytes(num: int | None) -> str:

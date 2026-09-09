@@ -215,7 +215,7 @@ class TestDashboardStats:
         fake_tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024, cpu_s_total=12.4, threads_total=3)
         screen = DashboardScreen()
         with patch(
-            "termux_tasker.proc_stats.tree_report", return_value=(fake_tree, 12.0)
+            "termux_tasker.proc_stats.tree_report", return_value=(fake_tree, 12.0, None)
         ):
             result = screen._build_overview(runners_path, {"sh_runner": [4242]})
         assert "pid 4242+1" in result
@@ -234,13 +234,29 @@ class TestDashboardStats:
         fake_tree = TreeStats(pids=(4242,), num_procs=1, rss_total=10 * 1024 * 1024, cpu_s_total=0.0, threads_total=1)
         screen = DashboardScreen()
         with patch(
-            "termux_tasker.proc_stats.tree_report", return_value=(fake_tree, None)
+            "termux_tasker.proc_stats.tree_report", return_value=(fake_tree, None, None)
         ):
             result = screen._build_overview(runners_path, {"sh_runner": [4242]})
         rss_lines = [line for line in result.splitlines() if "pid 4242" in line]
         assert len(rss_lines) == 1
         assert "CPU" not in rss_lines[0]
         assert "thr 1" in rss_lines[0]
+
+    def test_live_runner_shows_top_consumer(self, tmp_path: Path) -> None:
+        from termux_tasker.proc_stats import TopProc, TreeStats
+
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="task-exec")
+
+        fake_tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024, cpu_s_total=12.4, threads_total=3)
+        top = TopProc(pid=4243, name="worker", cpu_percent=180.0)
+        screen = DashboardScreen()
+        with patch(
+            "termux_tasker.proc_stats.tree_report", return_value=(fake_tree, 200.0, top)
+        ):
+            result = screen._build_overview(runners_path, {"sh_runner": [4242]})
+        assert "CPU 200%" in result
+        assert "top worker 180%" in result
 
     def test_system_line_unreadable(self) -> None:
         from termux_tasker.proc_stats import SystemSummary
