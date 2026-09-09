@@ -152,7 +152,9 @@ class DashboardScreen(MenuScreen):
         runner_lines: list[str] = []
         for summary in summaries:
             roots = [pid for pid in live_pids.get(summary.id, [])]
-            tree = proc_stats.tree_stats(roots) if roots else None
+            tree, cpu_pct = (
+                proc_stats.tree_report(roots) if roots else (None, None)
+            )
             if tree is not None and tree.num_procs > 0:
                 live_count += 1
                 total_procs += tree.num_procs
@@ -160,9 +162,6 @@ class DashboardScreen(MenuScreen):
                 label = roots[0] if roots[0] in tree.pids else tree.pids[0]
                 extra = tree.num_procs - 1
                 pid_text = f"pid {label}+{extra}" if extra > 0 else f"pid {label}"
-                cpu_pct = proc_stats.cpu_percent_delta(
-                    f"runner:{summary.id}", tree.cpu_s_total
-                )
                 cpu_text = f" CPU {cpu_pct:.0f}%" if cpu_pct is not None else ""
                 stat_text = (
                     f"{pid_text} RSS {proc_stats.format_bytes(tree.rss_total)}"

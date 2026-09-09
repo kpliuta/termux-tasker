@@ -258,22 +258,6 @@ def cpu_percent_total(
     return round(percent / cores, 1) if percent is not None else None
 
 
-def tree_cpu_percent(
-    roots: list[int], proc_root: Path = _PROC_ROOT, now: float | None = None
-) -> float | None:
-    """CPU busy % of a PID tree since the previous call with the same roots.
-
-    Not normalized: a multithreaded tree may exceed 100% (htop convention).
-    """
-    if not roots:
-        return None
-    tree = tree_stats(roots, proc_root)
-    if tree.num_procs == 0:
-        return None
-    key = f"tree:{proc_root}:{','.join(str(pid) for pid in sorted(set(roots)))}"
-    return cpu_percent_delta(key, tree.cpu_s_total, now)
-
-
 def _parse_status(text: str) -> dict[str, str]:
     fields: dict[str, str] = {}
     for line in text.splitlines():
@@ -366,17 +350,12 @@ def _ppid_map(proc_root: Path) -> dict[int, list[int]]:
     return children
 
 
-def tree_stats(roots: list[int], proc_root: Path = _PROC_ROOT) -> TreeStats:
-    """Aggregate stats over root PIDs plus all recursive descendants."""
-    if not roots:
-        return TreeStats(pids=(), num_procs=0, rss_total=0, cpu_s_total=0.0, threads_total=0)
+def _walk_tree(roots: list[int], proc_root: Path) -> list[ProcStat]:
+    """Collect one ProcStat per reachable PID (single bounded /proc walk)."""
     children = _ppid_map(proc_root)
     visited: set[int] = set()
     stack = list(roots)
-    found: list[int] = []
-    rss_total = 0
-    cpu_total = 0.0
-    threads_total = 0
+    found: list[ProcStat] = []
     while stack:
         current = stack.pop()
         if current in visited:
@@ -385,18 +364,96 @@ def tree_stats(roots: list[int], proc_root: Path = _PROC_ROOT) -> TreeStats:
         stat = proc_stat(current, proc_root)
         if stat is None:
             continue
-        found.append(current)
-        rss_total += stat.rss or 0
-        cpu_total += stat.cpu_s or 0.0
-        threads_total += stat.threads or 0
+        found.append(stat)
         stack.extend(children.get(current, []))
+    return found
+
+
+def tree_stats(roots: list[int], proc_root: Path = _PROC_ROOT) -> TreeStats:
+    """Aggregate stats over root PIDs plus all recursive descendants."""
+    if not roots:
+        return TreeStats(pids=(), num_procs=0, rss_total=0, cpu_s_total=0.0, threads_total=0)
+    found = _walk_tree(roots, proc_root)
     return TreeStats(
-        pids=tuple(found),
+        pids=tuple(stat.pid for stat in found),
         num_procs=len(found),
-        rss_total=rss_total,
-        cpu_s_total=round(cpu_total, 1),
-        threads_total=threads_total,
+        rss_total=sum(stat.rss or 0 for stat in found),
+        cpu_s_total=round(sum(stat.cpu_s or 0.0 for stat in found), 1),
+        threads_total=sum(stat.threads or 0 for stat in found),
     )
+
+
+_pid_cpu: dict[str, dict[int, tuple[float, float]]] = {}
+
+
+def _tree_percent(key: str, current: dict[int, float], now: float) -> float | None:
+    """Busy % from per-PID deltas; churn-safe.
+
+    Only PIDs present in both the previous and current sample contribute:
+    newborn PIDs are baselined (their lifetime CPU is not credited to one
+    tick) and exited PIDs contribute nothing. This is what keeps short-lived
+    child churn from inflating the number into the hundreds of percent.
+    """
+    previous = _pid_cpu.get(key, {})
+    _pid_cpu[key] = {pid: (cpu, now) for pid, cpu in current.items()}
+    if len(_pid_cpu) > 64:
+        _pid_cpu.clear()
+        _pid_cpu[key] = {pid: (cpu, now) for pid, cpu in current.items()}
+    matched = [pid for pid in current if pid in previous]
+    if not matched:
+        return None
+    wall_dt = now - previous[matched[0]][1]
+    if wall_dt <= 0:
+        return None
+    delta = sum(max(0.0, current[pid] - previous[pid][0]) for pid in matched)
+    return round(delta / wall_dt * 100, 1)
+
+
+def tree_cpu_percent(
+    roots: list[int], proc_root: Path = _PROC_ROOT, now: float | None = None
+) -> float | None:
+    """CPU busy % of a PID tree since the previous call.
+
+    Churn-safe per-PID deltas (see ``_tree_percent``). Not normalized: a
+    genuinely busy multithreaded tree may exceed 100% (htop convention).
+    """
+    if not roots:
+        return None
+    current = {
+        stat.pid: stat.cpu_s
+        for stat in _walk_tree(roots, proc_root)
+        if stat.cpu_s is not None
+    }
+    if not current:
+        return None
+    current_t = time.monotonic() if now is None else now
+    return _tree_percent(f"tree:{proc_root}", current, current_t)
+
+
+def tree_report(
+    roots: list[int], proc_root: Path = _PROC_ROOT, now: float | None = None
+) -> tuple[TreeStats, float | None]:
+    """One-walk TreeStats plus churn-safe CPU % (dashboard fast path)."""
+    if not roots:
+        return (
+            TreeStats(pids=(), num_procs=0, rss_total=0, cpu_s_total=0.0, threads_total=0),
+            None,
+        )
+    found = _walk_tree(roots, proc_root)
+    stats = TreeStats(
+        pids=tuple(stat.pid for stat in found),
+        num_procs=len(found),
+        rss_total=sum(stat.rss or 0 for stat in found),
+        cpu_s_total=round(sum(stat.cpu_s or 0.0 for stat in found), 1),
+        threads_total=sum(stat.threads or 0 for stat in found),
+    )
+    if not found:
+        return stats, None
+    current = {stat.pid: stat.cpu_s for stat in found if stat.cpu_s is not None}
+    if not current:
+        return stats, None
+    current_t = time.monotonic() if now is None else now
+    return stats, _tree_percent(f"tree:{proc_root}", current, current_t)
 
 
 def format_bytes(num: int | None) -> str:

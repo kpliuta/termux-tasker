@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 
 from termux_tasker import proc_stats
@@ -37,14 +38,16 @@ STATUS_TEMPLATE = (
 STAT_TEMPLATE = "{pid} ({name}) S {ppid} 1 1 0 -1 0 0 0 0 0 {utime} {stime} 0 0 20 0 2 0 0 0 0\n"
 
 
-def _write_proc(proc_root: Path, pid: int, ppid: int, rss_kb: int = 1024) -> None:
+def _write_proc(
+    proc_root: Path, pid: int, ppid: int, rss_kb: int = 1024, utime: int = 100, stime: int = 50
+) -> None:
     pid_dir = proc_root / str(pid)
     pid_dir.mkdir(parents=True, exist_ok=True)
     (pid_dir / "status").write_text(
         STATUS_TEMPLATE.format(name="testproc", ppid=ppid, threads=2, vms_kb=4096, rss_kb=rss_kb)
     )
     (pid_dir / "stat").write_text(
-        STAT_TEMPLATE.format(pid=pid, name="testproc", ppid=ppid, utime=100, stime=50)
+        STAT_TEMPLATE.format(pid=pid, name="testproc", ppid=ppid, utime=utime, stime=stime)
     )
     (pid_dir / "fd").mkdir(exist_ok=True)
 
@@ -200,6 +203,36 @@ class TestCpuPercent:
     def test_tree_percent_empty_or_gone(self, tmp_path: Path) -> None:
         assert tree_cpu_percent([], tmp_path) is None
         assert tree_cpu_percent([999999], tmp_path) is None
+
+    def test_tree_percent_ignores_newborn_lifetime(self, tmp_path: Path) -> None:
+        _write_proc(tmp_path, 100, 1, utime=100)
+        assert tree_cpu_percent([100], tmp_path, now=1000.0) is None
+        # pid 100 burns +0.5s; newborn child 101 arrives with 5.5s lifetime.
+        # Whole-total math would report (0.5 + 5.5) / 1.0 = 600%.
+        _write_proc(tmp_path, 100, 1, utime=150)
+        _write_proc(tmp_path, 101, 100, utime=500, stime=50)
+        assert tree_cpu_percent([100], tmp_path, now=1001.0) == 50.0
+
+    def test_tree_percent_ignores_exited_pid(self, tmp_path: Path) -> None:
+        _write_proc(tmp_path, 100, 1, utime=100)
+        _write_proc(tmp_path, 101, 100, utime=100)
+        assert tree_cpu_percent([100], tmp_path, now=1000.0) is None
+        shutil.rmtree(tmp_path / "101")
+        _write_proc(tmp_path, 100, 1, utime=150)
+        assert tree_cpu_percent([100], tmp_path, now=1001.0) == 50.0
+
+    def test_tree_report_single_walk(self, tmp_path: Path) -> None:
+        from termux_tasker.proc_stats import tree_report
+
+        _write_proc(tmp_path, 100, 1, rss_kb=2048)
+        stats, first = tree_report([100], tmp_path, now=1000.0)
+        assert stats.num_procs == 1
+        assert stats.rss_total == 2048 * 1024
+        assert first is None
+        _write_proc(tmp_path, 100, 1, rss_kb=2048, utime=150)
+        stats, second = tree_report([100], tmp_path, now=1001.0)
+        assert stats.num_procs == 1
+        assert second == 50.0
 
 
 class TestFormat:

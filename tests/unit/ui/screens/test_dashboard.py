@@ -214,9 +214,8 @@ class TestDashboardStats:
 
         fake_tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024, cpu_s_total=12.4, threads_total=3)
         screen = DashboardScreen()
-        with (
-            patch("termux_tasker.proc_stats.tree_stats", return_value=fake_tree),
-            patch("termux_tasker.proc_stats.cpu_percent_delta", return_value=12.0),
+        with patch(
+            "termux_tasker.proc_stats.tree_report", return_value=(fake_tree, 12.0)
         ):
             result = screen._build_overview(runners_path, {"sh_runner": [4242]})
         assert "pid 4242+1" in result
@@ -234,9 +233,8 @@ class TestDashboardStats:
 
         fake_tree = TreeStats(pids=(4242,), num_procs=1, rss_total=10 * 1024 * 1024, cpu_s_total=0.0, threads_total=1)
         screen = DashboardScreen()
-        with (
-            patch("termux_tasker.proc_stats.tree_stats", return_value=fake_tree),
-            patch("termux_tasker.proc_stats.cpu_percent_delta", return_value=None),
+        with patch(
+            "termux_tasker.proc_stats.tree_report", return_value=(fake_tree, None)
         ):
             result = screen._build_overview(runners_path, {"sh_runner": [4242]})
         rss_lines = [line for line in result.splitlines() if "pid 4242" in line]
