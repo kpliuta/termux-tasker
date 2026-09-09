@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dashboard now shows a live **System** block under the runners/tasks overview (refreshed every 1s): total CPU %, load averages, memory usage, live-runner count with aggregated RSS, and per-runner pid/RSS/CPU%/threads plus task running/total counts (plain text, stdlib `/proc`-based, no new dependencies).
 
+### Fixed
+
+- Dashboard total CPU % no longer sticks at `n/a` on kernels where the aggregate `cpu` line in `/proc/stat` is missing or not first: the parser scans all lines and falls back to summed per-core `cpuN` lines.
+
 ### Changed
 
 - Disabled tasks on dashboard are now grayed out using `$foreground-disabled`.

@@ -142,14 +142,34 @@ class TestCpuPercent:
         assert cpu_percent_total(tmp_path, now=1000.0) is None
 
     def test_total_computes_busy_percent(self, tmp_path: Path) -> None:
-        import os as _os
-
         (tmp_path / "stat").write_text("cpu  100 0 0 800 0 0 0 0 0 0\n")
-        assert cpu_percent_total(tmp_path, now=1000.0) is None
+        assert cpu_percent_total(tmp_path, now=1000.0, cpu_count=2) is None
         (tmp_path / "stat").write_text("cpu  200 0 0 900 0 0 0 0 0 0\n")
-        # +100 busy ticks over 2s wall time, normalized by core count
-        expected = round(50.0 / (_os.cpu_count() or 1), 1)
-        assert cpu_percent_total(tmp_path, now=1002.0) == expected
+        # +100 busy ticks over 2s wall time, normalized by 2 cores
+        assert cpu_percent_total(tmp_path, now=1002.0, cpu_count=2) == 25.0
+
+    def test_total_finds_aggregate_past_first_line(self, tmp_path: Path) -> None:
+        (tmp_path / "stat").write_text("cpu  100 0 0 800 0 0 0 0 0 0\n")
+        assert cpu_percent_total(tmp_path, now=1000.0, cpu_count=1) is None
+        (tmp_path / "stat").write_text(
+            "intr 12345\ncpu  200 0 0 900 0 0 0 0 0 0\ncpu0  200 0 0 900 0 0 0 0 0 0\n"
+        )
+        assert cpu_percent_total(tmp_path, now=1002.0, cpu_count=1) == 50.0
+
+    def test_total_falls_back_to_per_core_lines(self, tmp_path: Path) -> None:
+        (tmp_path / "stat").write_text(
+            "cpu0  100 0 0 800 0 0 0 0 0 0\ncpu1  100 0 0 800 0 0 0 0 0 0\n"
+        )
+        assert cpu_percent_total(tmp_path, now=1000.0, cpu_count=2) is None
+        (tmp_path / "stat").write_text(
+            "cpu0  200 0 0 900 0 0 0 0 0 0\ncpu1  200 0 0 900 0 0 0 0 0 0\n"
+        )
+        # +200 busy ticks over 2s wall time, normalized by 2 cores
+        assert cpu_percent_total(tmp_path, now=1002.0, cpu_count=2) == 50.0
+
+    def test_total_garbage_stat_returns_none(self, tmp_path: Path) -> None:
+        (tmp_path / "stat").write_text("nothing useful here\n")
+        assert cpu_percent_total(tmp_path) is None
 
     def test_total_missing_stat_returns_none(self, tmp_path: Path) -> None:
         assert cpu_percent_total(tmp_path) is None

@@ -142,26 +142,74 @@ def cpu_percent_delta(key: str, cpu_seconds: float, now: float | None = None) ->
     return round(cpu_dt / wall_dt * 100, 1)
 
 
-def _parse_stat_total(text: str) -> tuple[float, float] | None:
-    """Split the aggregate ``cpu`` line into (busy_seconds, total_seconds)."""
-    first = text.splitlines()[0] if text else ""
-    parts = first.split()
-    if len(parts) < 5 or parts[0] != "cpu":
-        return None
-    try:
-        values = [float(part) / _CLK_TCK for part in parts[1:]]
-    except ValueError:
-        return None
+def _stat_counters(text: str) -> tuple[list[float] | None, list[list[float]]]:
+    """Split /proc/stat into aggregate and per-core cpu counters (ticks).
+
+    The aggregate line is searched anywhere in the file (not just line one),
+    since some kernels prepend other content.
+    """
+    aggregate: list[float] | None = None
+    per_core: list[list[float]] = []
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        is_aggregate = parts[0] == "cpu"
+        is_core = parts[0].startswith("cpu") and parts[0][3:].isdigit()
+        if not (is_aggregate or is_core):
+            continue
+        try:
+            values = [float(part) for part in parts[1:]]
+        except ValueError:
+            continue
+        if len(values) < 4:
+            continue
+        if is_aggregate:
+            aggregate = values
+        else:
+            per_core.append(values)
+    return aggregate, per_core
+
+
+def _busy_total(values: list[float]) -> tuple[float, float]:
+    """Split counters into (busy, total); idle includes iowait when present."""
     total = sum(values)
     idle = values[3] + (values[4] if len(values) > 4 else 0.0)
     return total - idle, total
 
 
-def cpu_percent_total(proc_root: Path = _PROC_ROOT, now: float | None = None) -> float | None:
+def _parse_stat_total(text: str) -> tuple[float, float] | None:
+    """Aggregate (busy_seconds, total_seconds) from /proc/stat.
+
+    Uses the aggregate ``cpu`` line; falls back to summed per-core ``cpuN``
+    lines when the aggregate is missing or malformed (seen on some Android
+    kernels where only per-core lines parse).
+    """
+    aggregate, per_core = _stat_counters(text)
+    if aggregate is not None:
+        busy, total = _busy_total(aggregate)
+        return busy / _CLK_TCK, total / _CLK_TCK
+    busy_sum = 0.0
+    total_sum = 0.0
+    for values in per_core:
+        busy, total = _busy_total(values)
+        busy_sum += busy
+        total_sum += total
+    if total_sum <= 0:
+        return None
+    return busy_sum / _CLK_TCK, total_sum / _CLK_TCK
+
+
+def cpu_percent_total(
+    proc_root: Path = _PROC_ROOT,
+    now: float | None = None,
+    cpu_count: int | None = None,
+) -> float | None:
     """Total CPU busy % across all cores since the previous call.
 
     Normalized to 0-100% of overall capacity (all cores combined), matching
-    ``psutil.cpu_percent()``. A multithreaded single tree (see
+    ``psutil.cpu_percent()``. ``cpu_count`` overrides ``os.cpu_count()``
+    (used by tests for determinism). A multithreaded single tree (see
     ``tree_cpu_percent``) may still exceed 100%. None on the first call or
     when /proc/stat is unreadable.
     """
@@ -172,7 +220,7 @@ def cpu_percent_total(proc_root: Path = _PROC_ROOT, now: float | None = None) ->
     if parsed is None:
         return None
     busy, _ = parsed
-    cores = os.cpu_count() or 1
+    cores = cpu_count if cpu_count else (os.cpu_count() or 1)
     percent = cpu_percent_delta(f"sys:{proc_root}", busy, now)
     return round(percent / cores, 1) if percent is not None else None
 
