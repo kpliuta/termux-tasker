@@ -171,6 +171,20 @@ class TestCpuPercent:
         (tmp_path / "stat").write_text("nothing useful here\n")
         assert cpu_percent_total(tmp_path) is None
 
+    def test_total_falls_back_to_proc_scan(self, tmp_path: Path) -> None:
+        # No "stat" file at all (locked-down kernel) — only per-PID stats.
+        _write_proc(tmp_path, 100, 1)
+        assert cpu_percent_total(tmp_path, now=1000.0, cpu_count=1) is None
+        pid_dir = tmp_path / "100"
+        (pid_dir / "stat").write_text(
+            STAT_TEMPLATE.format(pid=100, name="testproc", ppid=1, utime=200, stime=50)
+        )
+        # +100 ticks = 1.0s over 1s wall time on 1 core
+        assert cpu_percent_total(tmp_path, now=1001.0, cpu_count=1) == 100.0
+
+    def test_total_scan_nothing_visible_returns_none(self, tmp_path: Path) -> None:
+        assert cpu_percent_total(tmp_path) is None
+
     def test_total_missing_stat_returns_none(self, tmp_path: Path) -> None:
         assert cpu_percent_total(tmp_path) is None
 

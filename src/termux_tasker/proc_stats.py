@@ -200,6 +200,33 @@ def _parse_stat_total(text: str) -> tuple[float, float] | None:
     return busy_sum / _CLK_TCK, total_sum / _CLK_TCK
 
 
+def _all_proc_cpu_total(proc_root: Path) -> float | None:
+    """Sum utime+stime over every visible PID.
+
+    Last-resort system CPU source for kernels/SELinux policies where
+    /proc/stat is unreadable but per-PID stat files are allowed. PIDs that
+    spawn or exit between samples add noise, so this is an estimate.
+    """
+    try:
+        entries = list(proc_root.iterdir())
+    except OSError:
+        return None
+    total = 0.0
+    found = False
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        raw = _read_text(entry / "stat")
+        if raw is None:
+            continue
+        cpu = _parse_stat_cpu(raw)
+        if cpu is None:
+            continue
+        total += cpu
+        found = True
+    return total if found else None
+
+
 def cpu_percent_total(
     proc_root: Path = _PROC_ROOT,
     now: float | None = None,
@@ -207,21 +234,27 @@ def cpu_percent_total(
 ) -> float | None:
     """Total CPU busy % across all cores since the previous call.
 
-    Normalized to 0-100% of overall capacity (all cores combined), matching
-    ``psutil.cpu_percent()``. ``cpu_count`` overrides ``os.cpu_count()``
-    (used by tests for determinism). A multithreaded single tree (see
-    ``tree_cpu_percent``) may still exceed 100%. None on the first call or
-    when /proc/stat is unreadable.
+    Source chain: aggregate ``cpu`` line → summed per-core ``cpuN`` lines →
+    summed per-PID counters (estimate, for locked-down kernels where
+    /proc/stat is unreadable). Normalized to 0-100% of overall capacity
+    (all cores combined), matching ``psutil.cpu_percent()``. ``cpu_count``
+    overrides ``os.cpu_count()`` (used by tests for determinism). A
+    multithreaded single tree (see ``tree_cpu_percent``) may still exceed
+    100%. None on the first call or when nothing is readable.
     """
     raw = _read_text(proc_root / "stat")
-    if raw is None:
-        return None
-    parsed = _parse_stat_total(raw)
-    if parsed is None:
-        return None
-    busy, _ = parsed
+    parsed = _parse_stat_total(raw) if raw is not None else None
+    if parsed is not None:
+        busy, _ = parsed
+        source = "stat"
+    else:
+        scanned = _all_proc_cpu_total(proc_root)
+        if scanned is None:
+            return None
+        busy = scanned
+        source = "scan"
     cores = cpu_count if cpu_count else (os.cpu_count() or 1)
-    percent = cpu_percent_delta(f"sys:{proc_root}", busy, now)
+    percent = cpu_percent_delta(f"sys:{proc_root}:{source}", busy, now)
     return round(percent / cores, 1) if percent is not None else None
 
 
