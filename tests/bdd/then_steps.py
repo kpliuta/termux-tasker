@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import re
 import shutil
 import time
+from datetime import datetime
 
 from textual.css.query import NoMatches
 from textual.widgets import Button
 
 from tests.bdd.steps_common import *  # noqa
-from termux_tasker.config import RunnerMetadata, TaskMetadata  # noqa
+from termux_tasker.config import RunnerMetadata, RunnerSettings, TaskMetadata  # noqa
 from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
 
 
@@ -1155,6 +1157,17 @@ def then_term_cmd_executed(pilot) -> None:
     assert meta.exec is not None
     assert meta.exec.termination is not None
     settings().set_runner_state(runner_path, "termination")
+
+
+@then('the runner\'s settings.toml contains last_run with format "YYYY-MM-DD HH:MM:SS"')
+def then_runner_last_run_format(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    RunnerSettings.clear_cache(runner_path / "settings.toml")
+    s = settings().load_runner_settings(runner_path)
+    assert s.session.last_run != "none"
+    assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", s.session.last_run)
+    datetime.strptime(s.session.last_run, "%Y-%m-%d %H:%M:%S")
+    assert s.session.last_run_status == "none"
 
 
 @then("the method returns only after the runner has fully stopped")

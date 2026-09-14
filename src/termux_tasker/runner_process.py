@@ -280,6 +280,10 @@ class RunnerProcess:
                         self.metadata.exec.after_exec,
                     )
 
+                self.settings.session.session_id = self.session_id
+                self.settings.session.last_run = _now_timestamp()
+                self.settings.save(self._settings_path)
+
                 if self.shutting_down:
                     break
 

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import re
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from termux_tasker.config import RunnerSettings, TaskSettings
 from termux_tasker.runner_process import (
     RunnerProcess,
     _parse_timeout, # noqa
@@ -298,3 +301,116 @@ class TestPlaceholderSubstitution:
         cmd = mock_subprocess.call_args.args[2]
         assert "{runner_path}" not in cmd
         assert str(runner_path) in cmd
+
+
+def _load_runner_settings_fresh(runner_path: Path) -> RunnerSettings:
+    RunnerSettings.clear_cache(runner_path / "settings.toml")
+    return RunnerSettings.load(runner_path / "settings.toml")
+
+
+def _load_task_settings_fresh(task_path: Path) -> TaskSettings:
+    TaskSettings.clear_cache(task_path / "settings.toml")
+    return TaskSettings.load(task_path / "settings.toml")
+
+
+@pytest.mark.asyncio
+class TestRunnerLastRun:
+    async def _run_until_last_run(
+        self, proc: RunnerProcess, runner_path: Path
+    ) -> RunnerSettings:
+        proc.shutting_down = False
+        loop_task = asyncio.create_task(proc._run_loop())
+        deadline = asyncio.get_event_loop().time() + 5.0
+        last_settings = _load_runner_settings_fresh(runner_path)
+        while last_settings.session.last_run == "none":
+            if asyncio.get_event_loop().time() > deadline:
+                proc.shutting_down = True
+                await loop_task
+                raise AssertionError("runner last_run was never written")
+            await asyncio.sleep(0.05)
+            last_settings = _load_runner_settings_fresh(runner_path)
+        proc.shutting_down = True
+        await loop_task
+        return _load_runner_settings_fresh(runner_path)
+
+    async def test_last_run_written_after_cycle(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_last_run(proc, runner_path)
+            assert settings.session.last_run != "none"
+
+    async def test_last_run_format_matches_task_format(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_last_run(proc, runner_path)
+            assert re.match(
+                r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",
+                settings.session.last_run,
+            )
+            datetime.strptime(settings.session.last_run, "%Y-%m-%d %H:%M:%S")
+
+    async def test_last_run_updates_session_id(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_last_run(proc, runner_path)
+            assert settings.session.session_id == "test-session"
+
+    async def test_last_run_status_untouched(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_last_run(proc, runner_path)
+            assert settings.session.last_run_status == "none"
+
+    async def test_last_run_preserved_after_shutdown(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_last_run(proc, runner_path)
+            assert settings.session.state == "off"
+            assert settings.session.last_run != "none"
+
+    async def test_last_run_written_with_tasks_present(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = _create_proc(runner_path, tmp_dir)
+            runner_settings = await self._run_until_last_run(proc, runner_path)
+            task_settings = _load_task_settings_fresh(task_path)
+            assert runner_settings.session.last_run != "none"
+            assert task_settings.session.last_run != "none"
+
+    async def test_no_last_run_when_cycle_never_completes(
+        self, tmp_dir: Path
+    ) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(return_code=1),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            await proc._run_loop()
+
+            settings = _load_runner_settings_fresh(runner_path)
+            assert settings.session.last_run == "none"

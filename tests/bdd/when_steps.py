@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import shutil
+import time
 
 import termux_tasker.ui.screens.install_runner_version as _irv_mod  # noqa
+
+from termux_tasker.config import RunnerSettings
 
 from tests.bdd.steps_common import *  # noqa
 
@@ -458,6 +461,19 @@ def when_loop_state(pilot) -> None:
     runner = ui(pilot).app.state.runners.get("sh_runner")
     if runner and hasattr(runner, "_run_lock"):
         runner._run_lock = True  # noqa
+
+
+@when("the runner completes a full execution cycle")
+def when_runner_completes_cycle(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        RunnerSettings.clear_cache(runner_path / "settings.toml")
+        s = settings().load_runner_settings(runner_path)
+        if s.session.last_run != "none":
+            return
+        ui(pilot).pause(0.1)
+    raise AssertionError("runner last_run was never written after a full cycle")
 
 
 @when("the runner is shut down")
