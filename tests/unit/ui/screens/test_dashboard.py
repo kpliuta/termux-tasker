@@ -128,7 +128,7 @@ class TestDashboardOverview:
         screen = DashboardScreen()
         result = screen._build_overview(runners_path)
         lines = result.split("\n")
-        task_lines = [l for l in lines if "Task" in l and ("running" in l or "stopped" in l)]
+        task_lines = [l for l in lines if "Task" in l and ("running" in l or "stopped" in l or "disabled" in l)]
         assert len(task_lines) == 2
         assert "\u251c\u2500" in task_lines[0]
         assert "\u2514\u2500" in task_lines[1]

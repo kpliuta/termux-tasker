@@ -20,6 +20,19 @@ def _properties_to_table(props: dict[str, str]) -> Table:
     return t
 
 
+def _parse_optional_int(value: object) -> Optional[int]:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(float(value))
+        except ValueError:
+            return None
+    return None
+
+
 # --- App Config ---
 
 @dataclass
@@ -231,8 +244,7 @@ class RunnerMetadata:
         doc["exec"] = exec_table
 
         _write_toml(path, doc)
-        # Use type(self) instead of cls so that TaskSettings = RunnerSettings
-        # alias updates the correct shared _instances dict
+        # Use type(self) instead of cls so subclasses update their own cache
         type(self)._instances[path] = self
 
     @classmethod
@@ -354,6 +366,12 @@ class RunnerSettingsGeneral:
 
 
 @dataclass
+class TaskSettingsGeneral:
+    enabled: bool = False
+    timeout: str = "1m"
+
+
+@dataclass
 class LogSettings:
     soft_wrap: bool = False
     auto_scroll: bool = False
@@ -361,20 +379,100 @@ class LogSettings:
 
 
 @dataclass
-class SessionInfo:
+class RunnerSessionInfo:
+    """Runner runtime session state persisted in settings.toml [session].
+
+    The durations time the runner-level steps: initialization (recorded
+    once at startup), before-exec, the whole task loop, and after-exec.
+    """
+
+    session_id: str = "none"
+    state: str = "off"
+    last_run: str = "none"
+    last_run_init_duration: Optional[int] = None
+    last_run_before_duration: Optional[int] = None
+    last_run_exec_duration: Optional[int] = None
+    last_run_after_duration: Optional[int] = None
+
+
+@dataclass
+class TaskSessionInfo:
+    """Task runtime session state persisted in settings.toml [session].
+
+    The durations time the task-level steps: before-task, task-exec,
+    and after-task.
+    """
+
     session_id: str = "none"
     state: str = "off"
     last_run: str = "none"
     last_run_status: str = "none"
+    last_run_before_duration: Optional[int] = None
+    last_run_exec_duration: Optional[int] = None
+    last_run_after_duration: Optional[int] = None
+
+
+def _parse_enabled_timeout(table: object) -> tuple[bool, str]:
+    if isinstance(table, dict):
+        return bool(table.get("enabled", False)), str(table.get("timeout", "1m"))
+    return False, "1m"
+
+
+def _parse_properties_table(table: object) -> dict[str, str]:
+    result: dict[str, str] = {}
+    if isinstance(table, dict):
+        for k, v in table.items():
+            result[str(k)] = str(v)
+    return result
+
+
+def _parse_log_table(table: object) -> LogSettings:
+    log = LogSettings()
+    if isinstance(table, dict):
+        log.soft_wrap = bool(table.get("soft_wrap", False))
+        log.auto_scroll = bool(table.get("auto_scroll", False))
+        log.offset = int(table.get("offset", 0))
+    return log
+
+
+def _general_to_table(general: RunnerSettingsGeneral | TaskSettingsGeneral) -> Table:
+    table = tomlkit.table()
+    table["enabled"] = general.enabled
+    table["timeout"] = general.timeout
+    return table
+
+
+def _log_to_table(log: LogSettings) -> Table:
+    table = tomlkit.table()
+    table["soft_wrap"] = log.soft_wrap
+    table["auto_scroll"] = log.auto_scroll
+    table["offset"] = log.offset
+    return table
+
+
+def _session_base_to_table(
+    session: RunnerSessionInfo | TaskSessionInfo, table: Table
+) -> None:
+    table["session_id"] = session.session_id
+    table["state"] = session.state
+    # Only write non-default values to keep the file clean
+    if session.last_run != "none":
+        table["last_run"] = session.last_run
+    if session.last_run_before_duration is not None:
+        table["last_run_before_duration"] = session.last_run_before_duration
+    if session.last_run_exec_duration is not None:
+        table["last_run_exec_duration"] = session.last_run_exec_duration
+    if session.last_run_after_duration is not None:
+        table["last_run_after_duration"] = session.last_run_after_duration
 
 
 @dataclass
 class RunnerSettings:
-    """Runner (or task) runtime settings loaded from settings.toml.
+    """Runner runtime settings loaded from settings.toml.
 
-    Same class-level caching as the metadata classes.  Unlike metadata,
-    load() returns a default instance when the file does not exist
-    (fresh install / first launch).
+    Uses class-level instance caching (_instances) keyed by file path.
+    Unlike metadata, load() returns a default instance when the file
+    does not exist (fresh install / first launch).
     """
 
     _instances: ClassVar[dict[Path, RunnerSettings]] = {}
@@ -382,7 +480,7 @@ class RunnerSettings:
     general: RunnerSettingsGeneral = field(default_factory=RunnerSettingsGeneral)
     properties: dict[str, str] = field(default_factory=dict)
     log: LogSettings = field(default_factory=LogSettings)
-    session: SessionInfo = field(default_factory=SessionInfo)
+    session: RunnerSessionInfo = field(default_factory=RunnerSessionInfo)
 
     @classmethod
     def load(cls, path: Path) -> RunnerSettings:
@@ -395,28 +493,29 @@ class RunnerSettings:
         doc = tomlkit.parse(path.read_text())
         result = cls()
 
-        general_table = doc.get("general", {})
-        if isinstance(general_table, dict):
-            result.general.enabled = bool(general_table.get("enabled", False))
-            result.general.timeout = str(general_table.get("timeout", "1m"))
-
-        properties_table = doc.get("properties", {})
-        if isinstance(properties_table, dict):
-            for k, v in properties_table.items():
-                result.properties[str(k)] = str(v)
-
-        log_table = doc.get("log", {})
-        if isinstance(log_table, dict):
-            result.log.soft_wrap = bool(log_table.get("soft_wrap", False))
-            result.log.auto_scroll = bool(log_table.get("auto_scroll", False))
-            result.log.offset = int(log_table.get("offset", 0))
+        result.general.enabled, result.general.timeout = _parse_enabled_timeout(
+            doc.get("general", {})
+        )
+        result.properties = _parse_properties_table(doc.get("properties", {}))
+        result.log = _parse_log_table(doc.get("log", {}))
 
         session_table = doc.get("session", {})
         if isinstance(session_table, dict):
             result.session.session_id = str(session_table.get("session_id", "none"))
             result.session.state = str(session_table.get("state", "off"))
             result.session.last_run = str(session_table.get("last_run", "none"))
-            result.session.last_run_status = str(session_table.get("last_run_status", "none"))
+            result.session.last_run_init_duration = _parse_optional_int(
+                session_table.get("last_run_init_duration", None)
+            )
+            result.session.last_run_before_duration = _parse_optional_int(
+                session_table.get("last_run_before_duration", None)
+            )
+            result.session.last_run_exec_duration = _parse_optional_int(
+                session_table.get("last_run_exec_duration", None)
+            )
+            result.session.last_run_after_duration = _parse_optional_int(
+                session_table.get("last_run_after_duration", None)
+            )
 
         cls._instances[path] = result
         return result
@@ -424,27 +523,14 @@ class RunnerSettings:
     def save(self, path: Path) -> None:
         doc = tomlkit.document()
 
-        general = tomlkit.table()
-        general["enabled"] = self.general.enabled
-        general["timeout"] = self.general.timeout
-        doc["general"] = general
-
+        doc["general"] = _general_to_table(self.general)
         doc["properties"] = _properties_to_table(self.properties)
-
-        log = tomlkit.table()
-        log["soft_wrap"] = self.log.soft_wrap
-        log["auto_scroll"] = self.log.auto_scroll
-        log["offset"] = self.log.offset
-        doc["log"] = log
+        doc["log"] = _log_to_table(self.log)
 
         session = tomlkit.table()
-        session["session_id"] = self.session.session_id
-        session["state"] = self.session.state
-        # Only write non-default values to keep the file clean
-        if self.session.last_run != "none":
-            session["last_run"] = self.session.last_run
-        if self.session.last_run_status != "none":
-            session["last_run_status"] = self.session.last_run_status
+        _session_base_to_table(self.session, session)
+        if self.session.last_run_init_duration is not None:
+            session["last_run_init_duration"] = self.session.last_run_init_duration
         doc["session"] = session
 
         _write_toml(path, doc)
@@ -456,11 +542,80 @@ class RunnerSettings:
         cls._instances.pop(path, None)
 
 
-# TaskSettings is an alias for RunnerSettings — same shape, different semantics.
-# Because it is a Python alias, the shared ClassVar _instances dict is also shared,
-# so RunnerSettings.clear_cache and TaskSettings.clear_cache operate on the same cache.
-TaskSettings = RunnerSettings
-TaskSettingsGeneral = RunnerSettingsGeneral
+@dataclass
+class TaskSettings:
+    """Task runtime settings loaded from settings.toml.
+
+    Same class-level caching as RunnerSettings, but with an independent
+    cache and a task-specific session shape (run status instead of
+    init duration, task-level step meanings for the durations).
+    """
+
+    _instances: ClassVar[dict[Path, TaskSettings]] = {}
+
+    general: TaskSettingsGeneral = field(default_factory=TaskSettingsGeneral)
+    properties: dict[str, str] = field(default_factory=dict)
+    log: LogSettings = field(default_factory=LogSettings)
+    session: TaskSessionInfo = field(default_factory=TaskSessionInfo)
+
+    @classmethod
+    def load(cls, path: Path) -> TaskSettings:
+        if path in cls._instances:
+            return cls._instances[path]
+        if not path.exists():
+            result = cls()
+            cls._instances[path] = result
+            return result
+        doc = tomlkit.parse(path.read_text())
+        result = cls()
+
+        result.general.enabled, result.general.timeout = _parse_enabled_timeout(
+            doc.get("general", {})
+        )
+        result.properties = _parse_properties_table(doc.get("properties", {}))
+        result.log = _parse_log_table(doc.get("log", {}))
+
+        session_table = doc.get("session", {})
+        if isinstance(session_table, dict):
+            result.session.session_id = str(session_table.get("session_id", "none"))
+            result.session.state = str(session_table.get("state", "off"))
+            result.session.last_run = str(session_table.get("last_run", "none"))
+            result.session.last_run_status = str(
+                session_table.get("last_run_status", "none")
+            )
+            result.session.last_run_before_duration = _parse_optional_int(
+                session_table.get("last_run_before_duration", None)
+            )
+            result.session.last_run_exec_duration = _parse_optional_int(
+                session_table.get("last_run_exec_duration", None)
+            )
+            result.session.last_run_after_duration = _parse_optional_int(
+                session_table.get("last_run_after_duration", None)
+            )
+
+        cls._instances[path] = result
+        return result
+
+    def save(self, path: Path) -> None:
+        doc = tomlkit.document()
+
+        doc["general"] = _general_to_table(self.general)
+        doc["properties"] = _properties_to_table(self.properties)
+        doc["log"] = _log_to_table(self.log)
+
+        session = tomlkit.table()
+        _session_base_to_table(self.session, session)
+        if self.session.last_run_status != "none":
+            session["last_run_status"] = self.session.last_run_status
+        doc["session"] = session
+
+        _write_toml(path, doc)
+        type(self)._instances[path] = self
+
+    @classmethod
+    def clear_cache(cls, path: Path) -> None:
+        """Evict cached entry for *path*."""
+        cls._instances.pop(path, None)
 
 
 # --- Bundled ---

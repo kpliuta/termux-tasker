@@ -6,7 +6,7 @@ from typing import Any
 from textual import on
 from textual.widgets import Button
 
-from termux_tasker.config import PropertyDef, RunnerSettings
+from termux_tasker.config import PropertyDef, RunnerSettings, TaskSettings
 from termux_tasker.ui.base import (
     ButtonConfig,
     MenuScreen,
@@ -35,9 +35,11 @@ class PropertiesScreen(MenuScreen):
         item_path: Path,
         properties: list[PropertyDef],
         item_name: str,
+        is_task: bool = False,
     ) -> None:
         self.item_path = item_path
         self.properties = properties
+        self.is_task = is_task
         super().__init__(self._build_items(), show_back_button=True)
         self.title = "Properties"
         self.sub_title = item_name
@@ -47,7 +49,9 @@ class PropertiesScreen(MenuScreen):
     def _settings_file(self) -> Path:
         return self.item_path / "settings.toml"
 
-    def _load_settings(self) -> RunnerSettings:
+    def _load_settings(self) -> RunnerSettings | TaskSettings:
+        if self.is_task:
+            return TaskSettings.load(self._settings_file())
         return RunnerSettings.load(self._settings_file())
 
     def _build_items(self) -> list[ButtonConfig]:

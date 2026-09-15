@@ -150,7 +150,7 @@ class TaskMenuScreen(MenuScreen):
         meta = TaskMetadata.load(self.task_path / "metadata.toml")
         termux_app(self).push_screen(
             PropertiesScreen(
-                self.task_path, meta.properties, meta.general.name
+                self.task_path, meta.properties, meta.general.name, is_task=True
             )
         )
 

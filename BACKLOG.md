@@ -38,6 +38,7 @@
 * `low`    Explore task-to-runner data sharing (install packages, patches, set runner settings)
 * `low`    Investigate replacing timeout with cron-based scheduling
 * `low`    UI/UX best practices course (TUI in particular?)
+* `low`    Runner tracing screen with duration spent on each step
 
 ## Done
 

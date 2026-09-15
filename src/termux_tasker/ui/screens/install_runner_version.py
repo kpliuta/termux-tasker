@@ -274,7 +274,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         from termux_tasker.ui.screens.runners_screen import RunnersScreen
 
         fill_default_properties(
-            self.tmp_runner_folder / "settings.toml", meta.properties
+            self.tmp_runner_folder / "settings.toml", meta.properties, kind="runner"
         )
 
         if target_dir.exists():

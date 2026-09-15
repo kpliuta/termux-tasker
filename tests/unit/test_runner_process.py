@@ -375,7 +375,7 @@ class TestRunnerLastRun:
             runner_path = _write_runner(tmp_dir)
             proc = _create_proc(runner_path, tmp_dir)
             settings = await self._run_until_last_run(proc, runner_path)
-            assert settings.session.last_run_status == "none"
+            assert not hasattr(settings.session, "last_run_status")
 
     async def test_last_run_preserved_after_shutdown(self, tmp_dir: Path) -> None:
         with patch(
@@ -414,3 +414,345 @@ class TestRunnerLastRun:
 
             settings = _load_runner_settings_fresh(runner_path)
             assert settings.session.last_run == "none"
+
+
+FULL_PHASES_METADATA = """\
+[general]
+id = "test-runner"
+name = "Test Runner"
+version = "0.1.0"
+app_min_version = ">=0.1.0"
+
+[exec]
+initialization = "echo init"
+before-exec = "echo before-exec"
+before-task = "echo before-task"
+task-exec = "echo task-exec"
+after-task = "echo after-task"
+after-exec = "echo after-exec"
+termination = "echo termination"
+"""
+
+
+def _write_full_runner(tmp_dir: Path) -> Path:
+    runner_path = tmp_dir / "runner"
+    runner_path.mkdir()
+    (runner_path / "metadata.toml").write_text(FULL_PHASES_METADATA)
+    (runner_path / "settings.toml").write_text(SETTINGS)
+    (runner_path / "tasks").mkdir()
+    return runner_path
+
+
+class TestSessionDurationsConfig:
+    def test_defaults_are_none(self) -> None:
+        s = TaskSettings()
+        assert s.session.last_run_before_duration is None
+        assert s.session.last_run_exec_duration is None
+        assert s.session.last_run_after_duration is None
+        r = RunnerSettings()
+        assert r.session.last_run_init_duration is None
+        assert r.session.last_run_before_duration is None
+        assert r.session.last_run_exec_duration is None
+        assert r.session.last_run_after_duration is None
+
+    def test_omitted_from_file_when_never_run(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        TaskSettings().save(path)
+        content = path.read_text()
+        assert "last_run_init_duration" not in content
+        assert "last_run_before_duration" not in content
+        assert "last_run_exec_duration" not in content
+        assert "last_run_after_duration" not in content
+        RunnerSettings().save(path)
+        content = path.read_text()
+        assert "last_run_init_duration" not in content
+        assert "last_run_before_duration" not in content
+        assert "last_run_exec_duration" not in content
+        assert "last_run_after_duration" not in content
+
+    def test_round_trip_int_values(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        s = TaskSettings()
+        s.session.last_run_before_duration = 1
+        s.session.last_run_exec_duration = 2
+        s.session.last_run_after_duration = 3
+        s.save(path)
+        loaded = _load_task_settings_fresh(path.parent)
+        assert loaded.session.last_run_before_duration == 1
+        assert loaded.session.last_run_exec_duration == 2
+        assert loaded.session.last_run_after_duration == 3
+
+    def test_runner_round_trip_init_value(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        s = RunnerSettings()
+        s.session.last_run_init_duration = 4
+        s.save(path)
+        loaded = _load_runner_settings_fresh(path.parent)
+        assert loaded.session.last_run_init_duration == 4
+
+    def test_malformed_values_load_as_none(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        path.write_text(
+            "[general]\nenabled = true\ntimeout = \"1m\"\n"
+            "[properties]\n[log]\nsoft_wrap = false\n"
+            "auto_scroll = false\noffset = 0\n"
+            "[session]\nsession_id = \"none\"\nstate = \"off\"\n"
+            "last_run_before_duration = \"oops\"\n"
+            "last_run_exec_duration = \"oops\"\n"
+            "last_run_after_duration = \"oops\"\n"
+        )
+        loaded = _load_task_settings_fresh(path.parent)
+        assert loaded.session.last_run_before_duration is None
+        assert loaded.session.last_run_exec_duration is None
+        assert loaded.session.last_run_after_duration is None
+
+    def test_malformed_init_loads_as_none(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        path.write_text(
+            "[general]\nenabled = true\ntimeout = \"1m\"\n"
+            "[properties]\n[log]\nsoft_wrap = false\n"
+            "auto_scroll = false\noffset = 0\n"
+            "[session]\nsession_id = \"none\"\nstate = \"off\"\n"
+            "last_run_init_duration = \"oops\"\n"
+        )
+        loaded = _load_runner_settings_fresh(path.parent)
+        assert loaded.session.last_run_init_duration is None
+
+
+class TestSettingsSplit:
+    def test_task_has_no_init_duration(self) -> None:
+        assert not hasattr(TaskSettings().session, "last_run_init_duration")
+
+    def test_runner_has_no_last_run_status(self) -> None:
+        assert not hasattr(RunnerSettings().session, "last_run_status")
+
+    def test_caches_are_independent(self, tmp_dir: Path) -> None:
+        runner_file = tmp_dir / "runner.toml"
+        task_file = tmp_dir / "task.toml"
+        RunnerSettings().save(runner_file)
+        TaskSettings().save(task_file)
+        RunnerSettings.clear_cache(runner_file)
+        assert task_file in TaskSettings._instances  # noqa
+        assert runner_file not in RunnerSettings._instances  # noqa
+
+    def test_task_ignores_runner_only_keys(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        path.write_text(
+            "[general]\nenabled = true\ntimeout = \"1m\"\n"
+            "[properties]\n[log]\nsoft_wrap = false\n"
+            "auto_scroll = false\noffset = 0\n"
+            "[session]\nsession_id = \"none\"\nstate = \"stopped\"\n"
+            "last_run_status = \"success\"\n"
+            "last_run_init_duration = 7\n"
+        )
+        loaded = _load_task_settings_fresh(path.parent)
+        assert loaded.session.last_run_status == "success"
+        assert not hasattr(loaded.session, "last_run_init_duration")
+
+    def test_runner_ignores_task_only_keys(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        path.write_text(
+            "[general]\nenabled = true\ntimeout = \"1m\"\n"
+            "[properties]\n[log]\nsoft_wrap = false\n"
+            "auto_scroll = false\noffset = 0\n"
+            "[session]\nsession_id = \"none\"\nstate = \"off\"\n"
+            "last_run_status = \"success\"\n"
+            "last_run_init_duration = 7\n"
+        )
+        loaded = _load_runner_settings_fresh(path.parent)
+        assert loaded.session.last_run_init_duration == 7
+        assert not hasattr(loaded.session, "last_run_status")
+
+
+@pytest.mark.asyncio
+class TestTaskLastRunDurations:
+    async def _run_until_task_durations(
+        self, proc: RunnerProcess, task_path: Path
+    ) -> TaskSettings:
+        proc.shutting_down = False
+        loop_task = asyncio.create_task(proc._run_loop())
+        deadline = asyncio.get_event_loop().time() + 5.0
+        last_settings = _load_task_settings_fresh(task_path)
+        while last_settings.session.last_run_exec_duration is None:
+            if asyncio.get_event_loop().time() > deadline:
+                proc.shutting_down = True
+                await loop_task
+                raise AssertionError("task durations were never written")
+            await asyncio.sleep(0.05)
+            last_settings = _load_task_settings_fresh(task_path)
+        proc.shutting_down = True
+        await loop_task
+        return _load_task_settings_fresh(task_path)
+
+    async def test_durations_written_after_task_cycle(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_task_durations(proc, task_path)
+            assert isinstance(settings.session.last_run_before_duration, int)
+            assert isinstance(settings.session.last_run_exec_duration, int)
+            assert isinstance(settings.session.last_run_after_duration, int)
+            assert settings.session.last_run_before_duration >= 0
+            assert settings.session.last_run_exec_duration >= 0
+            assert settings.session.last_run_after_duration >= 0
+            assert settings.session.last_run != "none"
+
+    async def test_skipped_phases_record_zero(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_task_durations(proc, task_path)
+            assert settings.session.last_run_before_duration == 0
+            assert settings.session.last_run_after_duration == 0
+            assert isinstance(settings.session.last_run_exec_duration, int)
+
+    async def test_durations_written_on_task_failure(self, tmp_dir: Path) -> None:
+        calls = {"count": 0}
+
+        async def _fail_task_exec(*args: object, **kwargs: object) -> AsyncMock:
+            calls["count"] += 1
+            # Call order with full phases: init, before-exec, before-task,
+            # task-exec, after-task, after-exec, termination, ...
+            # Fail only the first task-exec attempt.
+            if calls["count"] == 4:
+                return _mock_proc(return_code=1)
+            return _mock_proc()
+
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            side_effect=_fail_task_exec,
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_task_durations(proc, task_path)
+            assert settings.session.last_run_status == "fail"
+            assert isinstance(settings.session.last_run_exec_duration, int)
+            assert settings.session.last_run_exec_duration >= 0
+            assert isinstance(settings.session.last_run_before_duration, int)
+            assert isinstance(settings.session.last_run_after_duration, int)
+
+    async def test_no_durations_when_task_never_runs(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        settings = _load_task_settings_fresh(task_path)
+        assert settings.session.last_run_before_duration is None
+        assert settings.session.last_run_exec_duration is None
+        assert settings.session.last_run_after_duration is None
+        content = (task_path / "settings.toml").read_text()
+        assert "last_run_before_duration" not in content
+        assert "last_run_exec_duration" not in content
+        assert "last_run_after_duration" not in content
+
+
+@pytest.mark.asyncio
+class TestRunnerLastRunDurations:
+    async def _run_until_runner_durations(
+        self, proc: RunnerProcess, runner_path: Path
+    ) -> RunnerSettings:
+        proc.shutting_down = False
+        loop_task = asyncio.create_task(proc._run_loop())
+        deadline = asyncio.get_event_loop().time() + 5.0
+        last_settings = _load_runner_settings_fresh(runner_path)
+        while last_settings.session.last_run_before_duration is None:
+            if asyncio.get_event_loop().time() > deadline:
+                proc.shutting_down = True
+                await loop_task
+                raise AssertionError("runner durations were never written")
+            await asyncio.sleep(0.05)
+            last_settings = _load_runner_settings_fresh(runner_path)
+        proc.shutting_down = True
+        await loop_task
+        return _load_runner_settings_fresh(runner_path)
+
+    async def test_durations_written_after_cycle(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            _write_task(runner_path)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_runner_durations(proc, runner_path)
+            assert settings.session.last_run != "none"
+            for duration in (
+                settings.session.last_run_init_duration,
+                settings.session.last_run_before_duration,
+                settings.session.last_run_exec_duration,
+                settings.session.last_run_after_duration,
+            ):
+                assert isinstance(duration, int)
+                assert duration >= 0
+
+    async def test_skipped_phases_record_zero(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_runner_durations(proc, runner_path)
+            assert isinstance(settings.session.last_run_init_duration, int)
+            assert isinstance(settings.session.last_run_exec_duration, int)
+            assert settings.session.last_run_before_duration == 0
+            assert settings.session.last_run_after_duration == 0
+
+    async def test_init_duration_persists_after_shutdown(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            settings = await self._run_until_runner_durations(proc, runner_path)
+            assert settings.session.state == "off"
+            assert isinstance(settings.session.last_run_init_duration, int)
+
+    async def test_before_exec_failure_persists_durations(
+        self, tmp_dir: Path
+    ) -> None:
+        calls = {"count": 0}
+
+        async def _fail_before_exec(*args: object, **kwargs: object) -> AsyncMock:
+            calls["count"] += 1
+            # Call order: init, before-exec, ... — fail before-exec only.
+            if calls["count"] == 2:
+                return _mock_proc(return_code=1)
+            return _mock_proc()
+
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            side_effect=_fail_before_exec,
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            proc.shutting_down = False
+            await asyncio.wait_for(proc._run_loop(), timeout=10)
+
+            settings = _load_runner_settings_fresh(runner_path)
+            assert settings.session.last_run == "none"
+            assert isinstance(settings.session.last_run_init_duration, int)
+            assert settings.session.last_run_init_duration >= 0
+            assert isinstance(settings.session.last_run_before_duration, int)
+            assert settings.session.last_run_before_duration >= 0
+
+    async def test_no_durations_when_never_run(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        settings = _load_runner_settings_fresh(runner_path)
+        assert settings.session.last_run_init_duration is None
+        assert settings.session.last_run_before_duration is None
+        assert settings.session.last_run_exec_duration is None
+        assert settings.session.last_run_after_duration is None
+        content = (runner_path / "settings.toml").read_text()
+        assert "last_run_init_duration" not in content
+        assert "last_run_before_duration" not in content
+        assert "last_run_exec_duration" not in content
+        assert "last_run_after_duration" not in content

@@ -191,6 +191,16 @@ def given_runner_enabled_for_lifecycle(pilot) -> None:
     ui(pilot).pause()
 
 
+@given("an installed task is enabled")
+def given_task_enabled_for_lifecycle(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    assert task_path.exists()
+    settings().enable_task(task_path)
+
+
 @given("a runner was disabled before the app exited")
 def given_runner_was_disabled(pilot) -> None:
     runner_path = ui(pilot).app.state.runners_path / "sh_runner"

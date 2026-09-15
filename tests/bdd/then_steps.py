@@ -9,7 +9,7 @@ from textual.css.query import NoMatches
 from textual.widgets import Button
 
 from tests.bdd.steps_common import *  # noqa
-from termux_tasker.config import RunnerMetadata, RunnerSettings, TaskMetadata  # noqa
+from termux_tasker.config import RunnerMetadata, RunnerSettings, TaskMetadata, TaskSettings  # noqa
 from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
 
 
@@ -1167,7 +1167,41 @@ def then_runner_last_run_format(pilot) -> None:
     assert s.session.last_run != "none"
     assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", s.session.last_run)
     datetime.strptime(s.session.last_run, "%Y-%m-%d %H:%M:%S")
-    assert s.session.last_run_status == "none"
+    assert not hasattr(s.session, "last_run_status")
+
+
+@then("the runner's settings.toml contains last run step durations as numbers of seconds")
+def then_runner_last_run_durations(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    RunnerSettings.clear_cache(runner_path / "settings.toml")
+    s = settings().load_runner_settings(runner_path)
+    assert s.session.last_run != "none"
+    for duration in (
+        s.session.last_run_init_duration,
+        s.session.last_run_before_duration,
+        s.session.last_run_exec_duration,
+        s.session.last_run_after_duration,
+    ):
+        assert isinstance(duration, int)
+        assert duration >= 0
+
+
+@then("the task's settings.toml contains last run durations as numbers of seconds")
+def then_task_last_run_durations(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    TaskSettings.clear_cache(task_path / "settings.toml")
+    s = settings().load_task_settings(task_path)
+    assert s.session.last_run != "none"
+    for duration in (
+        s.session.last_run_before_duration,
+        s.session.last_run_exec_duration,
+        s.session.last_run_after_duration,
+    ):
+        assert isinstance(duration, int)
+        assert duration >= 0
 
 
 @then("the method returns only after the runner has fully stopped")

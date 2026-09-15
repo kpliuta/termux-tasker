@@ -5,7 +5,7 @@ import time
 
 import termux_tasker.ui.screens.install_runner_version as _irv_mod  # noqa
 
-from termux_tasker.config import RunnerSettings
+from termux_tasker.config import RunnerSettings, TaskSettings
 
 from tests.bdd.steps_common import *  # noqa
 
@@ -474,6 +474,22 @@ def when_runner_completes_cycle(pilot) -> None:
             return
         ui(pilot).pause(0.1)
     raise AssertionError("runner last_run was never written after a full cycle")
+
+
+@when("the task completes an execution")
+def when_task_completes_execution(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        TaskSettings.clear_cache(task_path / "settings.toml")
+        s = settings().load_task_settings(task_path)
+        if s.session.last_run_exec_duration is not None:
+            return
+        ui(pilot).pause(0.1)
+    raise AssertionError("task durations were never written after an execution")
 
 
 @when("the runner is shut down")

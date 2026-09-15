@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Runner `settings.toml [session]` now records `last_run` (`"YYYY-MM-DD HH:MM:SS"`, UTC) after each completed execution cycle.
+- Task `settings.toml [session]` now records `last_run_before_duration`, `last_run_exec_duration`, `last_run_after_duration` (int seconds, per-phase wall time, omitted until the first run, written on both success and failure).
+- Runner `settings.toml [session]` now records `last_run_init_duration`, `last_run_before_duration`, `last_run_exec_duration` (whole task-loop wall time), `last_run_after_duration` (int seconds, omitted until run, written even when a step fails).
 
 ### Changed
 
 - Disabled tasks on dashboard are now grayed out using `$foreground-disabled`.
+- Split the shared `RunnerSettings`/`TaskSettings` alias into independent `RunnerSettings`/`TaskSettings` classes.
 
 ## [0.3.0] - 2026-08-28
 
