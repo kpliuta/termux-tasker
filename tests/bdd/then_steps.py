@@ -1696,16 +1696,37 @@ def then_settings_has_update_app_button(pilot) -> None:
     ui(pilot).assert_has_button("Update App")
 
 
-def _assert_dashboard_description_contains(pilot, text: str) -> None:
+def _dashboard_description_text(pilot) -> str:
     screen = ui(pilot).app.screen
     assert isinstance(screen, DashboardScreen)
-    desc = screen.description or ""
-    assert text in desc, f"Dashboard description missing {text!r}: {desc!r}"
+    if screen.query("#description-widget"):
+        return _description_content(screen)
+    return screen.description or ""
 
 
-@then('the dashboard description contains "Overview"')
-def then_dashboard_desc_overview(pilot) -> None:
-    _assert_dashboard_description_contains(pilot, "Overview")
+def _assert_dashboard_description_contains(pilot, text: str) -> None:
+    content = _dashboard_description_text(pilot)
+    assert text in content, f"Dashboard description missing {text!r}: {content!r}"
+
+
+def _assert_dashboard_description_absent(pilot, text: str) -> None:
+    content = _dashboard_description_text(pilot)
+    assert text not in content, f"Dashboard description should not contain {text!r}: {content!r}"
+
+
+@then('the dashboard description contains "CPU"')
+def then_dashboard_desc_cpu(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "CPU")
+
+
+@then('the dashboard description contains "MEM"')
+def then_dashboard_desc_mem(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "MEM")
+
+
+@then('the dashboard description does not contain "PID"')
+def then_dashboard_desc_no_pid(pilot) -> None:
+    _assert_dashboard_description_absent(pilot, "PID")
 
 
 @then('the dashboard description contains "No runners installed"')

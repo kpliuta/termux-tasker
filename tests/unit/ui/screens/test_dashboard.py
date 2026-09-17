@@ -5,11 +5,20 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from rich.text import Text
 from textual.app import App
-from textual.widgets import Static
+from textual.widgets import Rule, Static
 
 from termux_tasker.config import RunnerSettings, TaskSettings
-from termux_tasker.ui.screens.dashboard import DashboardScreen
+from termux_tasker.proc_stats import TreeStats
+from termux_tasker.ui.screens.dashboard import (
+    _DashboardDescription,  # noqa
+    _make_bar,              # noqa
+    _make_bars,             # noqa
+    _make_pid_line,         # noqa
+    _opaque_hex,            # noqa
+    DashboardScreen,
+)
 
 
 SH_RUNNER_METADATA = """\
@@ -32,6 +41,8 @@ version = "1.0.0"
 runner_id = "sh_runner"
 runner_min_version = ">=1.0.0"
 """
+
+EMPTY_HEX = "#555555"
 
 
 def _write_runner(path: Path, metadata: str, enabled: bool = False, state: str = "off") -> None:
@@ -57,7 +68,20 @@ def _write_task(path: Path, metadata: str, enabled: bool = False, state: str = "
 def _make_mock_app(runners_path: Path) -> Any:
     app = MagicMock()
     app.state.runners_path = runners_path
+    app.state.runners = {}
     return app
+
+
+def _bar_cells(text: Text) -> list[tuple[str, str | None]]:
+    """Map every ■ char in a bar Text to its style."""
+    cells: list[tuple[str, str | None]] = []
+    for span in text.spans:
+        for offset in range(span.start, span.end):
+            char = text.plain[offset]
+            if char == "■":
+                style = span.style if isinstance(span.style, str) else str(span.style)
+                cells.append((char, style))
+    return cells
 
 
 class TestDashboardInit:
@@ -65,9 +89,10 @@ class TestDashboardInit:
         screen = DashboardScreen()
         assert screen._column_count == 2
 
-    def test_description(self) -> None:
+    def test_description_widget(self) -> None:
         screen = DashboardScreen()
-        assert screen.description == "[b]Overview[/b]"
+        assert screen.description is None
+        assert isinstance(screen._description_widget, _DashboardDescription)
 
     def test_description_max_height(self) -> None:
         screen = DashboardScreen()
@@ -78,29 +103,140 @@ class TestDashboardInit:
         assert screen.title == "Dashboard"
 
 
-class TestDashboardOverview:
+class TestOpaqueHex:
+    def test_opaque_passthrough(self) -> None:
+        assert _opaque_hex("#8AD4A1", (0, 0, 0), "#000000") == "#8ad4a1"
+
+    def test_translucent_blends_over_background(self) -> None:
+        assert _opaque_hex("#E0E0E060", (0x1E, 0x1E, 0x1E), "#000000") == "#676767"
+
+    def test_translucent_stays_dimmer_than_default_text(self) -> None:
+        blended = _opaque_hex("#E0E0E060", (0x1E, 0x1E, 0x1E), "#000000")
+        assert blended != "#e0e0e0"
+
+    def test_garbage_falls_back(self) -> None:
+        assert _opaque_hex("not-a-color", (0, 0, 0), "#6b7280") == "#6b7280"
+        assert _opaque_hex("#12345", (0, 0, 0), "#6b7280") == "#6b7280"
+
+
+class TestMakeBars:
+    def test_cpu_and_mem_labels(self) -> None:
+        bars = _make_bars(11.0, 1024, 2048, 40, EMPTY_HEX)
+        assert "CPU" in bars.plain
+        assert "MEM" in bars.plain
+        assert "11%" in bars.plain
+
+    def test_bar_width_adapts_to_screen(self) -> None:
+        narrow = _make_bars(50.0, 1024, 2048, 40, EMPTY_HEX)
+        wide = _make_bars(50.0, 1024, 2048, 80, EMPTY_HEX)
+        assert wide.plain.count("■") > narrow.plain.count("■")
+
+    def test_cpu_unknown_renders_empty_bar(self) -> None:
+        bars = _make_bars(None, 1024, 2048, 40, EMPTY_HEX)
+        assert "n/a" in bars.plain
+        cpu_line = bars.plain.split("\n")[0]
+        assert "■" in cpu_line
+
+    def test_mem_unknown_renders_na(self) -> None:
+        bars = _make_bars(11.0, None, None, 40, EMPTY_HEX)
+        assert "n/a" in bars.plain.split("\n")[1]
+
+    def test_mem_units_adapt(self) -> None:
+        used = int(13.2 * 1024**2)
+        total = int(31.3 * 1024**3)
+        bars = _make_bars(11.0, used, total, 60, EMPTY_HEX)
+        assert "13.2 MiB/31.3 GiB" in bars.plain
+
+    def test_mem_shared_unit_collapses(self) -> None:
+        used = int(18.6 * 1024**3)
+        total = int(31.3 * 1024**3)
+        bars = _make_bars(11.0, used, total, 60, EMPTY_HEX)
+        assert "18.6/31.3 GiB" in bars.plain
+
+    def test_bar_lines_never_exceed_width(self) -> None:
+        for width in (20, 40, 80):
+            bars = _make_bars(11.0, int(18.6 * 1024**3), int(31.3 * 1024**3), width, EMPTY_HEX)
+            for line in bars.plain.split("\n"):
+                assert len(line) <= width
+                assert line.startswith(" ")
+
+    def test_filled_cells_carry_gradient_not_gray(self) -> None:
+        bar = _make_bar("CPU", 0.5, 40, "#7f1d1d", "#ff4545", "50%", EMPTY_HEX)
+        cells = _bar_cells(bar)
+        filled_styles = {style for _, style in cells if style != EMPTY_HEX}
+        assert len(cells) > 0
+        assert len(filled_styles) > 1
+
+    def test_empty_fraction_has_no_gradient(self) -> None:
+        bar = _make_bar("CPU", None, 40, "#7f1d1d", "#ff4545", "n/a", EMPTY_HEX)
+        cells = _bar_cells(bar)
+        assert len(cells) > 0
+        assert {style for _, style in cells} == {EMPTY_HEX}
+
+
+class TestMakePidLine:
+    def test_hidden_when_no_roots(self) -> None:
+        tree = TreeStats(pids=(), num_procs=0, rss_total=0)
+        assert _make_pid_line([], tree, "#eab308") is None
+
+    def test_hidden_when_tree_empty(self) -> None:
+        tree = TreeStats(pids=(), num_procs=0, rss_total=0)
+        assert _make_pid_line([4242], tree, "#eab308") is None
+
+    def test_shows_pid_plus_children_and_rss(self) -> None:
+        tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024)
+        line = _make_pid_line([4242], tree, "#eab308")
+        assert line is not None
+        assert line.plain == "   │  PID 4242+1 RSS 30.0 MiB"
+
+    def test_single_proc_omits_plus(self) -> None:
+        tree = TreeStats(pids=(4242,), num_procs=1, rss_total=10 * 1024 * 1024)
+        line = _make_pid_line([4242], tree, "#eab308")
+        assert line is not None
+        assert "PID 4242 RSS 10.0 MiB" in line.plain
+        assert "+" not in line.plain
+
+    def test_pipe_uses_default_color(self) -> None:
+        tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024)
+        line = _make_pid_line([4242], tree, "#eab308")
+        assert line is not None
+        pipe_offset = line.plain.index("│")
+        assert not any(span.start <= pipe_offset < span.end for span in line.spans)
+        pid_offset = line.plain.index("PID")
+        assert any(
+            span.start <= pid_offset < span.end and span.style == "#eab308"
+            for span in line.spans
+        )
+
+    def test_recycled_root_falls_back_to_tree_pid(self) -> None:
+        tree = TreeStats(pids=(9999,), num_procs=1, rss_total=1024)
+        line = _make_pid_line([4242], tree, "#eab308")
+        assert line is not None
+        assert "PID 9999" in line.plain
+
+
+class TestDashboardRunnerLines:
     def test_no_runners(self, tmp_path: Path) -> None:
         screen = DashboardScreen()
         runners_path = tmp_path / "runners"
         runners_path.mkdir()
-        result = screen._build_overview(runners_path)
-        assert "Overview" in result
-        assert "No runners installed" in result
+        result = screen._build_runner_lines(runners_path)
+        assert "No runners installed" in result.plain
 
     def test_runners_path_not_exists(self, tmp_path: Path) -> None:
         screen = DashboardScreen()
         runners_path = tmp_path / "nonexistent"
-        result = screen._build_overview(runners_path)
-        assert "No runners installed" in result
+        result = screen._build_runner_lines(runners_path)
+        assert "No runners installed" in result.plain
 
     def test_one_runner_no_tasks(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
         _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=False, state="off")
 
         screen = DashboardScreen()
-        result = screen._build_overview(runners_path)
-        assert "Simple sh runner" in result
-        assert "[off]" in result
+        result = screen._build_runner_lines(runners_path)
+        assert "Simple sh runner" in result.plain
+        assert "[off]" in result.plain
 
     def test_runner_with_tasks(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
@@ -109,11 +245,11 @@ class TestDashboardOverview:
         _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=True, state="running")
 
         screen = DashboardScreen()
-        result = screen._build_overview(runners_path)
-        assert "Simple sh runner" in result
-        assert "[idle]" in result
-        assert "Simple task" in result
-        assert "[running]" in result
+        result = screen._build_runner_lines(runners_path)
+        assert "Simple sh runner" in result.plain
+        assert "[idle]" in result.plain
+        assert "Simple task" in result.plain
+        assert "[running]" in result.plain
 
     def test_tree_prefix_last_task(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
@@ -126,36 +262,36 @@ class TestDashboardOverview:
         _write_task(runner_dir / "tasks" / "task_b", task2_meta, enabled=False, state="stopped")
 
         screen = DashboardScreen()
-        result = screen._build_overview(runners_path)
-        lines = result.split("\n")
-        task_lines = [l for l in lines if "Task" in l and ("running" in l or "stopped" in l or "disabled" in l)]
+        result = screen._build_runner_lines(runners_path)
+        lines = result.plain.split("\n")
+        task_lines = [line for line in lines if "Task" in line and ("running" in line or "stopped" in line or "disabled" in line)]
         assert len(task_lines) == 2
-        assert "\u251c\u2500" in task_lines[0]
-        assert "\u2514\u2500" in task_lines[1]
+        assert "├─" in task_lines[0]
+        assert "└─" in task_lines[1]
 
     def test_disabled_runner_shows_red_emoji(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
         _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=False, state="off")
 
         screen = DashboardScreen()
-        result = screen._build_overview(runners_path)
-        assert "\U0001f534" in result
+        result = screen._build_runner_lines(runners_path)
+        assert "\U0001f534" in result.plain
 
     def test_idle_runner_shows_yellow_emoji(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
         _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
 
         screen = DashboardScreen()
-        result = screen._build_overview(runners_path)
-        assert "\U0001f7e1" in result
+        result = screen._build_runner_lines(runners_path)
+        assert "\U0001f7e1" in result.plain
 
     def test_working_runner_shows_green_emoji(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
         _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="task-exec")
 
         screen = DashboardScreen()
-        result = screen._build_overview(runners_path)
-        assert "\U0001f7e2" in result
+        result = screen._build_runner_lines(runners_path)
+        assert "\U0001f7e2" in result.plain
 
     def test_multiple_runners_sorted(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
@@ -165,17 +301,81 @@ class TestDashboardOverview:
         _write_runner(runners_path / "a_runner", meta_a, enabled=True, state="idle")
 
         screen = DashboardScreen()
-        result = screen._build_overview(runners_path)
-        lines = result.split("\n")
-        runner_lines = [l for l in lines if "Runner" in l and "[idle]" in l]
+        result = screen._build_runner_lines(runners_path)
+        lines = result.plain.split("\n")
+        runner_lines = [line for line in lines if "Runner" in line and "[idle]" in line]
         assert len(runner_lines) == 2
         assert "A Runner" in runner_lines[0]
         assert "B Runner" in runner_lines[1]
 
+    def test_stopped_runner_hides_pid_line(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=False, state="off")
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, {}, {})
+        assert "PID" not in result.plain
+
+    def test_list_lines_have_left_pad(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="task-exec")
+        _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=True, state="running")
+        tree = TreeStats(pids=(4242,), num_procs=1, rss_total=10 * 1024 * 1024)
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, {"sh_runner": [4242]}, {"sh_runner": tree})
+        lines = result.plain.split("\n")
+        assert len(lines) == 3
+        for line in lines:
+            assert line.startswith(" ")
+
+    def test_live_runner_shows_pid_line(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="task-exec")
+        tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024)
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, {"sh_runner": [4242]}, {"sh_runner": tree})
+        assert "PID 4242+1 RSS 30.0 MiB" in result.plain
+
+    def test_pid_line_aligns_with_task_tree(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="task-exec")
+        _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=True, state="running")
+        tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024)
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, {"sh_runner": [4242]}, {"sh_runner": tree})
+        lines = result.plain.split("\n")
+        pid_line = next(line for line in lines if "PID" in line)
+        task_line = next(line for line in lines if "├─" in line or "└─" in line)
+        pid_col = pid_line.index("│")
+        tree_col = task_line.index("├") if "├" in task_line else task_line.index("└")
+        assert pid_col == tree_col
+
+    def test_live_pids_without_visible_tree_hide_pid_line(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="task-exec")
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, {"sh_runner": [4242]}, {})
+        assert "PID" not in result.plain
+
+
+class TestDashboardDescriptionWidget:
+    def test_pending_updates_apply_on_mount(self) -> None:
+        widget = _DashboardDescription()
+        widget.update_bars(Text("CPU bars"))
+        widget.update_runners(Text("runner list"))
+        assert widget._pending_bars is not None
+        assert widget._pending_runners is not None
+
 
 class TestDashboardCompose:
     @pytest.mark.asyncio
-    async def test_renders_overview(self, tmp_path: Path) -> None:
+    async def test_renders_description_widget(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
         runners_path.mkdir()
         mock_app = _make_mock_app(runners_path)
@@ -188,8 +388,73 @@ class TestDashboardCompose:
             async with TestApp().run_test() as pilot:
                 screen = pilot.app.screen
                 assert isinstance(screen, DashboardScreen)
-                desc = screen.query_one("#description", Static)
-                assert "Overview" in str(desc.render())     # noqa
+                widget = screen.query_one("#description-widget")
+                assert isinstance(widget, _DashboardDescription)
+                assert widget.query_one("#dash-bars", Static) is not None
+                assert widget.query_one("#dash-list", Static) is not None
+
+    @pytest.mark.asyncio
+    async def test_rule_separates_bars_and_runners(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+        mock_app = _make_mock_app(runners_path)
+
+        with patch("termux_tasker.ui.screens.dashboard.termux_app", return_value=mock_app):
+            class TestApp(App):
+                def on_mount(self) -> None:
+                    self.push_screen(DashboardScreen())
+
+            async with TestApp().run_test() as pilot:
+                screen = pilot.app.screen
+                assert isinstance(screen, DashboardScreen)
+                widget = screen.query_one("#description-widget")
+                rules = widget.query(Rule)
+                assert len(rules) == 1
+                assert "hr" in rules[0].classes
+
+    @pytest.mark.asyncio
+    async def test_bars_show_live_resources(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+        mock_app = _make_mock_app(runners_path)
+
+        with patch("termux_tasker.ui.screens.dashboard.termux_app", return_value=mock_app):
+            class TestApp(App):
+                def on_mount(self) -> None:
+                    self.push_screen(DashboardScreen())
+
+            async with TestApp().run_test() as pilot:
+                screen = pilot.app.screen
+                assert isinstance(screen, DashboardScreen)
+                bars = screen.query_one("#dash-bars", Static)
+                rendered = bars.render()
+                plain = rendered.plain if hasattr(rendered, "plain") else str(rendered)
+                assert "CPU" in plain
+                assert "MEM" in plain
+
+    @pytest.mark.asyncio
+    async def test_first_paint_bars_fit_layout(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+        mock_app = _make_mock_app(runners_path)
+
+        with patch("termux_tasker.ui.screens.dashboard.termux_app", return_value=mock_app):
+            class TestApp(App):
+                def on_mount(self) -> None:
+                    self.push_screen(DashboardScreen())
+
+            async with TestApp().run_test(size=(100, 40)) as pilot:
+                screen = pilot.app.screen
+                assert isinstance(screen, DashboardScreen)
+                await pilot.pause(0.3)
+                bars = screen.query_one("#dash-bars", Static)
+                available = bars.content_size.width or bars.size.width
+                assert available > 0
+                rendered = bars.render()
+                plain = rendered.plain if hasattr(rendered, "plain") else str(rendered)
+                assert len(plain.split("\n")) == 2
+                for line in plain.split("\n"):
+                    assert len(line) <= available
 
     @pytest.mark.asyncio
     async def test_two_column_layout(self, tmp_path: Path) -> None:

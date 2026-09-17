@@ -54,9 +54,15 @@ Feature: Dashboard Navigation
     When I press Ctrl+Q
     Then the same exit flow is triggered as pressing "Exit" on the dashboard
 
-  Scenario: Dashboard shows overview heading
+  Scenario: Dashboard shows resource bars
     Given the dashboard screen is shown
-    Then the dashboard description contains "Overview"
+    Then the dashboard description contains "CPU"
+    And the dashboard description contains "MEM"
+
+  Scenario: Dashboard hides PID line for stopped runner
+    Given the dashboard screen is shown
+    And a runner "sh_runner" is installed with state "off"
+    Then the dashboard description does not contain "PID"
 
   Scenario: Dashboard shows no runners message when empty
     Given all runners are removed
