@@ -83,10 +83,29 @@ Feature: Dashboard Navigation
     And the dashboard description contains "Simple sh runner task"
     And the dashboard description contains "[running]"
 
-  Scenario: Dashboard buttons are in 2 columns
+  Scenario: Dashboard buttons are in 3 columns
     Given the dashboard screen is shown
-    Then the dashboard has buttons arranged in 2 columns
+    Then the dashboard has buttons arranged in 3 columns
 
   Scenario: Dashboard exit button is in bottom bar
     Given the dashboard screen is shown
     Then the "Exit" button is in the bottom bar
+
+  Scenario: Dashboard action buttons are in bottom bar
+    Given the dashboard screen is shown
+    Then the dashboard action buttons are in the bottom bar
+
+  Scenario: Dashboard shows Help and Settings buttons
+    Given the dashboard screen is shown
+    Then the dashboard shows "Help" button
+    And the dashboard shows "Settings" button
+
+  Scenario: Dashboard buttons order is Help, Settings, Runners
+    Given the dashboard screen is shown
+    Then the dashboard buttons are ordered "help", "settings", "runners"
+
+  Scenario: Dashboard styles do not leak to Settings
+    Given the dashboard screen is shown
+    When I press "Settings" button
+    Then the Settings screen is shown
+    And the settings description keeps compact height

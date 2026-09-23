@@ -1754,17 +1754,18 @@ def then_dashboard_desc_running(pilot) -> None:
     _assert_dashboard_description_contains(pilot, "[running]")
 
 
-@then("the dashboard has buttons arranged in 2 columns")
-def then_dashboard_two_columns(pilot) -> None:
+@then("the dashboard has buttons arranged in 3 columns")
+def then_dashboard_three_columns(pilot) -> None:
     from textual.containers import Horizontal
     screen = ui(pilot).app.screen
     assert isinstance(screen, DashboardScreen)
-    rows = screen.query(".button-row")
-    assert len(rows) >= 1, "Expected at least one button row for 2-column layout"
+    bottom = screen.query_one("#bottom-container")
+    rows = bottom.query(".button-row")
+    assert len(rows) >= 1, "Expected at least one button row for 3-column layout"
     first_row = rows[0]
     assert isinstance(first_row, Horizontal)
     buttons_in_row = first_row.query("Button")
-    assert len(buttons_in_row) == 2, f"Expected 2 buttons in row, got {len(buttons_in_row)}"
+    assert len(buttons_in_row) == 3, f"Expected 3 buttons in row, got {len(buttons_in_row)}"
 
 
 @then('the "Exit" button is in the bottom bar')
@@ -1777,3 +1778,44 @@ def then_exit_in_bottom_bar(pilot) -> None:
             found = True
             break
     assert found, "Button 'Exit' not found in bottom bar"
+
+
+@then("the dashboard action buttons are in the bottom bar")
+def then_dashboard_actions_in_bottom_bar(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    bottom = screen.query_one("#bottom-container")
+    for button_id in ("#help", "#settings", "#runners"):
+        bottom.query_one(button_id)
+
+
+@then('the dashboard shows "Help" button')
+def then_dashboard_shows_help(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    ui(pilot).assert_has_button("Help")
+
+
+@then('the dashboard shows "Settings" button')
+def then_dashboard_shows_settings(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    ui(pilot).assert_has_button("Settings")
+
+
+@then('the dashboard buttons are ordered "help", "settings", "runners"')
+def then_dashboard_buttons_order(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    bottom = screen.query_one("#bottom-container")
+    rows = bottom.query(".button-row")
+    assert len(rows) >= 1, "Expected at least one button row"
+    buttons_in_row = rows[0].query("Button")
+    assert [btn.id for btn in buttons_in_row] == ["help", "settings", "runners"]
+
+
+@then("the settings description keeps compact height")
+def then_settings_description_compact(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, SettingsScreen)
+    assert f"{screen.query_one('#description-scroll').styles.height}" == "auto"

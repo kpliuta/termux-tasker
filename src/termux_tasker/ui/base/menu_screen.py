@@ -91,6 +91,7 @@ class MenuScreen(Screen[None]):
             menu_items: list[ButtonConfig] | Sequence[ButtonConfig],
             description: str | None = None,
             description_widget: Widget | None = None,
+            description_min_height: str | None = None,
             description_max_height: str | None = None,
             column_count: int = 1,
             show_back_button: bool = False,
@@ -104,6 +105,7 @@ class MenuScreen(Screen[None]):
         self.menu_items = list(menu_items)
         self.description = description
         self._description_widget = description_widget
+        self._description_min_height = description_min_height
         self._description_max_height = description_max_height
         self._column_count = column_count
         self.show_back_button = show_back_button
@@ -126,6 +128,8 @@ class MenuScreen(Screen[None]):
     def _compose_description(self) -> ComposeResult:
         if self._description_widget is not None or self.description:
             with VerticalScroll(id="description-scroll") as ds:
+                if self._description_min_height is not None:
+                    ds.styles.min_height = self._description_min_height
                 if self._description_max_height is not None:
                     ds.styles.max_height = self._description_max_height
                 if self._description_widget is not None:
@@ -256,6 +260,8 @@ class MenuScreen(Screen[None]):
         await scroll.remove_children()
 
         desc_scroll = VerticalScroll(id="description-scroll")
+        if self._description_min_height is not None:
+            desc_scroll.styles.min_height = self._description_min_height
         if self._description_max_height is not None:
             desc_scroll.styles.max_height = self._description_max_height
         if self._description_widget is not None:

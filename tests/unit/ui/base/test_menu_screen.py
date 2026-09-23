@@ -4,6 +4,7 @@ import pytest
 from textual.app import App
 from textual.containers import VerticalScroll
 from textual.css.query import NoMatches
+from textual.css.scalar import Unit
 from textual.dom import BadIdentifier
 from textual.widgets import Button, Static
 
@@ -86,6 +87,14 @@ class TestMenuScreenInit:
         screen = MenuScreen(menu_items=[], description_max_height="50%")
         assert screen._description_max_height == "50%"
 
+    def test_description_min_height_default(self) -> None:
+        screen = MenuScreen(menu_items=[])
+        assert screen._description_min_height is None
+
+    def test_description_min_height_custom(self) -> None:
+        screen = MenuScreen(menu_items=[], description_min_height="100%")
+        assert screen._description_min_height == "100%"
+
     def test_column_count_default(self) -> None:
         screen = MenuScreen(menu_items=[])
         assert screen._column_count == 1
@@ -158,6 +167,44 @@ class TestMenuScreenCompose:
                     found = True
                     break
             assert found
+
+    @pytest.mark.asyncio
+    async def test_description_min_max_height_applied(self) -> None:
+        screen = MenuScreen(
+            menu_items=[],
+            description="Test desc",
+            description_max_height="50%",
+            description_min_height="100%",
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            scroll = pilot.app.screen.query_one("#description-scroll", VerticalScroll)
+            assert scroll.styles.max_height.value == 50
+            assert scroll.styles.max_height.unit == Unit.HEIGHT
+            assert scroll.styles.min_height.value == 100
+            assert scroll.styles.min_height.unit == Unit.HEIGHT
+
+    @pytest.mark.asyncio
+    async def test_row_buttons_shrink_on_narrow_screen(self) -> None:
+        items = [
+            ButtonConfig(label="A", id="a"),
+            ButtonConfig(label="B", id="b"),
+            ButtonConfig(label="C", id="c"),
+        ]
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(MenuScreen(menu_items=items, column_count=3))
+
+        async with TestApp().run_test(size=(50, 14)) as pilot:
+            await pilot.pause(0.3)
+            screen = pilot.app.screen
+            for button in screen.query(Button):
+                assert button.region.right <= screen.size.width
 
     @pytest.mark.asyncio
     async def test_back_button_shown_when_enabled(self) -> None:

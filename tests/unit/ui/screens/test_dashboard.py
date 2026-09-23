@@ -6,11 +6,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from rich.text import Text
-from textual.app import App
+from textual.app import App, ComposeResult
+from textual.css.scalar import Unit
 from textual.widgets import Rule, Static
 
 from termux_tasker.config import RunnerSettings, TaskSettings
 from termux_tasker.proc_stats import TreeStats
+from termux_tasker.ui.base import ButtonLayout
 from termux_tasker.ui.screens.dashboard import (
     _DashboardDescription,  # noqa
     _make_bar,              # noqa
@@ -87,7 +89,7 @@ def _bar_cells(text: Text) -> list[tuple[str, str | None]]:
 class TestDashboardInit:
     def test_column_count(self) -> None:
         screen = DashboardScreen()
-        assert screen._column_count == 2
+        assert screen._column_count == 3
 
     def test_description_widget(self) -> None:
         screen = DashboardScreen()
@@ -96,11 +98,32 @@ class TestDashboardInit:
 
     def test_description_max_height(self) -> None:
         screen = DashboardScreen()
-        assert screen._description_max_height == "50%"
+        assert screen._description_max_height == "100%"
 
     def test_title(self) -> None:
         screen = DashboardScreen()
         assert screen.title == "Dashboard"
+
+    def test_description_min_height(self) -> None:
+        screen = DashboardScreen()
+        assert screen._description_min_height == "100%"
+
+    def test_menu_items_bottom_layout(self) -> None:
+        screen = DashboardScreen()
+        assert [item.id for item in screen.menu_items] == ["help", "settings", "runners"]
+        for item in screen.menu_items:
+            assert item.layout == ButtonLayout.BOTTOM
+
+    def test_help_button_label(self) -> None:
+        screen = DashboardScreen()
+        help_item = next(item for item in screen.menu_items if item.id == "help")
+        assert help_item.label == "Help"
+
+    def test_settings_button_label(self) -> None:
+        screen = DashboardScreen()
+        settings_item = next(item for item in screen.menu_items if item.id == "settings")
+        assert settings_item.label == "Settings"
+        assert settings_item.title == ""
 
 
 class TestOpaqueHex:
@@ -372,6 +395,44 @@ class TestDashboardDescriptionWidget:
         assert widget._pending_bars is not None
         assert widget._pending_runners is not None
 
+    @pytest.mark.asyncio
+    async def test_runner_list_wraps_in_scroll_container(self) -> None:
+        from textual.containers import VerticalScroll
+
+        widget = _DashboardDescription()
+
+        class TestApp(App):
+            def compose(self) -> ComposeResult:
+                yield widget
+
+        async with TestApp().run_test(size=(80, 24)) as pilot:
+            await pilot.pause(0.3)
+            scroller = widget.query_one("#dash-list-scroll", VerticalScroll)
+            assert widget.query_one("#dash-list", Static) is not None
+            widget.update_runners(Text("\n".join(f"line {idx}" for idx in range(3))))
+            await pilot.pause(0.3)
+            assert scroller.max_scroll_y == 0
+
+    @pytest.mark.asyncio
+    async def test_runner_list_scrolls_on_overflow(self) -> None:
+        from textual.containers import VerticalScroll
+
+        widget = _DashboardDescription()
+
+        class TestApp(App):
+            def compose(self) -> ComposeResult:
+                yield widget
+
+        async with TestApp().run_test(size=(80, 24)) as pilot:
+            await pilot.pause(0.3)
+            widget.update_bars(Text("CPU line\nMEM line"))
+            widget.update_runners(Text("\n".join(f"line {idx}" for idx in range(50))))
+            await pilot.pause(0.3)
+            scroller = widget.query_one("#dash-list-scroll", VerticalScroll)
+            assert scroller.max_scroll_y > 0
+            bars = widget.query_one("#dash-bars", Static)
+            assert bars.outer_size.height == 2
+
 
 class TestDashboardCompose:
     @pytest.mark.asyncio
@@ -457,7 +518,7 @@ class TestDashboardCompose:
                     assert len(line) <= available
 
     @pytest.mark.asyncio
-    async def test_two_column_layout(self, tmp_path: Path) -> None:
+    async def test_three_column_layout(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
         runners_path.mkdir()
         mock_app = _make_mock_app(runners_path)
@@ -469,12 +530,30 @@ class TestDashboardCompose:
 
             async with TestApp().run_test() as pilot:
                 from textual.containers import Horizontal
-                rows = pilot.app.screen.query(".button-row")
+                bottom = pilot.app.screen.query_one("#bottom-container")
+                rows = bottom.query(".button-row")
                 assert len(rows) >= 1
                 first_row = rows[0]
                 assert isinstance(first_row, Horizontal)
                 buttons_in_row = first_row.query("Button")
-                assert len(buttons_in_row) == 2
+                assert len(buttons_in_row) == 3
+                assert [btn.id for btn in buttons_in_row] == ["help", "settings", "runners"]
+
+    @pytest.mark.asyncio
+    async def test_action_buttons_in_bottom_bar(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+        mock_app = _make_mock_app(runners_path)
+
+        with patch("termux_tasker.ui.screens.dashboard.termux_app", return_value=mock_app):
+            class TestApp(App):
+                def on_mount(self) -> None:
+                    self.push_screen(DashboardScreen())
+
+            async with TestApp().run_test() as pilot:
+                bottom = pilot.app.screen.query_one("#bottom-container")
+                for button_id in ("#help", "#settings", "#runners"):
+                    assert bottom.query_one(button_id) is not None
 
     @pytest.mark.asyncio
     async def test_exit_button_in_bottom_bar(self, tmp_path: Path) -> None:
@@ -491,3 +570,65 @@ class TestDashboardCompose:
                 bottom = pilot.app.screen.query_one("#bottom-container")
                 exit_btn = bottom.query_one("#exit")
                 assert exit_btn is not None
+
+    @pytest.mark.asyncio
+    async def test_description_fills_free_height(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+        mock_app = _make_mock_app(runners_path)
+
+        with patch("termux_tasker.ui.screens.dashboard.termux_app", return_value=mock_app):
+            class TestApp(App):
+                def on_mount(self) -> None:
+                    self.push_screen(DashboardScreen())
+
+            async with TestApp().run_test(size=(80, 24)) as pilot:
+                await pilot.pause(0.3)
+                screen = pilot.app.screen
+                scroll = screen.query_one("#description-scroll")
+                assert scroll.styles.min_height.value == 100
+                assert scroll.styles.min_height.unit == Unit.HEIGHT
+                widget = screen.query_one("#description-widget")
+                assert f"{widget.styles.height}" == "1fr"
+                top = screen.query_one("#top-container")
+                assert top.outer_size.height - scroll.outer_size.height <= 2
+
+    @pytest.mark.asyncio
+    async def test_buttons_fit_narrow_screen(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+        mock_app = _make_mock_app(runners_path)
+
+        with patch("termux_tasker.ui.screens.dashboard.termux_app", return_value=mock_app):
+            class TestApp(App):
+                def on_mount(self) -> None:
+                    self.push_screen(DashboardScreen())
+
+            async with TestApp().run_test(size=(50, 14)) as pilot:
+                await pilot.pause(0.3)
+                screen = pilot.app.screen
+                for button in screen.query("#bottom-container Button"):
+                    assert button.region.right <= screen.size.width
+                labels = [str(button.label).strip() for button in screen.query(".button-row Button")]
+                assert labels == ["Help", "Settings", "Runners"]
+
+    @pytest.mark.asyncio
+    async def test_styles_do_not_leak_to_other_screens(self, tmp_path: Path) -> None:
+        from termux_tasker.ui.screens.settings_screen import SettingsScreen
+
+        runners_path = tmp_path / "runners"
+        runners_path.mkdir()
+        mock_app = _make_mock_app(runners_path)
+
+        with patch("termux_tasker.ui.screens.dashboard.termux_app", return_value=mock_app):
+            class TestApp(App):
+                def on_mount(self) -> None:
+                    self.push_screen(DashboardScreen())
+
+            async with TestApp().run_test(size=(80, 24)) as pilot:
+                await pilot.pause(0.3)
+                pilot.app.push_screen(SettingsScreen("0.1.0", "test-session", True))
+                await pilot.pause(0.3)
+                settings = pilot.app.screen
+                assert isinstance(settings, SettingsScreen)
+                assert f"{settings.query_one('#description-scroll').styles.height}" == "auto"

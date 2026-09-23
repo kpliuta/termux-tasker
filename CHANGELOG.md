@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Dashboard now has a `Help` button in the bottom bar. Settings and Runners buttons moved to the bottom bar as well in a 3-column row.
 - Dashboard now shows live system resource monitoring: CPU/MEM gradient bars, plus a `PID <root>+<children> RSS <bytes>` line under each runner with live processes, hidden when the runner is stopped.
 - Runner `settings.toml [session]` now records `last_run` (`"YYYY-MM-DD HH:MM:SS"`, UTC) after each completed execution cycle.
 - Task `settings.toml [session]` now records `last_run_before_duration`, `last_run_exec_duration`, `last_run_after_duration` (int seconds, per-phase wall time, omitted until the first run, written on both success and failure).

@@ -7,13 +7,14 @@ from typing import Any
 from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
+from textual.containers import VerticalScroll
 from textual.css.query import NoMatches
 from textual.widget import Widget
 from textual.widgets import Button, Rule, Static
 
 from termux_tasker import proc_stats
 from termux_tasker.config import AppConfig, RunnerMetadata, RunnerSettings, TaskMetadata, TaskSettings
-from termux_tasker.ui.base import ButtonConfig, MenuScreen
+from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
 from termux_tasker.ui.screens._state_colors import (
     runner_emoji,
     runner_state_color,
@@ -175,7 +176,7 @@ class _DashboardDescription(Widget):
     DEFAULT_CSS = """\
     _DashboardDescription {
         width: 1fr;
-        height: auto;
+        height: 1fr;
 
         .hr {
             color: $primary;
@@ -183,6 +184,10 @@ class _DashboardDescription(Widget):
         #dash-bars {
             width: 1fr;
             height: auto;
+        }
+        #dash-list-scroll {
+            width: 1fr;
+            height: 1fr;
         }
         #dash-list {
             width: 1fr;
@@ -201,7 +206,8 @@ class _DashboardDescription(Widget):
         rule = Rule(classes="hr")
         rule.styles.margin = (0, 0)
         yield rule
-        yield Static(id="dash-list")
+        with VerticalScroll(id="dash-list-scroll"):
+            yield Static(id="dash-list")
 
     def on_mount(self) -> None:
         if self._pending_bars is not None:
@@ -253,13 +259,15 @@ class DashboardScreen(MenuScreen):
         self._dashboard = _DashboardDescription()
         super().__init__(
             menu_items=[
-                ButtonConfig("runners", "Runners"),
-                ButtonConfig("settings", "Settings"),
+                ButtonConfig("help", "Help", layout=ButtonLayout.BOTTOM),
+                ButtonConfig("settings", "Settings", layout=ButtonLayout.BOTTOM),
+                ButtonConfig("runners", "Runners", layout=ButtonLayout.BOTTOM),
             ],
             show_exit_button=True,
-            column_count=2,
+            column_count=3,
             description_widget=self._dashboard,
-            description_max_height="50%",
+            description_min_height="100%",
+            description_max_height="100%",
         )
         self.title = "Dashboard"
         self._poll_timer: Any = None
@@ -424,6 +432,10 @@ class DashboardScreen(MenuScreen):
             settings = TaskSettings.load(task_path / "settings.toml")
             result.append((meta, settings))
         return result
+
+    @on(Button.Pressed, "#help")
+    def on_help(self, event: Button.Pressed) -> None:
+        event.stop()
 
     @on(Button.Pressed, "#runners")
     def on_runners(self, event: Button.Pressed) -> None:
