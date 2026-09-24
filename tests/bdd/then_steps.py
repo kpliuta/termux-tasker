@@ -188,6 +188,11 @@ def then_back_button(pilot) -> None:
     ui(pilot).assert_has_button("Back")
 
 
+@then('it contains "🏠" button')
+def then_home_button(pilot) -> None:
+    ui(pilot).assert_has_button("🏠")
+
+
 @then('it contains "Yes" button')
 def then_yes_button(pilot) -> None:
     assert ui(pilot).has_button("Yes") or bool(

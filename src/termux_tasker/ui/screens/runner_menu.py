@@ -16,6 +16,7 @@ from termux_tasker.ui.base import (
     LoadingScreen,
     ConfirmationScreen,
 )
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._state_colors import RUNNER_STATE_COLORS
 from termux_tasker.ui.screens._utils import (
     termux_app,
@@ -61,7 +62,7 @@ class RunnerMenuScreen(MenuScreen):
         )
         items = self._build_items(meta, settings)
 
-        super().__init__(items, description_widget=self._state, show_back_button=True)
+        super().__init__(items, description_widget=self._state, show_home_button=True, show_back_button=True)
         self.title = "Runner"
         self.sub_title = meta.general.name
         self._poll_timer: Any = None
@@ -277,3 +278,8 @@ class RunnerMenuScreen(MenuScreen):
         shutil.rmtree(self.runner_path, ignore_errors=True)
 
         termux_app(self).pop_screen()   # noqa
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

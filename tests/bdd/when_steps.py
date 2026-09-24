@@ -523,3 +523,9 @@ def when_confirm_clear(pilot) -> None:
 @when('I press "Update App" button')
 def when_update_app(pilot) -> None:
     ui(pilot).click_id("#update_app")
+
+
+@when('I press the "🏠" home button')
+def when_home(pilot) -> None:
+    ui(pilot).click_id("#home")
+    ui(pilot).pause()

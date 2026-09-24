@@ -32,3 +32,18 @@ Button {
 #bottom-container {
     height: auto;
 }
+
+#nav-row {
+    height: auto;
+    margin: 1 0;
+}
+#nav-row > #home {
+    width: 8;
+    min-width: 0;
+    margin: 0 2;
+}
+#nav-row > #back {
+    width: 1fr;
+    min-width: 0;
+    margin: 0 2;
+}

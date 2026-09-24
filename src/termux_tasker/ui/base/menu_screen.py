@@ -18,6 +18,11 @@ from textual.widget import Widget
 
 ButtonVariant = Literal["default", "primary", "success", "warning", "error"]
 
+_HOME_BUTTON_ID = "home"
+_BACK_BUTTON_ID = "back"
+_EXIT_BUTTON_ID = "exit"
+_HOME_BUTTON_LABEL = "🏠"
+
 _HERE = Path(__file__).parent
 
 
@@ -94,6 +99,7 @@ class MenuScreen(Screen[None]):
             description_min_height: str | None = None,
             description_max_height: str | None = None,
             column_count: int = 1,
+            show_home_button: bool = False,
             show_back_button: bool = False,
             show_exit_button: bool = False,
             name: str | None = None,
@@ -108,6 +114,7 @@ class MenuScreen(Screen[None]):
         self._description_min_height = description_min_height
         self._description_max_height = description_max_height
         self._column_count = column_count
+        self.show_home_button = show_home_button
         self.show_back_button = show_back_button
         self.show_exit_button = show_exit_button
         # Last title rendered per button id — used to skip redundant
@@ -152,14 +159,33 @@ class MenuScreen(Screen[None]):
         top = [b for b in self.menu_items if b.layout == ButtonLayout.TOP]
         yield from self._compose_button_group(top)
 
+    @staticmethod
+    def _make_home_button() -> Button:
+        return Button(_HOME_BUTTON_LABEL, id=_HOME_BUTTON_ID, variant="error")
+
+    @staticmethod
+    def _make_back_button() -> Button:
+        return Button("Back", id=_BACK_BUTTON_ID, variant="error")
+
+    @staticmethod
+    def _make_exit_button() -> Button:
+        return Button("Exit", id=_EXIT_BUTTON_ID, variant="error")
+
     def _compose_bottom_buttons(self) -> ComposeResult:
         bottom = [b for b in self.menu_items if b.layout == ButtonLayout.BOTTOM]
         yield from self._compose_button_group(bottom)
 
-        if self.show_back_button:
-            yield Button("Back", id="back", variant="error")
+        if self.show_home_button and self.show_back_button:
+            with Horizontal(id="nav-row", classes="button-row"):
+                yield self._make_home_button()
+                yield self._make_back_button()
+        else:
+            if self.show_home_button:
+                yield self._make_home_button()
+            if self.show_back_button:
+                yield self._make_back_button()
         if self.show_exit_button:
-            yield Button("Exit", id="exit", variant="error")
+            yield self._make_exit_button()
 
     def _compose_button_group(self, buttons: list[ButtonConfig]) -> ComposeResult:
         per_row = self._column_count
@@ -214,7 +240,7 @@ class MenuScreen(Screen[None]):
 
         action_buttons = [
             btn for btn in self.query(Button)
-            if btn.id not in ("back", "exit")
+            if btn.id not in (_HOME_BUTTON_ID, _BACK_BUTTON_ID, _EXIT_BUTTON_ID)
         ]
         existing_ids = {btn.id for btn in action_buttons}
         needed_ids = {btn.id for btn in self.menu_items}
@@ -225,7 +251,7 @@ class MenuScreen(Screen[None]):
         ):
             id_to_config = {btn.id: btn for btn in self.menu_items}
             for btn in action_buttons:
-                # Back/Exit are excluded above; every mounted action
+                # Home/Back/Exit are excluded above; every mounted action
                 # button comes from a validated config, so id is set.
                 btn_id = cast(str, btn.id)
                 cfg = id_to_config[btn_id]
@@ -280,10 +306,18 @@ class MenuScreen(Screen[None]):
         bottom_cfgs = [b for b in self.menu_items if b.layout == ButtonLayout.BOTTOM]
         await self._mount_button_group(bottom_bar, bottom_cfgs)
 
-        if self.show_back_button:
-            await bottom_bar.mount(Button("Back", id="back", variant="error"))
+        if self.show_home_button and self.show_back_button:
+            nav_row = Horizontal(id="nav-row", classes="button-row")
+            await bottom_bar.mount(nav_row)
+            await nav_row.mount(self._make_home_button())
+            await nav_row.mount(self._make_back_button())
+        else:
+            if self.show_home_button:
+                await bottom_bar.mount(self._make_home_button())
+            if self.show_back_button:
+                await bottom_bar.mount(self._make_back_button())
         if self.show_exit_button:
-            await bottom_bar.mount(Button("Exit", id="exit", variant="error"))
+            await bottom_bar.mount(self._make_exit_button())
 
     async def _mount_button_group(
         self, parent: Widget, buttons: list[ButtonConfig]

@@ -9,6 +9,7 @@ from textual.widgets import Button
 from termux_tasker.ui.base import (
     ButtonConfig, MenuScreen, InputScreen, InfoScreen, FileBrowserScreen,
 )
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._utils import (
     termux_app, clone_repo, copy_to_tmp, GITHUB_URL_RE,
 )
@@ -23,6 +24,7 @@ class TaskTypeScreen(MenuScreen):
                 ButtonConfig("github_url", "GitHub URL"),
                 ButtonConfig("local_storage", "Local Storage"),
             ],
+            show_home_button=True,
             show_back_button=True,
         )
         self.title = "Task Type"
@@ -103,3 +105,8 @@ class TaskTypeScreen(MenuScreen):
             return
         from termux_tasker.ui.screens.install_task import InstallTaskScreen
         termux_app(self).push_screen(InstallTaskScreen(self.runner_path, folder))
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

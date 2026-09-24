@@ -7,6 +7,7 @@ from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, TaskSettings
 from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._state_colors import DISABLED_COLOR, ENABLED_COLOR
 from termux_tasker.ui.screens._utils import termux_app
 from termux_tasker.ui.screens.task_type import TaskTypeScreen
@@ -17,7 +18,7 @@ class TasksMenuScreen(MenuScreen):
         self.runner_path = runner_path
         super().__init__([
             ButtonConfig("install_task", "Install Task", variant="primary", layout=ButtonLayout.BOTTOM),
-        ], show_back_button=True)
+        ], show_home_button=True, show_back_button=True)
         self.title = "Tasks"
         self._refresh()
 
@@ -67,3 +68,8 @@ class TasksMenuScreen(MenuScreen):
                     if meta.general.id == task_id:
                         termux_app(self).push_screen(TaskMenuScreen(task_path))
                         return
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

@@ -30,7 +30,8 @@
 
 [//]: # (textual)
 
-- Subclass `MenuScreen` for feature screens; pass `menu_items: list[ButtonConfig]` (import `ButtonConfig` from `termux_tasker.ui.base`).
+- Subclass `MenuScreen` for feature screens; pass `menu_items: list[ButtonConfig]` (import `ButtonConfig` from `termux_tasker.ui.base`). Screens with a Home button add their own `@on(Button.Pressed, "#home")` handler calling the `go_home()` utility from `ui/screens/_ui_utils.py`.
+- One-way UI layering: `ui/base/` must never reference `ui/screens/` — not even via lazy/local imports inside handlers. Shared app navigation lives in screens-layer utilities (e.g. `go_home()`), never in base handlers, hooks, or intermediate base classes.
 - Use `ButtonConfig(id, label, variant, disabled, layout, title)` for button configuration.
 - `ButtonLayout.TOP` (default) places buttons in the scroll area; `ButtonLayout.BOTTOM` places them in the bottom bar.
 - `column_count` (default 1) controls how many buttons appear per row — applies uniformly to all buttons including Back/Exit.

@@ -7,15 +7,12 @@ from textual import on
 from textual.widgets import Button
 
 from termux_tasker.config import PropertyDef, RunnerSettings, TaskSettings
-from termux_tasker.ui.base import (
-    ButtonConfig,
-    MenuScreen,
-)
+from termux_tasker.ui.base import ButtonConfig, MenuScreen
 from termux_tasker.ui.screens._utils import (
     termux_app,
     parse_property_value,
 )
-from termux_tasker.ui.screens._ui_utils import ask_validated_input
+from termux_tasker.ui.screens._ui_utils import ask_validated_input, go_home
 
 _SET_PREFIX = "set_"
 _NOT_SET = "(not set)"
@@ -40,7 +37,7 @@ class PropertiesScreen(MenuScreen):
         self.item_path = item_path
         self.properties = properties
         self.is_task = is_task
-        super().__init__(self._build_items(), show_back_button=True)
+        super().__init__(self._build_items(), show_home_button=True, show_back_button=True)
         self.title = "Properties"
         self.sub_title = item_name
 
@@ -114,3 +111,8 @@ class PropertiesScreen(MenuScreen):
             empty_message=empty_message,
             invalid_message=empty_message,
         )
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)
