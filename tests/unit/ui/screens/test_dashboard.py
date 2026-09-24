@@ -117,12 +117,12 @@ class TestDashboardInit:
     def test_help_button_label(self) -> None:
         screen = DashboardScreen()
         help_item = next(item for item in screen.menu_items if item.id == "help")
-        assert help_item.label == "Help"
+        assert help_item.label == "❓"
 
     def test_settings_button_label(self) -> None:
         screen = DashboardScreen()
         settings_item = next(item for item in screen.menu_items if item.id == "settings")
-        assert settings_item.label == "Settings"
+        assert settings_item.label == "🔧"
         assert settings_item.title == ""
 
 
@@ -610,7 +610,7 @@ class TestDashboardCompose:
                 for button in screen.query("#bottom-container Button"):
                     assert button.region.right <= screen.size.width
                 labels = [str(button.label).strip() for button in screen.query(".button-row Button")]
-                assert labels == ["Help", "Settings", "Runners"]
+                assert labels == ["❓", "🔧", "Runners"]
 
     @pytest.mark.asyncio
     async def test_styles_do_not_leak_to_other_screens(self, tmp_path: Path) -> None:

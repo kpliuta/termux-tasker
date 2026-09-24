@@ -259,8 +259,8 @@ class DashboardScreen(MenuScreen):
         self._dashboard = _DashboardDescription()
         super().__init__(
             menu_items=[
-                ButtonConfig("help", "Help", layout=ButtonLayout.BOTTOM),
-                ButtonConfig("settings", "Settings", layout=ButtonLayout.BOTTOM),
+                ButtonConfig("help", "❓", layout=ButtonLayout.BOTTOM),
+                ButtonConfig("settings", "🔧", layout=ButtonLayout.BOTTOM),
                 ButtonConfig("runners", "Runners", layout=ButtonLayout.BOTTOM),
             ],
             show_exit_button=True,

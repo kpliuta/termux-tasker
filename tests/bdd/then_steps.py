@@ -168,9 +168,9 @@ def then_contains_runners(pilot) -> None:
     ui(pilot).assert_has_button("Runners")
 
 
-@then('it contains "Settings" button')
+@then('it contains "🔧" button')
 def then_contains_settings(pilot) -> None:
-    ui(pilot).assert_has_button("Settings")
+    ui(pilot).assert_has_button("🔧")
 
 
 @then('it contains "Exit" button')
@@ -1789,18 +1789,18 @@ def then_dashboard_actions_in_bottom_bar(pilot) -> None:
         bottom.query_one(button_id)
 
 
-@then('the dashboard shows "Help" button')
+@then('the dashboard shows "❓" button')
 def then_dashboard_shows_help(pilot) -> None:
     screen = ui(pilot).app.screen
     assert isinstance(screen, DashboardScreen)
-    ui(pilot).assert_has_button("Help")
+    ui(pilot).assert_has_button("❓")
 
 
-@then('the dashboard shows "Settings" button')
+@then('the dashboard shows "🔧" button')
 def then_dashboard_shows_settings(pilot) -> None:
     screen = ui(pilot).app.screen
     assert isinstance(screen, DashboardScreen)
-    ui(pilot).assert_has_button("Settings")
+    ui(pilot).assert_has_button("🔧")
 
 
 @then('the dashboard buttons are ordered "help", "settings", "runners"')

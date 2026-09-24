@@ -97,8 +97,8 @@ Feature: Dashboard Navigation
 
   Scenario: Dashboard shows Help and Settings buttons
     Given the dashboard screen is shown
-    Then the dashboard shows "Help" button
-    And the dashboard shows "Settings" button
+    Then the dashboard shows "❓" button
+    And the dashboard shows "🔧" button
 
   Scenario: Dashboard buttons order is Help, Settings, Runners
     Given the dashboard screen is shown
