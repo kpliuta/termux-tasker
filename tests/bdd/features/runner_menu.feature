@@ -9,6 +9,9 @@ Feature: Runner Menu
       """
       - Version
       - Enabled status
+      - PID
+      - RSS
+      - Last Run
       - Session state
       """
     And it contains "Enable"/"Disable" toggle button
@@ -21,6 +24,14 @@ Feature: Runner Menu
     And it contains "Uninstall" button
     And it contains "Back" button
     And it contains no "Set <property>" buttons
+
+  Scenario: Runner menu shows previous-run timers when off
+    Given the Runner Menu screen is shown for a runner
+    Then the runner description contains "PID"
+    And the runner description contains "RSS"
+    And the runner description contains "Last Run"
+    And the runner description contains "initialization [n/a]"
+    And the runner description contains "termination [n/a]"
 
   Scenario: Enable a runner
     Given the Runner Menu screen is shown

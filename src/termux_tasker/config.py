@@ -383,7 +383,8 @@ class RunnerSessionInfo:
     """Runner runtime session state persisted in settings.toml [session].
 
     The durations time the runner-level steps: initialization (recorded
-    once at startup), before-exec, the whole task loop, and after-exec.
+    once at startup), before-exec, the whole task loop, after-exec, and
+    termination.
     """
 
     session_id: str = "none"
@@ -393,6 +394,7 @@ class RunnerSessionInfo:
     last_run_before_duration: Optional[int] = None
     last_run_exec_duration: Optional[int] = None
     last_run_after_duration: Optional[int] = None
+    last_run_termination_duration: Optional[int] = None
 
 
 @dataclass
@@ -516,6 +518,9 @@ class RunnerSettings:
             result.session.last_run_after_duration = _parse_optional_int(
                 session_table.get("last_run_after_duration", None)
             )
+            result.session.last_run_termination_duration = _parse_optional_int(
+                session_table.get("last_run_termination_duration", None)
+            )
 
         cls._instances[path] = result
         return result
@@ -531,6 +536,8 @@ class RunnerSettings:
         _session_base_to_table(self.session, session)
         if self.session.last_run_init_duration is not None:
             session["last_run_init_duration"] = self.session.last_run_init_duration
+        if self.session.last_run_termination_duration is not None:
+            session["last_run_termination_duration"] = self.session.last_run_termination_duration
         doc["session"] = session
 
         _write_toml(path, doc)

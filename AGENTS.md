@@ -10,12 +10,22 @@
 [//]: # (workflow)
 
 - Ask before starting if anything is unclear.
-- FOLLOW TDD. Cover new/modified logic with both BDD and unit tests; run after each change — must be green. Tests always run in parallel (`-n auto` default in pyproject.toml).
+- FOLLOW TDD — strict red-green-refactor order, see the dedicated section below. Tests always run in parallel (`-n auto` default in pyproject.toml).
 - Delete all unused code (methods, classes, files, imports).
 - Run `poetry run mypy src/` and `poetry run autoflake --remove-all-unused-imports --ignore-init-module-imports --in-place --recursive src/` after every change — both must pass/be clean.
 - Update README.md for user-visible changes.
 - Update CHANGELOG.md (add entries under `## [Unreleased]`) and BACKLOG.md (move completed items, update status) for every commit.
 - Use all the skills under .agent/skills/* where applicable.
+
+[//]: # (tdd)
+
+- Strict red-green-refactor order for every behavior change — no `src/` edits before step 1 is done:
+  1. RED — write the failing BDD scenario + unit tests first, run them, confirm they fail for the expected reason.
+  2. GREEN — implement the minimal `src/` change that makes them pass.
+  3. REFACTOR — clean up while keeping tests green; re-run.
+- The only exceptions are pure refactors already covered by green tests, test-only changes, and docs.
+- New/modified logic needs both BDD (UI flows) and unit (pure logic) coverage; run the affected tests after each change and the full suite before finishing — must be green.
+- Plan test steps before implementation steps in TodoWrite.
 
 [//]: # (python)
 
@@ -30,8 +40,8 @@
 
 [//]: # (textual)
 
-- Subclass `MenuScreen` for feature screens; pass `menu_items: list[ButtonConfig]` (import `ButtonConfig` from `termux_tasker.ui.base`). Screens with a Home button add their own `@on(Button.Pressed, "#home")` handler calling the `go_home()` utility from `ui/screens/_ui_utils.py`.
-- One-way UI layering: `ui/base/` must never reference `ui/screens/` — not even via lazy/local imports inside handlers. Shared app navigation lives in screens-layer utilities (e.g. `go_home()`), never in base handlers, hooks, or intermediate base classes.
+- Subclass `MenuScreen` for feature screens; pass `menu_items: list[ButtonConfig]` (import `ButtonConfig` from `termux_tasker.ui.base`).
+- One-way UI layering: `ui/base/` must never reference `ui/screens/` — not even via lazy/local imports inside handlers.
 - Use `ButtonConfig(id, label, variant, disabled, layout, title)` for button configuration.
 - `ButtonLayout.TOP` (default) places buttons in the scroll area; `ButtonLayout.BOTTOM` places them in the bottom bar.
 - `column_count` (default 1) controls how many buttons appear per row — applies uniformly to all buttons including Back/Exit.
@@ -53,6 +63,7 @@
 - `description_max_height` controls the description area height (default "100%").
 - Reassigning `self.menu_items` updates labels/disabled/titles **in place** when button ids are unchanged (no rebuild, focus preserved); changing the id set triggers a full DOM rebuild.
 - Runner/task property editing lives in the unified `PropertiesScreen` (`ui/screens/properties.py`); menus only push it via a "Properties" button. Button ids prefixed `set_` are reserved for property buttons.
+- Status/description text uses `Content` with theme-variable span styles (e.g. `Content.assemble(("[01:33]", "$foreground-disabled"))`) — never Rich `Text` spans. `Content` spans resolve `$vars` via the widget theme at render. Hex is only for computed colors (dashboard gradient bars) and the `KeyValueWidget` key column (resolved via `get_css_variables()`, rebuilt on mount).
 
 [//]: # (testing — BDD)
 

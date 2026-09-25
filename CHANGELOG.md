@@ -13,14 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Screens with a Back button now also show a `🏠` Home button, that pops the screen stack back to the Dashboard (except Runners and Settings).
 - Dashboard now has a `❓` Help button in the bottom bar. Settings (`🔧`) and Runners buttons moved to the bottom bar as well in a 3-column row.
 - Dashboard now shows live system resource monitoring: CPU/MEM gradient bars, plus a `PID <root>+<children> RSS <bytes>` line under each runner with live processes, hidden when the runner is stopped.
-- Runner `settings.toml [session]` now records `last_run` (`"YYYY-MM-DD HH:MM:SS"`, UTC) after each completed execution cycle.
-- Task `settings.toml [session]` now records `last_run_before_duration`, `last_run_exec_duration`, `last_run_after_duration` (int seconds, per-phase wall time, omitted until the first run, written on both success and failure).
-- Runner `settings.toml [session]` now records `last_run_init_duration`, `last_run_before_duration`, `last_run_exec_duration` (whole task-loop wall time), `last_run_after_duration` (int seconds, omitted until run, written even when a step fails).
+- Runner Menu now shows live `PID`, `RSS`, and `Last Run` rows (`n/a` when idle/never run).
+- Runner Menu lifecycle states now carry timer suffixes: previous-run duration on every timed state, a live elapsed timer on the active state, `exec [i/n]` task progress while tasks run, and an `idle` countdown to the next iteration.
+- Dashboard runner headers now show the same `idle` countdown (`[idle][MM:SS]`) while a runner is idle.
+- Task Menu now shows `Last Run` and `Last Status` rows (`n/a` when never run).
+- Task Menu lifecycle states now carry timer suffixes: `running` shows summed task-phase durations plus live elapsed time, `stopped` shows the parent runner's idle countdown while the runner is idle and the task is enabled.
 
 ### Changed
 
 - Disabled tasks on dashboard are now grayed out using `$foreground-disabled`.
 - Split the shared `RunnerSettings`/`TaskSettings` alias into independent `RunnerSettings`/`TaskSettings` classes.
+- Runner `settings.toml [session]` now records `last_run` (`"YYYY-MM-DD HH:MM:SS"`, UTC) after each completed execution cycle.
+- Task `settings.toml [session]` now records `last_run_before_duration`, `last_run_exec_duration`, `last_run_after_duration` (int seconds, per-phase wall time, omitted until the first run, written on both success and failure).
+- Runner `settings.toml [session]` now records `last_run_init_duration`, `last_run_before_duration`, `last_run_exec_duration` (whole task-loop wall time), `last_run_after_duration`, `last_run_termination_duration` (int seconds, omitted until run, written even when a step fails).
+- Status/description text now uses Textual `Content` with `$var` span styles instead of Rich `Text` with pre-resolved hexes: theme colors resolve at render (theme switching works live), and the hex-translation layer is deleted.
 
 ## [0.3.0] - 2026-08-28
 

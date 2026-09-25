@@ -11,6 +11,8 @@ Feature: Task Menu
       - Enabled status
       - Session state
       - Timeout value
+      - Last Run
+      - Last Status
       """
     And it contains "Enable"/"Disable" toggle button
     And it contains "Properties" button
@@ -21,6 +23,11 @@ Feature: Task Menu
     And it contains "Uninstall" button
     And it contains "Back" button
     And it contains no "Set <property>" buttons
+
+  Scenario: Task menu shows last run rows
+    Given the Task Menu screen is shown for a task
+    Then the task description contains "Last Run"
+    And the task description contains "Last Status"
 
   Scenario: Toggle a task on/off
     Given the Task Menu screen is shown for a task

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from termux_tasker._parse import parse_timeout
 from termux_tasker.config import (
     RunnerMetadata,
     RunnerSettings,
@@ -21,16 +22,6 @@ class RunnerException(Exception):
 
 class TaskException(Exception):
     pass
-
-
-def _parse_timeout(timeout_str: str) -> int:
-    if timeout_str.endswith("h"):
-        return int(timeout_str[:-1]) * 3600
-    elif timeout_str.endswith("m"):
-        return int(timeout_str[:-1]) * 60
-    elif timeout_str.endswith("s"):
-        return int(timeout_str[:-1])
-    return 60
 
 
 def _now_timestamp() -> str:
@@ -59,6 +50,10 @@ class RunnerProcess:
         self._task: Optional[asyncio.Task[None]] = None
         self._processes: list[asyncio.subprocess.Process] = []
         self._run_lock = False
+        self.state_started_monotonic: float = time.monotonic()
+        self.current_task_path: Path | None = None
+        self.exec_total: int = 0
+        self.exec_index: int = 0
 
         self._stdout_path = runner_path / "stdout"
         self._metadata_path = runner_path / "metadata.toml"
@@ -83,6 +78,7 @@ class RunnerProcess:
     def _change_runner_state(self, state: str) -> None:
         self._log(f"Runner state: {state}")
         self.settings.session.state = state
+        self.state_started_monotonic = time.monotonic()
         self.settings.save(self._settings_path)
 
     def _change_task_state(self, task_path: Path, state: str) -> None:
@@ -184,7 +180,7 @@ class RunnerProcess:
                     )
                     now = datetime.now()
                     elapsed = (now - last_run_dt).total_seconds()
-                    timeout_sec = _parse_timeout(task_settings.general.timeout)
+                    timeout_sec = parse_timeout(task_settings.general.timeout)
                     if elapsed < timeout_sec:
                         return True
                 except ValueError:
@@ -254,6 +250,9 @@ class RunnerProcess:
                 # Wall time of the whole per-task iteration block (all tasks,
                 # including their before-task / task-exec / after-task steps).
                 runner_exec_start = time.monotonic()
+                self.exec_total = self._count_runnable_tasks()
+                self.exec_index = 0
+                self.current_task_path = None
                 # Tasks are processed in sorted directory order (by task id)
                 for task_path in sorted(self._tasks_path.iterdir()):
                     if not task_path.is_dir():
@@ -273,6 +272,8 @@ class RunnerProcess:
                     output_dir = task_path / "output"
                     output_dir.mkdir(parents=True, exist_ok=True)
 
+                    self.exec_index += 1
+                    self.current_task_path = task_path
                     self._change_runner_state("before-task")
                     if self.metadata.exec.before_task:
                         before_start = time.monotonic()
@@ -335,6 +336,8 @@ class RunnerProcess:
                         task_settings.session.last_run_after_duration = 0
                         task_settings.save(task_settings_path)
 
+                    self.current_task_path = None
+
                 # The exec duration covers only the per-task iteration block,
                 # measured before after-exec runs.
                 self.settings.session.last_run_exec_duration = int(
@@ -369,7 +372,7 @@ class RunnerProcess:
                 # Idle phase: sleep in 1s increments so shutdown()
                 # does not have to wait for the full timeout to elapse
                 self._change_runner_state("idle")
-                timeout_sec = _parse_timeout(self.settings.general.timeout)
+                timeout_sec = parse_timeout(self.settings.general.timeout)
                 self._log(f"Sleep for {self.settings.general.timeout}")
                 for _ in range(timeout_sec):
                     if self.shutting_down:
@@ -378,18 +381,50 @@ class RunnerProcess:
 
             self._change_runner_state("termination")
             if self.metadata.exec.termination:
-                await self._run_cmd(
-                    self.metadata.exec.termination,
-                    self.metadata.exec.termination,
-                )
+                termination_start = time.monotonic()
+                try:
+                    await self._run_cmd(
+                        self.metadata.exec.termination,
+                        self.metadata.exec.termination,
+                    )
+                finally:
+                    self.settings.session.last_run_termination_duration = int(
+                        time.monotonic() - termination_start
+                    )
+                    self.settings.save(self._settings_path)
+            else:
+                self.settings.session.last_run_termination_duration = 0
+                self.settings.save(self._settings_path)
 
         except RunnerException as e:
             self._log(str(e))
         except Exception as e:
             self._log(f"Unexpected error: {e}")
         finally:
+            self.current_task_path = None
             self._change_runner_state("off")
             self._run_lock = False
+
+    def _count_runnable_tasks(self) -> int:
+        """Count enabled, non-rate-limited tasks for the exec progress suffix."""
+        if not self._tasks_path.exists():
+            return 0
+        total = 0
+        for task_path in sorted(self._tasks_path.iterdir()):
+            if not task_path.is_dir():
+                continue
+            if not (task_path / "settings.toml").exists():
+                continue
+            task_settings = TaskSettings.load(task_path / "settings.toml")
+            if self._should_skip_task(task_settings):
+                continue
+            total += 1
+        return total
+
+    def state_elapsed(self, now: float | None = None) -> int:
+        """Seconds spent in the current runner state (live elapsed timer)."""
+        current = time.monotonic() if now is None else now
+        return max(0, int(current - self.state_started_monotonic))
 
     def run(self) -> bool:
         """Start the runner lifecycle as a background asyncio task.

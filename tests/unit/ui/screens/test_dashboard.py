@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from rich.text import Text
 from textual.app import App, ComposeResult
+from textual.content import Content
 from textual.css.scalar import Unit
 from textual.widgets import Rule, Static
 
@@ -200,40 +201,38 @@ class TestMakeBars:
 class TestMakePidLine:
     def test_hidden_when_no_roots(self) -> None:
         tree = TreeStats(pids=(), num_procs=0, rss_total=0)
-        assert _make_pid_line([], tree, "#eab308") is None
+        assert _make_pid_line([], tree) is None
 
     def test_hidden_when_tree_empty(self) -> None:
         tree = TreeStats(pids=(), num_procs=0, rss_total=0)
-        assert _make_pid_line([4242], tree, "#eab308") is None
+        assert _make_pid_line([4242], tree) is None
 
     def test_shows_pid_plus_children_and_rss(self) -> None:
         tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024)
-        line = _make_pid_line([4242], tree, "#eab308")
+        line = _make_pid_line([4242], tree)
         assert line is not None
         assert line.plain == "   │  PID 4242+1 RSS 30.0 MiB"
 
     def test_single_proc_omits_plus(self) -> None:
         tree = TreeStats(pids=(4242,), num_procs=1, rss_total=10 * 1024 * 1024)
-        line = _make_pid_line([4242], tree, "#eab308")
+        line = _make_pid_line([4242], tree)
         assert line is not None
         assert "PID 4242 RSS 10.0 MiB" in line.plain
         assert "+" not in line.plain
 
-    def test_pipe_uses_default_color(self) -> None:
+    def test_pid_uses_theme_warning_var(self) -> None:
         tree = TreeStats(pids=(4242, 4243), num_procs=2, rss_total=30 * 1024 * 1024)
-        line = _make_pid_line([4242], tree, "#eab308")
+        line = _make_pid_line([4242], tree)
         assert line is not None
-        pipe_offset = line.plain.index("│")
-        assert not any(span.start <= pipe_offset < span.end for span in line.spans)
         pid_offset = line.plain.index("PID")
         assert any(
-            span.start <= pid_offset < span.end and span.style == "#eab308"
+            span.start <= pid_offset < span.end and span.style == "$text-warning"
             for span in line.spans
         )
 
     def test_recycled_root_falls_back_to_tree_pid(self) -> None:
         tree = TreeStats(pids=(9999,), num_procs=1, rss_total=1024)
-        line = _make_pid_line([4242], tree, "#eab308")
+        line = _make_pid_line([4242], tree)
         assert line is not None
         assert "PID 9999" in line.plain
 
@@ -386,12 +385,62 @@ class TestDashboardRunnerLines:
         result = screen._build_runner_lines(runners_path, {"sh_runner": [4242]}, {})
         assert "PID" not in result.plain
 
+    def test_idle_runner_with_live_proc_shows_countdown(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+        proc = MagicMock()
+        proc.state_elapsed.return_value = 15
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
+        assert "[idle][45]" in result.plain
+
+    def test_idle_countdown_uses_compact_format(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+        proc = MagicMock()
+        proc.state_elapsed.return_value = 0
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
+        assert "[idle][01:00]" in result.plain
+
+    def test_idle_countdown_clamps_at_zero(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+        proc = MagicMock()
+        proc.state_elapsed.return_value = 999
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
+        assert "[idle][0]" in result.plain
+
+    def test_idle_runner_without_proc_hides_countdown(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path)
+        assert "[idle]" in result.plain
+        assert "[idle][" not in result.plain
+
+    def test_non_idle_runner_with_proc_hides_countdown(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="task-exec")
+        proc = MagicMock()
+        proc.state_elapsed.return_value = 15
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
+        assert "[task-exec]" in result.plain
+        assert "[task-exec][" not in result.plain
+
 
 class TestDashboardDescriptionWidget:
     def test_pending_updates_apply_on_mount(self) -> None:
         widget = _DashboardDescription()
         widget.update_bars(Text("CPU bars"))
-        widget.update_runners(Text("runner list"))
+        widget.update_runners(Content("runner list"))
         assert widget._pending_bars is not None
         assert widget._pending_runners is not None
 
@@ -409,7 +458,7 @@ class TestDashboardDescriptionWidget:
             await pilot.pause(0.3)
             scroller = widget.query_one("#dash-list-scroll", VerticalScroll)
             assert widget.query_one("#dash-list", Static) is not None
-            widget.update_runners(Text("\n".join(f"line {idx}" for idx in range(3))))
+            widget.update_runners(Content("\n".join(f"line {idx}" for idx in range(3))))
             await pilot.pause(0.3)
             assert scroller.max_scroll_y == 0
 
@@ -426,7 +475,7 @@ class TestDashboardDescriptionWidget:
         async with TestApp().run_test(size=(80, 24)) as pilot:
             await pilot.pause(0.3)
             widget.update_bars(Text("CPU line\nMEM line"))
-            widget.update_runners(Text("\n".join(f"line {idx}" for idx in range(50))))
+            widget.update_runners(Content("\n".join(f"line {idx}" for idx in range(50))))
             await pilot.pause(0.3)
             scroller = widget.query_one("#dash-list-scroll", VerticalScroll)
             assert scroller.max_scroll_y > 0

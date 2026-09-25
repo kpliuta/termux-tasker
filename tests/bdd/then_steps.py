@@ -10,7 +10,8 @@ from textual.widgets import Button
 
 from tests.bdd.steps_common import *  # noqa
 from termux_tasker.config import RunnerMetadata, RunnerSettings, TaskMetadata, TaskSettings  # noqa
-from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
+from termux_tasker._parse import parse_timeout  # noqa
+from termux_tasker.runner_process import _to_env_key  # noqa
 
 
 @then("the dashboard screen is shown")
@@ -335,10 +336,16 @@ def then_description_shows(pilot, docstring) -> None:
         if not line:
             continue
         token = line.split()[0]
+        if token == "Last" and line.split()[1:2] == ["Status"]:
+            token = "Last Status"
         expected = {
             "Version": "Version",
             "Enabled": "Enabled",
             "Timeout": "Timeout",
+            "PID": "PID",
+            "RSS": "RSS",
+            "Last": "Last Run",
+            "Last Status": "Last Status",
         }.get(token)
         if expected:
             assert expected in content, f"Description missing {line!r}: {content!r}"
@@ -1596,7 +1603,7 @@ def then_file_browser_shown(pilot) -> None:
 
 @then("it sleeps for 30 seconds before the next iteration")
 def then_sleep_30s() -> None:
-    assert _parse_timeout("30s") == 30
+    assert parse_timeout("30s") == 30
 
 
 @then("property names are converted to uppercase with non-alphanumeric chars replaced by underscores")
@@ -1757,6 +1764,63 @@ def then_dashboard_desc_simple_sh_runner_task(pilot) -> None:
 @then('the dashboard description contains "[running]"')
 def then_dashboard_desc_running(pilot) -> None:
     _assert_dashboard_description_contains(pilot, "[running]")
+
+
+def _runner_description_text(pilot) -> str:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, RunnerMenuScreen)
+    return _description_content(screen)
+
+
+def _assert_runner_description_contains(pilot, text: str) -> None:
+    content = _runner_description_text(pilot)
+    assert text in content, f"Runner description missing {text!r}: {content!r}"
+
+
+@then('the runner description contains "PID"')
+def then_runner_desc_pid(pilot) -> None:
+    _assert_runner_description_contains(pilot, "PID")
+
+
+@then('the runner description contains "RSS"')
+def then_runner_desc_rss(pilot) -> None:
+    _assert_runner_description_contains(pilot, "RSS")
+
+
+@then('the runner description contains "Last Run"')
+def then_runner_desc_last_run(pilot) -> None:
+    _assert_runner_description_contains(pilot, "Last Run")
+
+
+@then('the runner description contains "initialization [n/a]"')
+def then_runner_desc_init_na(pilot) -> None:
+    _assert_runner_description_contains(pilot, "initialization [n/a]")
+
+
+@then('the runner description contains "termination [n/a]"')
+def then_runner_desc_termination_na(pilot) -> None:
+    _assert_runner_description_contains(pilot, "termination [n/a]")
+
+
+def _task_description_text(pilot) -> str:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, TaskMenuScreen)
+    return _description_content(screen)
+
+
+def _assert_task_description_contains(pilot, text: str) -> None:
+    content = _task_description_text(pilot)
+    assert text in content, f"Task description missing {text!r}: {content!r}"
+
+
+@then('the task description contains "Last Run"')
+def then_task_desc_last_run(pilot) -> None:
+    _assert_task_description_contains(pilot, "Last Run")
+
+
+@then('the task description contains "Last Status"')
+def then_task_desc_last_status(pilot) -> None:
+    _assert_task_description_contains(pilot, "Last Status")
 
 
 @then("the dashboard has buttons arranged in 3 columns")

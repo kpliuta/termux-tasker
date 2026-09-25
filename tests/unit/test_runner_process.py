@@ -11,7 +11,6 @@ import pytest
 from termux_tasker.config import RunnerSettings, TaskSettings
 from termux_tasker.runner_process import (
     RunnerProcess,
-    _parse_timeout, # noqa
     _to_env_key, # noqa
 )
 from termux_tasker.app_state import AppState
@@ -110,20 +109,6 @@ def _assert_placeholder_substituted(
     if task_dir_name:
         assert task_dir_name in cmd
         assert "{task_dir_name}" not in cmd
-
-
-class TestParseTimeout:
-    def test_hours(self) -> None:
-        assert _parse_timeout("2h") == 7200
-
-    def test_minutes(self) -> None:
-        assert _parse_timeout("30m") == 1800
-
-    def test_seconds(self) -> None:
-        assert _parse_timeout("45s") == 45
-
-    def test_default(self) -> None:
-        assert _parse_timeout("invalid") == 60
 
 
 class TestRunnerProcessInit:
@@ -756,3 +741,112 @@ class TestRunnerLastRunDurations:
         assert "last_run_before_duration" not in content
         assert "last_run_exec_duration" not in content
         assert "last_run_after_duration" not in content
+
+
+NO_TERMINATION_METADATA = """\
+[general]
+id = "test-runner"
+name = "Test Runner"
+version = "0.1.0"
+app_min_version = ">=0.1.0"
+
+[exec]
+initialization = "echo init"
+"""
+
+
+@pytest.mark.asyncio
+class TestTerminationDuration:
+    async def test_termination_duration_written(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_runner(tmp_dir)
+            proc = _create_proc(runner_path, tmp_dir)
+            await proc._run_loop()
+
+            settings = _load_runner_settings_fresh(runner_path)
+            assert isinstance(settings.session.last_run_termination_duration, int)
+            assert settings.session.last_run_termination_duration >= 0
+
+    async def test_undefined_termination_records_zero(self, tmp_dir: Path) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = tmp_dir / "runner"
+            runner_path.mkdir()
+            (runner_path / "metadata.toml").write_text(NO_TERMINATION_METADATA)
+            (runner_path / "settings.toml").write_text(SETTINGS)
+            (runner_path / "tasks").mkdir()
+            proc = _create_proc(runner_path, tmp_dir)
+            await proc._run_loop()
+
+            settings = _load_runner_settings_fresh(runner_path)
+            assert settings.session.last_run_termination_duration == 0
+
+    async def test_termination_omitted_when_never_run(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        settings = _load_runner_settings_fresh(runner_path)
+        assert settings.session.last_run_termination_duration is None
+        assert "last_run_termination_duration" not in (
+            runner_path / "settings.toml"
+        ).read_text()
+
+    async def test_termination_round_trip(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        settings = RunnerSettings()
+        settings.session.last_run_termination_duration = 7
+        settings.save(path)
+        loaded = _load_runner_settings_fresh(path.parent)
+        assert loaded.session.last_run_termination_duration == 7
+
+    async def test_malformed_termination_loads_as_none(self, tmp_dir: Path) -> None:
+        path = tmp_dir / "settings.toml"
+        path.write_text(
+            "[general]\nenabled = true\ntimeout = \"1m\"\n"
+            "[properties]\n[log]\nsoft_wrap = false\n"
+            "auto_scroll = false\noffset = 0\n"
+            "[session]\nsession_id = \"none\"\nstate = \"off\"\n"
+            "last_run_termination_duration = \"oops\"\n"
+        )
+        loaded = _load_runner_settings_fresh(path.parent)
+        assert loaded.session.last_run_termination_duration is None
+
+
+class TestLiveTracking:
+    def test_state_elapsed_counts_from_state_entry(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        assert proc.state_elapsed(now=proc.state_started_monotonic) == 0
+        assert proc.state_elapsed(now=proc.state_started_monotonic + 31) == 31
+
+    def test_change_state_resets_elapsed(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+        proc._change_runner_state("idle")
+        assert proc.state_elapsed(now=proc.state_started_monotonic + 105) == 105
+
+    def test_count_runnable_tasks(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        proc = _create_proc(runner_path, tmp_dir)
+        assert proc._count_runnable_tasks() == 0
+        _write_task(runner_path)
+        assert proc._count_runnable_tasks() == 1
+
+    def test_disabled_tasks_excluded_from_count(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        task_settings = _load_task_settings_fresh(task_path)
+        task_settings.general.enabled = False
+        task_settings.save(task_path / "settings.toml")
+        proc = _create_proc(runner_path, tmp_dir)
+        assert proc._count_runnable_tasks() == 0
+
+    def test_current_task_cleared_after_loop(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        proc = _create_proc(runner_path, tmp_dir)
+        assert proc.current_task_path is None
+        assert proc.exec_total == 0
+        assert proc.exec_index == 0

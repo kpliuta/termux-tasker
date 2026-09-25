@@ -83,6 +83,9 @@ initialization
                       └─ after-task
 ```
 
+Each run records per-step wall times (`last_run_*_duration`, int seconds) and
+`last_run` in `settings.toml [session]` - **Runner Menu** and **Task Menu** show them live.
+
 ### Output directory
 
 Each task gets an `output/` subdirectory at `$task_path/output`. It is automatically created before the task's `before-task`, `task-exec`, and `after-task` commands run. Task scripts can use this directory to store output files, logs, artifacts, etc.

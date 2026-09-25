@@ -8,13 +8,17 @@ from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
+from textual.content import Content
 from textual.css.query import NoMatches
 from textual.widget import Widget
 from textual.widgets import Button, Rule, Static
 
 from termux_tasker import proc_stats
 from termux_tasker.config import AppConfig, RunnerMetadata, RunnerSettings, TaskMetadata, TaskSettings
+from termux_tasker.runner_process import RunnerProcess
 from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
+from termux_tasker.ui.screens._format import format_compact_duration
+from termux_tasker._parse import parse_timeout
 from termux_tasker.ui.screens._state_colors import (
     runner_emoji,
     runner_state_color,
@@ -156,18 +160,18 @@ def _make_bars(
 
 
 def _make_pid_line(
-    roots: list[int], tree: proc_stats.TreeStats, warning_hex: str
-) -> Text | None:
+    roots: list[int], tree: proc_stats.TreeStats
+) -> Content | None:
     """``PID <root>+<children> RSS <bytes>``; None when nothing live to show."""
     if not roots or tree.num_procs == 0:
         return None
     label = roots[0] if roots[0] in tree.pids else tree.pids[0]
     extra = tree.num_procs - 1
     pid_text = f"PID {label}+{extra}" if extra > 0 else f"PID {label}"
-    line = Text()
-    line.append("   │  ")
-    line.append(f"{pid_text} RSS {proc_stats.format_bytes(tree.rss_total)}", style=warning_hex)
-    return line
+    return Content.assemble(
+        ("   │  ", ""),
+        (f"{pid_text} RSS {proc_stats.format_bytes(tree.rss_total)}", "$text-warning"),
+    )
 
 
 class _DashboardDescription(Widget):
@@ -199,7 +203,7 @@ class _DashboardDescription(Widget):
     def __init__(self) -> None:
         super().__init__(id="description-widget")
         self._pending_bars: Text | None = None
-        self._pending_runners: Text | None = None
+        self._pending_runners: Content | None = None
 
     def compose(self) -> ComposeResult:
         yield Static(id="dash-bars")
@@ -224,7 +228,7 @@ class _DashboardDescription(Widget):
         except NoMatches:
             self._pending_bars = bars
 
-    def update_runners(self, runner_lines: Text) -> None:
+    def update_runners(self, runner_lines: Content) -> None:
         """Replace the bottom runner/task block (stashed until mounted)."""
         try:
             self.query_one("#dash-list", Static).update(runner_lines)
@@ -321,7 +325,7 @@ class DashboardScreen(MenuScreen):
             )
         )
         self._dashboard.update_runners(
-            self._build_runner_lines(app.state.runners_path, live_pids, trees, palette)
+            self._build_runner_lines(app.state.runners_path, live_pids, trees, runners)
         )
 
     def _content_width(self) -> int:
@@ -354,52 +358,65 @@ class DashboardScreen(MenuScreen):
         runners_path: Path,
         live_pids: Mapping[str, list[int]] | None = None,
         trees: Mapping[str, proc_stats.TreeStats] | None = None,
-        palette: Mapping[str, str] | None = None,
-    ) -> Text:
-        """Bottom description part: runners with PID lines plus their tasks."""
-        pal = dict(_FALLBACK_HEXES)
-        if palette is not None:
-            pal.update(palette)
-        lines = Text()
+        procs: Mapping[str, RunnerProcess] | None = None,
+    ) -> Content:
+        """Bottom description part: runners with PID lines plus their tasks.
+
+        Colors are theme variables resolved at render time.
+        """
+        parts: list[str | Content | tuple[str, str]] = []
         runner_entries = self._load_runners(runners_path)
         if not runner_entries:
-            lines.append(" No runners installed")
-            return lines
+            return Content.assemble(" No runners installed")
         for runner_idx, (runner_meta, runner_settings) in enumerate(runner_entries):
             if runner_idx > 0:
-                lines.append("\n")
+                parts.append("\n")
             state = runner_settings.session.state
-            state_hex = pal.get(runner_state_color(runner_settings).lstrip("$"), "#ffffff")
-            header = Text()
-            header.append(f" {runner_emoji(runner_settings)} {runner_meta.general.name} ")
-            header.append(f"[{state}]", style=state_hex)
-            lines.append(header)
+            state_style = runner_state_color(runner_settings)
             runner_id = runner_meta.general.id
+            parts.append((f" {runner_emoji(runner_settings)} {runner_meta.general.name} ", ""))
+            parts.append((f"[{state}]", state_style))
+            idle_suffix = self._idle_suffix(runner_id, runner_settings, procs)
+            if idle_suffix is not None:
+                parts.append((idle_suffix, state_style))
             tree = (trees or {}).get(runner_id)
             if tree is not None:
-                pid_line = _make_pid_line(list((live_pids or {}).get(runner_id, [])), tree, pal["text-warning"])
+                pid_line = _make_pid_line(list((live_pids or {}).get(runner_id, [])), tree)
                 if pid_line is not None:
-                    lines.append("\n")
-                    lines.append(pid_line)
+                    parts.append("\n")
+                    parts.append(pid_line)
             tasks = self._load_tasks(runners_path / runner_id / "tasks")
             for task_idx, (task_meta, task_settings) in enumerate(tasks):
                 is_last_task = task_idx == len(tasks) - 1
                 prefix = "   └─ " if is_last_task else "   ├─ "
-                lines.append("\n")
+                parts.append("\n")
                 if not task_settings.general.enabled:
-                    lines.append(
-                        Text(f"{prefix}{task_meta.general.name} [disabled]", style=pal["foreground-disabled"])
+                    parts.append(
+                        (f"{prefix}{task_meta.general.name} [disabled]", "$foreground-disabled")
                     )
                 else:
-                    task_line = Text()
-                    task_line.append(f"{prefix}{task_meta.general.name} ")
-                    t_color = task_state_color(task_settings)
-                    task_line.append(
-                        f"[{task_settings.session.state}]",
-                        style=pal.get(t_color.lstrip("$"), "#ffffff"),
+                    parts.append((f"{prefix}{task_meta.general.name} ", ""))
+                    parts.append(
+                        (f"[{task_settings.session.state}]", task_state_color(task_settings))
                     )
-                    lines.append(task_line)
-        return lines
+        return Content.assemble(*parts)
+
+    @staticmethod
+    def _idle_suffix(
+        runner_id: str,
+        runner_settings: RunnerSettings,
+        procs: Mapping[str, RunnerProcess] | None,
+    ) -> str | None:
+        """Countdown to the next iteration; only for idle runners with a live proc."""
+        if runner_settings.session.state != "idle" or procs is None:
+            return None
+        proc = procs.get(runner_id)
+        if proc is None:
+            return None
+        remaining = max(
+            0, parse_timeout(runner_settings.general.timeout) - proc.state_elapsed()
+        )
+        return f"[{format_compact_duration(remaining)}]"
 
     @staticmethod
     def _load_runners(runners_path: Path) -> list[tuple[RunnerMetadata, RunnerSettings]]:
