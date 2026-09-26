@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
-from datetime import datetime
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -723,7 +725,7 @@ class TestRunnerLastRunDurations:
             await asyncio.wait_for(proc._run_loop(), timeout=10)
 
             settings = _load_runner_settings_fresh(runner_path)
-            assert settings.session.last_run == "none"
+            assert settings.session.last_run != "none"
             assert isinstance(settings.session.last_run_init_duration, int)
             assert settings.session.last_run_init_duration >= 0
             assert isinstance(settings.session.last_run_before_duration, int)
@@ -850,3 +852,176 @@ class TestLiveTracking:
         assert proc.current_task_path is None
         assert proc.exec_total == 0
         assert proc.exec_index == 0
+
+
+def _blocking_task_exec_mock(release: asyncio.Event) -> AsyncMock:
+    """Subprocess factory mock that parks inside task-exec until released."""
+    created = _mock_proc()
+
+    async def _create(*args: object, **kwargs: object) -> AsyncMock:
+        cmd = str(args[2]) if len(args) > 2 else ""
+        if "task-exec" in cmd:
+            proc = _mock_proc()
+
+            async def _wait_blocked() -> int:
+                await release.wait()
+                return 0
+
+            proc.wait = _wait_blocked  # type: ignore[method-assign]
+            return proc
+        return created
+
+    return _create  # type: ignore[return-value]
+
+
+@pytest.mark.asyncio
+class TestStartStampedSession:
+    async def test_task_session_adopted_while_running(self, tmp_dir: Path) -> None:
+        release = asyncio.Event()
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            side_effect=_blocking_task_exec_mock(release),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+            proc.shutting_down = False
+            loop_task = asyncio.create_task(proc._run_loop())
+            try:
+                deadline = asyncio.get_event_loop().time() + 5.0
+                while True:
+                    task_settings = _load_task_settings_fresh(task_path)
+                    if task_settings.session.state == "running":
+                        break
+                    if asyncio.get_event_loop().time() > deadline:
+                        raise AssertionError("task never reached running state")
+                    await asyncio.sleep(0.05)
+                assert task_settings.session.session_id == "test-session"
+                assert task_settings.session.last_run != "none"
+                assert re.match(
+                    r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$",
+                    task_settings.session.last_run,
+                )
+                runner_settings = _load_runner_settings_fresh(runner_path)
+                assert runner_settings.session.session_id == "test-session"
+                assert runner_settings.session.last_run != "none"
+            finally:
+                release.set()
+                proc.shutting_down = True
+                await asyncio.wait_for(loop_task, timeout=10)
+            final_settings = _load_task_settings_fresh(task_path)
+            assert final_settings.session.state == "stopped"
+            assert final_settings.session.last_run_status == "success"
+
+    async def test_last_run_records_start_not_end(self, tmp_dir: Path) -> None:
+        stamps = ["2026-03-01 10:00:00", "2026-03-01 10:00:01", "2026-03-01 10:00:02"]
+        with (
+            patch(
+                "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+                return_value=_mock_proc(),
+            ),
+            patch(
+                "termux_tasker.runner_process._now_timestamp", side_effect=stamps
+            ),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+            proc.shutting_down = False
+            loop_task = asyncio.create_task(proc._run_loop())
+            deadline = asyncio.get_event_loop().time() + 5.0
+            while True:
+                runner_settings = _load_runner_settings_fresh(runner_path)
+                if runner_settings.session.state == "idle":
+                    break
+                if asyncio.get_event_loop().time() > deadline:
+                    raise AssertionError("runner never reached idle state")
+                await asyncio.sleep(0.05)
+            proc.shutting_down = True
+            await asyncio.wait_for(loop_task, timeout=10)
+            runner_settings = _load_runner_settings_fresh(runner_path)
+            task_settings = _load_task_settings_fresh(task_path)
+            assert runner_settings.session.last_run == stamps[0]
+            assert task_settings.session.last_run == stamps[1]
+
+
+@pytest.mark.asyncio
+class TestWholeBlockTaskStatus:
+    async def _run_failing_phase(
+        self, tmp_dir: Path, phase_cmd: str
+    ) -> tuple[RunnerSettings, TaskSettings]:
+        async def _fail_phase(*args: object, **kwargs: object) -> AsyncMock:
+            cmd = str(args[2]) if len(args) > 2 else ""
+            if phase_cmd in cmd:
+                return _mock_proc(return_code=1)
+            return _mock_proc()
+
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            side_effect=_fail_phase,
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+            proc.shutting_down = False
+            await asyncio.wait_for(proc._run_loop(), timeout=10)
+            return (
+                _load_runner_settings_fresh(runner_path),
+                _load_task_settings_fresh(task_path),
+            )
+
+    async def test_before_task_failure_marks_task_failed(self, tmp_dir: Path) -> None:
+        _, task_settings = await self._run_failing_phase(tmp_dir, "before-task")
+        assert task_settings.session.last_run != "none"
+        assert task_settings.session.last_run_status == "fail"
+        assert task_settings.session.state == "stopped"
+
+    async def test_after_task_failure_marks_task_failed(self, tmp_dir: Path) -> None:
+        _, task_settings = await self._run_failing_phase(tmp_dir, "after-task")
+        assert task_settings.session.last_run != "none"
+        assert task_settings.session.last_run_status == "fail"
+        assert task_settings.session.state == "stopped"
+
+    async def test_failed_cycle_still_stamps_runner_start(self, tmp_dir: Path) -> None:
+        runner_settings, _ = await self._run_failing_phase(tmp_dir, "before-exec")
+        assert runner_settings.session.session_id == "test-session"
+        assert runner_settings.session.last_run != "none"
+
+
+class TestSkipUsesUtc:
+    def test_recent_run_is_skipped(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        proc = _create_proc(runner_path, tmp_dir)
+        task_settings = _load_task_settings_fresh(task_path)
+        task_settings.session.session_id = "test-session"
+        task_settings.session.last_run = (
+            datetime.now(timezone.utc) - timedelta(seconds=30)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        assert proc._should_skip_task(task_settings) is True
+        task_settings.session.last_run = (
+            datetime.now(timezone.utc) - timedelta(seconds=90)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        assert proc._should_skip_task(task_settings) is False
+
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="POSIX-only TZ override")
+    def test_skip_is_timezone_independent(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        proc = _create_proc(runner_path, tmp_dir)
+        task_settings = _load_task_settings_fresh(task_path)
+        task_settings.session.session_id = "test-session"
+        task_settings.session.last_run = (
+            datetime.now(timezone.utc) - timedelta(seconds=30)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        previous_tz = os.environ.get("TZ")
+        os.environ["TZ"] = "Pacific/Kiritimati"
+        time.tzset()
+        try:
+            assert proc._should_skip_task(task_settings) is True
+        finally:
+            if previous_tz is None:
+                del os.environ["TZ"]
+            else:
+                os.environ["TZ"] = previous_tz
+            time.tzset()

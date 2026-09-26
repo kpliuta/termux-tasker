@@ -23,10 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Disabled tasks on dashboard are now grayed out using `$foreground-disabled`.
 - Split the shared `RunnerSettings`/`TaskSettings` alias into independent `RunnerSettings`/`TaskSettings` classes.
-- Runner `settings.toml [session]` now records `last_run` (`"YYYY-MM-DD HH:MM:SS"`, UTC) after each completed execution cycle.
+- Runner `settings.toml [session]` now records `last_run` (`"YYYY-MM-DD HH:MM:SS"`, UTC) at the start of each execution cycle.
+- Task `last_run` is stamped at task-block entry for the same reason.
 - Task `settings.toml [session]` now records `last_run_before_duration`, `last_run_exec_duration`, `last_run_after_duration` (int seconds, per-phase wall time, omitted until the first run, written on both success and failure).
 - Runner `settings.toml [session]` now records `last_run_init_duration`, `last_run_before_duration`, `last_run_exec_duration` (whole task-loop wall time), `last_run_after_duration`, `last_run_termination_duration` (int seconds, omitted until run, written even when a step fails).
 - Status/description text now uses Textual `Content` with `$var` span styles instead of Rich `Text` with pre-resolved hexes: theme colors resolve at render (theme switching works live), and the hex-translation layer is deleted.
+
+### Fixed
+
+- Task Menu no longer resets a genuinely `running` task to `stopped` when opened mid-run: the runner now adopts `session_id` and stamps `last_run` (UTC start time) at task-block entry, so mid-run polling never sees a stale session.
+- Task `success`/`fail` status now covers the whole task block (`before-task`/`after-task` failures also record `fail` instead of leaving a stale status).
+- Rate-limit comparison is timezone-aware (UTC on both sides). Runner/task log timestamps are UTC like the files. Previously the naive-local comparison was off by the UTC offset.
 
 ## [0.3.0] - 2026-08-28
 

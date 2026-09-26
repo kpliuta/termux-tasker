@@ -190,12 +190,14 @@ def _write_runner_dir(path: Path, *, state: str = "idle") -> Path:
     return path
 
 
-def _write_task_dir(path: Path, *, enabled: bool, state: str = "stopped") -> Path:
+def _write_task_dir(
+    path: Path, *, enabled: bool, state: str = "stopped", session_id: str = "test-session"
+) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     (path / "metadata.toml").write_text(SH_TASK_METADATA)
     settings = TaskSettings()
     settings.general.enabled = enabled
-    settings.session.session_id = "test-session"
+    settings.session.session_id = session_id
     settings.session.state = state
     settings.save(path / "settings.toml")
     return path
@@ -244,3 +246,21 @@ class TestStoppedIdleSuffixEnabledGate:
             settings = TaskSettings.load(task_path / "settings.toml")
             suffixes = screen._build_suffixes(settings)
             assert "stopped" not in suffixes
+
+
+class TestFixSessionPreservesLiveRun:
+    @pytest.mark.asyncio
+    async def test_stale_running_task_without_live_proc_still_resets(
+        self, tmp_path: Path
+    ) -> None:
+        runner_dir = _write_runner_dir(tmp_path / "sh_runner", state="off")
+        task_path = _write_task_dir(
+            runner_dir / "tasks" / "sh_task",
+            enabled=True,
+            state="running",
+            session_id="old-session",
+        )
+        async with _TaskMenuTestApp().run_test() as pilot:
+            screen = TaskMenuScreen(task_path)
+            await pilot.app.push_screen(screen)
+            assert screen._state.current_state == "stopped"

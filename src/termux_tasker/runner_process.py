@@ -69,7 +69,7 @@ class RunnerProcess:
         return [proc.pid for proc in self._processes if proc.pid is not None]
 
     def _log(self, msg: str) -> None:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         line = f"[{timestamp}] {msg}\n"
         self._stdout_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self._stdout_path, "a") as f:
@@ -131,7 +131,7 @@ class RunnerProcess:
                 break
             text = line.decode(errors="replace").strip()
             if text:
-                timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+                timestamp = datetime.now(timezone.utc).strftime("[%Y-%m-%d %H:%M:%S]")
                 self._stdout_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(self._stdout_path, "a") as f:
                     f.write(f"{timestamp} {text}\n")
@@ -177,8 +177,8 @@ class RunnerProcess:
                 try:
                     last_run_dt = datetime.strptime(
                         task_settings.session.last_run, "%Y-%m-%d %H:%M:%S"
-                    )
-                    now = datetime.now()
+                    ).replace(tzinfo=timezone.utc)
+                    now = datetime.now(timezone.utc)
                     elapsed = (now - last_run_dt).total_seconds()
                     timeout_sec = parse_timeout(task_settings.general.timeout)
                     if elapsed < timeout_sec:
@@ -230,6 +230,10 @@ class RunnerProcess:
                 self.settings.save(self._settings_path)
 
             while not self.shutting_down:
+                # Start of cycle: adopt the session and stamp the start time.
+                # _change_runner_state persists both in the same save.
+                self.settings.session.session_id = self.session_id
+                self.settings.session.last_run = _now_timestamp()
                 self._change_runner_state("before-exec")
                 if self.metadata.exec.before_exec:
                     runner_before_start = time.monotonic()
@@ -274,67 +278,77 @@ class RunnerProcess:
 
                     self.exec_index += 1
                     self.current_task_path = task_path
-                    self._change_runner_state("before-task")
-                    if self.metadata.exec.before_task:
-                        before_start = time.monotonic()
-                        try:
-                            await self._run_cmd(
-                                self.metadata.exec.before_task,
-                                self.metadata.exec.before_task,
-                                task_path=task_path,
-                            )
-                        finally:
-                            task_settings.session.last_run_before_duration = int(
-                                time.monotonic() - before_start
-                            )
-                            # Persist partial progress so the duration survives
-                            # even if this step fails and aborts the loop.
-                            task_settings.save(task_settings_path)
-                    else:
-                        task_settings.session.last_run_before_duration = 0
-
+                    # Start of task block: adopt the session, stamp the start
+                    # time and mark running in a single save, so screens polling
+                    # mid-run never see a torn state. The task stays "running"
+                    # for the whole block (before-task through after-task).
+                    task_settings.session.session_id = self.session_id
+                    task_settings.session.last_run = _now_timestamp()
+                    self._change_task_state(task_path, "running")
+                    task_run_ok = True
                     try:
-                        self._change_runner_state("task-exec")
-                        self._change_task_state(task_path, "running")
-                        if self.metadata.exec.task_exec:
-                            exec_start = time.monotonic()
+                        self._change_runner_state("before-task")
+                        if self.metadata.exec.before_task:
+                            before_start = time.monotonic()
                             try:
-                                await self._run_task_cmd(
-                                    self.metadata.exec.task_exec, task_path
+                                await self._run_cmd(
+                                    self.metadata.exec.before_task,
+                                    self.metadata.exec.before_task,
+                                    task_path=task_path,
                                 )
                             finally:
-                                task_settings.session.last_run_exec_duration = int(
-                                    time.monotonic() - exec_start
+                                task_settings.session.last_run_before_duration = int(
+                                    time.monotonic() - before_start
                                 )
+                                # Persist partial progress so the duration survives
+                                # even if this step fails and aborts the loop.
+                                task_settings.save(task_settings_path)
                         else:
-                            task_settings.session.last_run_exec_duration = 0
-                        task_settings.session.last_run_status = "success"
-                    except TaskException:
-                        # Task failure does not crash the whole runner
-                        task_settings.session.last_run_status = "fail"
-                    finally:
-                        task_settings.session.session_id = self.session_id
-                        task_settings.session.last_run = _now_timestamp()
-                        task_settings.save(task_settings_path)
-                        self._change_task_state(task_path, "stopped")
+                            task_settings.session.last_run_before_duration = 0
 
-                    self._change_runner_state("after-task")
-                    if self.metadata.exec.after_task:
-                        after_start = time.monotonic()
                         try:
-                            await self._run_cmd(
-                                self.metadata.exec.after_task,
-                                self.metadata.exec.after_task,
-                                task_path=task_path,
-                            )
-                        finally:
-                            task_settings.session.last_run_after_duration = int(
-                                time.monotonic() - after_start
-                            )
+                            self._change_runner_state("task-exec")
+                            if self.metadata.exec.task_exec:
+                                exec_start = time.monotonic()
+                                try:
+                                    await self._run_task_cmd(
+                                        self.metadata.exec.task_exec, task_path
+                                    )
+                                finally:
+                                    task_settings.session.last_run_exec_duration = int(
+                                        time.monotonic() - exec_start
+                                    )
+                            else:
+                                task_settings.session.last_run_exec_duration = 0
+                        except TaskException:
+                            # Task failure does not crash the whole runner
+                            task_run_ok = False
+
+                        self._change_runner_state("after-task")
+                        if self.metadata.exec.after_task:
+                            after_start = time.monotonic()
+                            try:
+                                await self._run_cmd(
+                                    self.metadata.exec.after_task,
+                                    self.metadata.exec.after_task,
+                                    task_path=task_path,
+                                )
+                            finally:
+                                task_settings.session.last_run_after_duration = int(
+                                    time.monotonic() - after_start
+                                )
+                                task_settings.save(task_settings_path)
+                        else:
+                            task_settings.session.last_run_after_duration = 0
                             task_settings.save(task_settings_path)
-                    else:
-                        task_settings.session.last_run_after_duration = 0
-                        task_settings.save(task_settings_path)
+                    except (RunnerException, asyncio.CancelledError):
+                        task_run_ok = False
+                        raise
+                    finally:
+                        task_settings.session.last_run_status = (
+                            "success" if task_run_ok else "fail"
+                        )
+                        self._change_task_state(task_path, "stopped")
 
                     self.current_task_path = None
 
@@ -362,8 +376,8 @@ class RunnerProcess:
                 else:
                     self.settings.session.last_run_after_duration = 0
 
-                self.settings.session.session_id = self.session_id
-                self.settings.session.last_run = _now_timestamp()
+                # Persist the exec/zero durations recorded above (session and
+                # last_run were already stamped at the top of the cycle).
                 self.settings.save(self._settings_path)
 
                 if self.shutting_down:
