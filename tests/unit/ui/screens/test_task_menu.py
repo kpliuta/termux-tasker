@@ -212,6 +212,43 @@ class _TaskMenuTestApp(App[None]):
         yield Static()
 
 
+class TestBuildItemsGating:
+    def _flags(
+        self, tmp_path: Path, *, enabled: bool, state: str = "stopped"
+    ) -> dict[str, bool]:
+        task_path = tmp_path / "sh_task"
+        task_path.mkdir(parents=True, exist_ok=True)
+        meta = _meta()
+        settings = _settings()
+        settings.general.enabled = enabled
+        settings.session.state = state
+        stub = SimpleNamespace(task_path=task_path)
+        items = TaskMenuScreen._build_items(stub, meta, settings)  # type: ignore[arg-type]
+        return {item.id: item.disabled for item in items if item.id}
+
+    def test_update_uninstall_disabled_when_enabled(
+        self, tmp_path: Path
+    ) -> None:
+        flags = self._flags(tmp_path, enabled=True)
+        assert flags["update"] is True
+        assert flags["uninstall"] is True
+
+    def test_update_uninstall_enabled_when_disabled(
+        self, tmp_path: Path
+    ) -> None:
+        flags = self._flags(tmp_path, enabled=False)
+        assert flags["update"] is False
+        assert flags["uninstall"] is False
+
+    def test_toggle_disabled_when_running(self, tmp_path: Path) -> None:
+        flags = self._flags(tmp_path, enabled=True, state="running")
+        assert flags["toggle"] is True
+
+    def test_toggle_enabled_when_stopped(self, tmp_path: Path) -> None:
+        assert self._flags(tmp_path, enabled=True)["toggle"] is False
+        assert self._flags(tmp_path, enabled=False)["toggle"] is False
+
+
 class TestStoppedIdleSuffixEnabledGate:
     @pytest.mark.asyncio
     async def test_idle_countdown_shown_when_task_enabled(

@@ -4,6 +4,7 @@ from textual.content import Content
 
 from termux_tasker.config import RunnerMetadata, RunnerSettings
 from termux_tasker.ui.screens.runner_menu import (
+    RunnerMenuScreen,
     _session_durations,  # noqa
     build_key_value_entries,
     build_state_suffixes,
@@ -246,6 +247,28 @@ class TestBuildStateSuffixes:
             idle_remaining=None,
         )
         assert _span_styles(progress["exec"]) == ["$text-success"]
+
+
+class TestBuildItemsGating:
+    def _items(self, *, enabled: bool) -> dict[str, bool]:
+        settings = RunnerSettings()
+        settings.general.enabled = enabled
+        items = RunnerMenuScreen._build_items(_meta(), settings)
+        return {item.id: item.disabled for item in items if item.id}
+
+    def test_update_uninstall_disabled_when_enabled(self) -> None:
+        flags = self._items(enabled=True)
+        assert flags["update"] is True
+        assert flags["uninstall"] is True
+
+    def test_update_uninstall_enabled_when_disabled(self) -> None:
+        flags = self._items(enabled=False)
+        assert flags["update"] is False
+        assert flags["uninstall"] is False
+
+    def test_toggle_stays_enabled(self) -> None:
+        assert self._items(enabled=True)["toggle"] is False
+        assert self._items(enabled=False)["toggle"] is False
 
 
 class TestSessionDurations:

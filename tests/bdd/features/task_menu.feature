@@ -110,3 +110,24 @@ Feature: Task Menu
     When I press "Show output" button
     Then a FileBrowserScreen is shown
     And the output listing shows all files
+
+  Scenario: Update and Uninstall are disabled while the task is enabled
+    Given an installed task is enabled
+    And the Task Menu screen is shown for a task
+    Then the "Update" button is disabled
+    And the "Uninstall" button is disabled
+
+  Scenario: Update and Uninstall are enabled while the task is disabled
+    Given the Task Menu screen is shown for a task
+    Then the "Update" button is enabled
+    And the "Uninstall" button is enabled
+
+  Scenario: Toggle is disabled while the task is running
+    Given the runner "sh_runner" has a task "sh_runner_task" with state "running"
+    And the Task Menu screen is shown for a task
+    Then the "Enable"/"Disable" toggle button is disabled
+
+  Scenario: Toggle is enabled while the task is stopped
+    Given the task state is "stopped"
+    And the Task Menu screen is shown for a task
+    Then the "Enable"/"Disable" toggle button is enabled

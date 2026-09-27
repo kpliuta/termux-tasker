@@ -112,3 +112,15 @@ Feature: Runner Menu
     When I press "No" button
     Then the dialog is dismissed
     And the runner remains intact
+
+  Scenario: Update and Uninstall are disabled while the runner is enabled
+    Given the runner is enabled and running
+    And the Runner Menu screen is shown
+    Then the "Update" button is disabled
+    And the "Uninstall" button is disabled
+
+  Scenario: Update and Uninstall are enabled while the runner is disabled
+    Given the runner is disabled
+    And the Runner Menu screen is shown
+    Then the "Update" button is enabled
+    And the "Uninstall" button is enabled

@@ -322,8 +322,9 @@ class RunnerMenuScreen(MenuScreen):
         items.append(ButtonConfig("show_logs", "Logs"))
         items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
         items.append(ButtonConfig("show_settings", "Show settings.toml"))
-        items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))
-        items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM))
+        is_locked = settings.general.enabled
+        items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM, disabled=is_locked))
+        items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM, disabled=is_locked))
         return items
 
     @on(Button.Pressed, "#toggle")

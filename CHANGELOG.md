@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Runner Menu now disables the `Update` and `Uninstall` buttons while the runner is enabled (disable the runner first). Task Menu disables its `Enable`/`Disable` toggle while the task is `running`, and `Update`/`Uninstall` while the task is enabled.
 - Disabled tasks on dashboard are now grayed out using `$foreground-disabled`.
 - Split the shared `RunnerSettings`/`TaskSettings` alias into independent `RunnerSettings`/`TaskSettings` classes.
 - Runner `settings.toml [session]` now records `last_run` (`"YYYY-MM-DD HH:MM:SS"`, UTC) at the start of each execution cycle.

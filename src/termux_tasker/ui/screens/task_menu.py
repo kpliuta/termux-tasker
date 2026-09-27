@@ -215,13 +215,15 @@ class TaskMenuScreen(MenuScreen):
     ) -> list[ButtonConfig]:
         items: list[ButtonConfig] = []
         toggle_label = "Disable" if settings.general.enabled else "Enable"
-        items.append(ButtonConfig("toggle", toggle_label, variant="warning"))
+        is_running = settings.session.state == "running"
+        items.append(ButtonConfig("toggle", toggle_label, variant="warning", disabled=is_running))
         items.append(ButtonConfig("properties", "Properties"))
         items.append(ButtonConfig("timeout", "Set Timeout"))
         items.append(ButtonConfig("show_metadata", "Show metadata.toml"))
         items.append(ButtonConfig("show_settings", "Show settings.toml"))
-        items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM))
-        items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM))
+        is_locked = settings.general.enabled
+        items.append(ButtonConfig("update", "Update", variant="primary", layout=ButtonLayout.BOTTOM, disabled=is_locked))
+        items.append(ButtonConfig("uninstall", "Uninstall", variant="error", layout=ButtonLayout.BOTTOM, disabled=is_locked))
         output_dir = self.task_path / "output"
         if output_dir.exists():
             items.append(ButtonConfig("show_output", "Show output"))

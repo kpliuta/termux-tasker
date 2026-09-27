@@ -259,6 +259,46 @@ def then_uninstall_button(pilot) -> None:
     ui(pilot).assert_has_button("Uninstall")
 
 
+def _assert_button_disabled(pilot, selector: str, *, is_disabled: bool) -> None:
+    try:
+        button = ui(pilot).app.screen.query_one(selector, Button)
+    except NoMatches:
+        raise AssertionError(f"Button {selector!r} not found") from None
+    assert button.disabled is is_disabled, (
+        f"Button {selector!r} disabled={button.disabled!r}, expected {is_disabled!r}"
+    )
+
+
+@then('the "Update" button is disabled')
+def then_update_disabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#update", is_disabled=True)
+
+
+@then('the "Update" button is enabled')
+def then_update_enabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#update", is_disabled=False)
+
+
+@then('the "Uninstall" button is disabled')
+def then_uninstall_disabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#uninstall", is_disabled=True)
+
+
+@then('the "Uninstall" button is enabled')
+def then_uninstall_enabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#uninstall", is_disabled=False)
+
+
+@then('the "Enable"/"Disable" toggle button is disabled')
+def then_toggle_disabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#toggle", is_disabled=True)
+
+
+@then('the "Enable"/"Disable" toggle button is enabled')
+def then_toggle_enabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#toggle", is_disabled=False)
+
+
 @then('it contains "Set Timeout" button')
 def then_set_timeout_button(pilot) -> None:
     ui(pilot).assert_has_button("Set Timeout")
