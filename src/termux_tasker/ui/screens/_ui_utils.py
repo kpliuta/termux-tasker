@@ -14,7 +14,24 @@ from termux_tasker.ui.base import InfoScreen, InputScreen
 from termux_tasker.ui.screens._utils import is_property_value_empty
 
 if TYPE_CHECKING:
+    from textual.screen import Screen
+
     from termux_tasker.app import TermuxTaskerApp
+
+
+def go_home(screen: Screen[Any]) -> None:
+    """Pop the screen stack up to the dashboard screen.
+
+    Called by each feature screen's ``#home`` button handler. The
+    ``DashboardScreen`` import stays function-local: a top-level
+    import would cycle back through the feature screens using this
+    helper (dashboard → runners → runner menu → properties → here).
+    """
+    from termux_tasker.ui.screens.dashboard import DashboardScreen
+
+    app = screen.app
+    while not isinstance(app.screen, DashboardScreen) and len(app.screen_stack) > 1:
+        app.pop_screen()
 
 
 def ask_validated_input(

@@ -8,6 +8,7 @@ from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata, BundledTasks
 from termux_tasker.ui.base import ButtonConfig, MenuScreen, LoadingScreen, InfoScreen
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._utils import termux_app, clone_repo
 
 
@@ -15,7 +16,7 @@ class BundledTaskScreen(MenuScreen):
     def __init__(self, runner_path: Path) -> None:
         self.runner_path = runner_path
         self._tmp_folders: list[Path] = []
-        super().__init__([], show_back_button=True)
+        super().__init__([], show_home_button=True, show_back_button=True)
         self.title = "Bundled Task"
         self._loaded = False
 
@@ -99,3 +100,8 @@ class BundledTaskScreen(MenuScreen):
                             InstallTaskScreen(self.runner_path, tmp_folder)
                         )
                         return
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

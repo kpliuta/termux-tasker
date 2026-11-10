@@ -6,16 +6,13 @@ from typing import Any
 from textual import on
 from textual.widgets import Button
 
-from termux_tasker.config import PropertyDef, RunnerSettings
-from termux_tasker.ui.base import (
-    ButtonConfig,
-    MenuScreen,
-)
+from termux_tasker.config import PropertyDef, RunnerSettings, TaskSettings
+from termux_tasker.ui.base import ButtonConfig, MenuScreen
 from termux_tasker.ui.screens._utils import (
     termux_app,
     parse_property_value,
 )
-from termux_tasker.ui.screens._ui_utils import ask_validated_input
+from termux_tasker.ui.screens._ui_utils import ask_validated_input, go_home
 
 _SET_PREFIX = "set_"
 _NOT_SET = "(not set)"
@@ -35,10 +32,12 @@ class PropertiesScreen(MenuScreen):
         item_path: Path,
         properties: list[PropertyDef],
         item_name: str,
+        is_task: bool = False,
     ) -> None:
         self.item_path = item_path
         self.properties = properties
-        super().__init__(self._build_items(), show_back_button=True)
+        self.is_task = is_task
+        super().__init__(self._build_items(), show_home_button=True, show_back_button=True)
         self.title = "Properties"
         self.sub_title = item_name
 
@@ -47,7 +46,9 @@ class PropertiesScreen(MenuScreen):
     def _settings_file(self) -> Path:
         return self.item_path / "settings.toml"
 
-    def _load_settings(self) -> RunnerSettings:
+    def _load_settings(self) -> RunnerSettings | TaskSettings:
+        if self.is_task:
+            return TaskSettings.load(self._settings_file())
         return RunnerSettings.load(self._settings_file())
 
     def _build_items(self) -> list[ButtonConfig]:
@@ -110,3 +111,8 @@ class PropertiesScreen(MenuScreen):
             empty_message=empty_message,
             invalid_message=empty_message,
         )
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

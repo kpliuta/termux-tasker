@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import re
 import shutil
 import time
+from datetime import datetime
 
 from textual.css.query import NoMatches
 from textual.widgets import Button
 
 from tests.bdd.steps_common import *  # noqa
-from termux_tasker.config import RunnerMetadata, TaskMetadata  # noqa
-from termux_tasker.runner_process import _parse_timeout, _to_env_key  # noqa
+from termux_tasker.config import RunnerMetadata, RunnerSettings, TaskMetadata, TaskSettings  # noqa
+from termux_tasker._parse import parse_timeout  # noqa
+from termux_tasker.runner_process import _to_env_key  # noqa
 
 
 @then("the dashboard screen is shown")
@@ -166,9 +169,9 @@ def then_contains_runners(pilot) -> None:
     ui(pilot).assert_has_button("Runners")
 
 
-@then('it contains "Settings" button')
+@then('it contains "🔧" button')
 def then_contains_settings(pilot) -> None:
-    ui(pilot).assert_has_button("Settings")
+    ui(pilot).assert_has_button("🔧")
 
 
 @then('it contains "Exit" button')
@@ -184,6 +187,11 @@ def then_install_runner_button(pilot) -> None:
 @then('it contains "Back" button')
 def then_back_button(pilot) -> None:
     ui(pilot).assert_has_button("Back")
+
+
+@then('it contains "🏠" button')
+def then_home_button(pilot) -> None:
+    ui(pilot).assert_has_button("🏠")
 
 
 @then('it contains "Yes" button')
@@ -249,6 +257,46 @@ def then_update_button(pilot) -> None:
 @then('it contains "Uninstall" button')
 def then_uninstall_button(pilot) -> None:
     ui(pilot).assert_has_button("Uninstall")
+
+
+def _assert_button_disabled(pilot, selector: str, *, is_disabled: bool) -> None:
+    try:
+        button = ui(pilot).app.screen.query_one(selector, Button)
+    except NoMatches:
+        raise AssertionError(f"Button {selector!r} not found") from None
+    assert button.disabled is is_disabled, (
+        f"Button {selector!r} disabled={button.disabled!r}, expected {is_disabled!r}"
+    )
+
+
+@then('the "Update" button is disabled')
+def then_update_disabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#update", is_disabled=True)
+
+
+@then('the "Update" button is enabled')
+def then_update_enabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#update", is_disabled=False)
+
+
+@then('the "Uninstall" button is disabled')
+def then_uninstall_disabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#uninstall", is_disabled=True)
+
+
+@then('the "Uninstall" button is enabled')
+def then_uninstall_enabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#uninstall", is_disabled=False)
+
+
+@then('the "Enable"/"Disable" toggle button is disabled')
+def then_toggle_disabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#toggle", is_disabled=True)
+
+
+@then('the "Enable"/"Disable" toggle button is enabled')
+def then_toggle_enabled(pilot) -> None:
+    _assert_button_disabled(pilot, "#toggle", is_disabled=False)
 
 
 @then('it contains "Set Timeout" button')
@@ -328,10 +376,16 @@ def then_description_shows(pilot, docstring) -> None:
         if not line:
             continue
         token = line.split()[0]
+        if token == "Last" and line.split()[1:2] == ["Status"]:
+            token = "Last Status"
         expected = {
             "Version": "Version",
             "Enabled": "Enabled",
             "Timeout": "Timeout",
+            "PID": "PID",
+            "RSS": "RSS",
+            "Last": "Last Run",
+            "Last Status": "Last Status",
         }.get(token)
         if expected:
             assert expected in content, f"Description missing {line!r}: {content!r}"
@@ -1157,6 +1211,51 @@ def then_term_cmd_executed(pilot) -> None:
     settings().set_runner_state(runner_path, "termination")
 
 
+@then('the runner\'s settings.toml contains last_run with format "YYYY-MM-DD HH:MM:SS"')
+def then_runner_last_run_format(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    RunnerSettings.clear_cache(runner_path / "settings.toml")
+    s = settings().load_runner_settings(runner_path)
+    assert s.session.last_run != "none"
+    assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", s.session.last_run)
+    datetime.strptime(s.session.last_run, "%Y-%m-%d %H:%M:%S")
+    assert not hasattr(s.session, "last_run_status")
+
+
+@then("the runner's settings.toml contains last run step durations as numbers of seconds")
+def then_runner_last_run_durations(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    RunnerSettings.clear_cache(runner_path / "settings.toml")
+    s = settings().load_runner_settings(runner_path)
+    assert s.session.last_run != "none"
+    for duration in (
+        s.session.last_run_init_duration,
+        s.session.last_run_before_duration,
+        s.session.last_run_exec_duration,
+        s.session.last_run_after_duration,
+    ):
+        assert isinstance(duration, int)
+        assert duration >= 0
+
+
+@then("the task's settings.toml contains last run durations as numbers of seconds")
+def then_task_last_run_durations(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    TaskSettings.clear_cache(task_path / "settings.toml")
+    s = settings().load_task_settings(task_path)
+    assert s.session.last_run != "none"
+    for duration in (
+        s.session.last_run_before_duration,
+        s.session.last_run_exec_duration,
+        s.session.last_run_after_duration,
+    ):
+        assert isinstance(duration, int)
+        assert duration >= 0
+
+
 @then("the method returns only after the runner has fully stopped")
 def then_method_returns(pilot) -> None:
     runner = ui(pilot).app.state.runners.get("sh_runner")
@@ -1544,7 +1643,7 @@ def then_file_browser_shown(pilot) -> None:
 
 @then("it sleeps for 30 seconds before the next iteration")
 def then_sleep_30s() -> None:
-    assert _parse_timeout("30s") == 30
+    assert parse_timeout("30s") == 30
 
 
 @then("property names are converted to uppercase with non-alphanumeric chars replaced by underscores")
@@ -1649,16 +1748,37 @@ def then_settings_has_update_app_button(pilot) -> None:
     ui(pilot).assert_has_button("Update App")
 
 
-def _assert_dashboard_description_contains(pilot, text: str) -> None:
+def _dashboard_description_text(pilot) -> str:
     screen = ui(pilot).app.screen
     assert isinstance(screen, DashboardScreen)
-    desc = screen.description or ""
-    assert text in desc, f"Dashboard description missing {text!r}: {desc!r}"
+    if screen.query("#description-widget"):
+        return _description_content(screen)
+    return screen.description or ""
 
 
-@then('the dashboard description contains "Overview"')
-def then_dashboard_desc_overview(pilot) -> None:
-    _assert_dashboard_description_contains(pilot, "Overview")
+def _assert_dashboard_description_contains(pilot, text: str) -> None:
+    content = _dashboard_description_text(pilot)
+    assert text in content, f"Dashboard description missing {text!r}: {content!r}"
+
+
+def _assert_dashboard_description_absent(pilot, text: str) -> None:
+    content = _dashboard_description_text(pilot)
+    assert text not in content, f"Dashboard description should not contain {text!r}: {content!r}"
+
+
+@then('the dashboard description contains "CPU"')
+def then_dashboard_desc_cpu(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "CPU")
+
+
+@then('the dashboard description contains "MEM"')
+def then_dashboard_desc_mem(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "MEM")
+
+
+@then('the dashboard description does not contain "PID"')
+def then_dashboard_desc_no_pid(pilot) -> None:
+    _assert_dashboard_description_absent(pilot, "PID")
 
 
 @then('the dashboard description contains "No runners installed"')
@@ -1685,18 +1805,90 @@ def then_dashboard_desc_simple_sh_runner_task(pilot) -> None:
 def then_dashboard_desc_running(pilot) -> None:
     _assert_dashboard_description_contains(pilot, "[running]")
 
+@then('the dashboard description contains "[idle][∞]"')
+def then_dashboard_desc_idle_infinite(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "[idle][∞]")
 
-@then("the dashboard has buttons arranged in 2 columns")
-def then_dashboard_two_columns(pilot) -> None:
+
+@then('the runner description contains "idle [∞]"')
+def then_runner_desc_idle_infinite(pilot) -> None:
+    _assert_runner_description_contains(pilot, "idle [∞]")
+
+
+@then('the task description contains "stopped [0]"')
+def then_task_desc_stopped_zero(pilot) -> None:
+    _assert_task_description_contains(pilot, "stopped [0]")
+
+
+def _runner_description_text(pilot) -> str:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, RunnerMenuScreen)
+    return _description_content(screen)
+
+
+def _assert_runner_description_contains(pilot, text: str) -> None:
+    content = _runner_description_text(pilot)
+    assert text in content, f"Runner description missing {text!r}: {content!r}"
+
+
+@then('the runner description contains "PID"')
+def then_runner_desc_pid(pilot) -> None:
+    _assert_runner_description_contains(pilot, "PID")
+
+
+@then('the runner description contains "RSS"')
+def then_runner_desc_rss(pilot) -> None:
+    _assert_runner_description_contains(pilot, "RSS")
+
+
+@then('the runner description contains "Last Run"')
+def then_runner_desc_last_run(pilot) -> None:
+    _assert_runner_description_contains(pilot, "Last Run")
+
+
+@then('the runner description contains "initialization [n/a]"')
+def then_runner_desc_init_na(pilot) -> None:
+    _assert_runner_description_contains(pilot, "initialization [n/a]")
+
+
+@then('the runner description contains "termination [n/a]"')
+def then_runner_desc_termination_na(pilot) -> None:
+    _assert_runner_description_contains(pilot, "termination [n/a]")
+
+
+def _task_description_text(pilot) -> str:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, TaskMenuScreen)
+    return _description_content(screen)
+
+
+def _assert_task_description_contains(pilot, text: str) -> None:
+    content = _task_description_text(pilot)
+    assert text in content, f"Task description missing {text!r}: {content!r}"
+
+
+@then('the task description contains "Last Run"')
+def then_task_desc_last_run(pilot) -> None:
+    _assert_task_description_contains(pilot, "Last Run")
+
+
+@then('the task description contains "Last Status"')
+def then_task_desc_last_status(pilot) -> None:
+    _assert_task_description_contains(pilot, "Last Status")
+
+
+@then("the dashboard has buttons arranged in 3 columns")
+def then_dashboard_three_columns(pilot) -> None:
     from textual.containers import Horizontal
     screen = ui(pilot).app.screen
     assert isinstance(screen, DashboardScreen)
-    rows = screen.query(".button-row")
-    assert len(rows) >= 1, "Expected at least one button row for 2-column layout"
+    bottom = screen.query_one("#bottom-container")
+    rows = bottom.query(".button-row")
+    assert len(rows) >= 1, "Expected at least one button row for 3-column layout"
     first_row = rows[0]
     assert isinstance(first_row, Horizontal)
     buttons_in_row = first_row.query("Button")
-    assert len(buttons_in_row) == 2, f"Expected 2 buttons in row, got {len(buttons_in_row)}"
+    assert len(buttons_in_row) == 3, f"Expected 3 buttons in row, got {len(buttons_in_row)}"
 
 
 @then('the "Exit" button is in the bottom bar')
@@ -1709,3 +1901,44 @@ def then_exit_in_bottom_bar(pilot) -> None:
             found = True
             break
     assert found, "Button 'Exit' not found in bottom bar"
+
+
+@then("the dashboard action buttons are in the bottom bar")
+def then_dashboard_actions_in_bottom_bar(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    bottom = screen.query_one("#bottom-container")
+    for button_id in ("#help", "#settings", "#runners"):
+        bottom.query_one(button_id)
+
+
+@then('the dashboard shows "❓" button')
+def then_dashboard_shows_help(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    ui(pilot).assert_has_button("❓")
+
+
+@then('the dashboard shows "🔧" button')
+def then_dashboard_shows_settings(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    ui(pilot).assert_has_button("🔧")
+
+
+@then('the dashboard buttons are ordered "help", "settings", "runners"')
+def then_dashboard_buttons_order(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, DashboardScreen)
+    bottom = screen.query_one("#bottom-container")
+    rows = bottom.query(".button-row")
+    assert len(rows) >= 1, "Expected at least one button row"
+    buttons_in_row = rows[0].query("Button")
+    assert [btn.id for btn in buttons_in_row] == ["help", "settings", "runners"]
+
+
+@then("the settings description keeps compact height")
+def then_settings_description_compact(pilot) -> None:
+    screen = ui(pilot).app.screen
+    assert isinstance(screen, SettingsScreen)
+    assert f"{screen.query_one('#description-scroll').styles.height}" == "auto"

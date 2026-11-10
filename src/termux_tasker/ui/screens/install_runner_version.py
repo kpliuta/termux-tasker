@@ -21,6 +21,7 @@ from termux_tasker.ui.base import (
     ConfirmationScreen,
     InputScreen,
 )
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._utils import (
     termux_app,
     fetch_git_tags,
@@ -41,7 +42,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         self._runner_meta = meta
         self._id_to_tag: dict[str, str] = {}
 
-        super().__init__([], show_back_button=True)
+        super().__init__([], show_home_button=True, show_back_button=True)
         self.title = "Runner Version"
         self.sub_title = meta.general.name
         self._loaded = False
@@ -274,7 +275,7 @@ class InstallRunnerVersionScreen(MenuScreen):
         from termux_tasker.ui.screens.runners_screen import RunnersScreen
 
         fill_default_properties(
-            self.tmp_runner_folder / "settings.toml", meta.properties
+            self.tmp_runner_folder / "settings.toml", meta.properties, kind="runner"
         )
 
         if target_dir.exists():
@@ -288,3 +289,8 @@ class InstallRunnerVersionScreen(MenuScreen):
             termux_app(self).pop_screen()
 
         termux_app(self).push_screen(RunnerMenuScreen(target_dir))
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

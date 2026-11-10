@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rich.table import Table
-from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import VerticalGroup
+from textual.content import Content
 from textual.css.query import NoMatches
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -96,8 +96,8 @@ class KeyValueWidget(Widget):
 class StateWidget(Widget):
     """Description widget for ``MenuScreen``: a ``KeyValueWidget`` plus a lifecycle state list.
 
-    ``key_value_entries`` and ``current_state`` are reactives whose watchers
-    update child widgets in place.
+    ``key_value_entries``, ``current_state`` and ``state_suffixes`` are
+    reactives whose watchers update child widgets in place.
     """
 
     _DEFAULT_ACTIVE_COLOR = "$text-success"
@@ -127,6 +127,7 @@ class StateWidget(Widget):
 
     key_value_entries: reactive[tuple[KeyValueEntry, ...]] = reactive((), init=False)
     current_state: reactive[str | None] = reactive(None, init=False)
+    state_suffixes: reactive[dict[str, Content]] = reactive({}, init=False)
 
     def __init__(
         self,
@@ -134,6 +135,7 @@ class StateWidget(Widget):
         key_value_entries: tuple[KeyValueEntry, ...] = (),
         current_state: str | None = None,
         states_entries: tuple[StateEntry, ...] = (),
+        state_suffixes: dict[str, Content] | None = None,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
@@ -141,29 +143,36 @@ class StateWidget(Widget):
         self._states_entries = states_entries
         self.key_value_entries = key_value_entries
         self.current_state = current_state
+        self.state_suffixes = dict(state_suffixes) if state_suffixes else {}
 
     @staticmethod
     def _render_state_cell(
         entry: StateEntry,
         is_active: bool,
         is_parent_highlight: bool = False,
-    ) -> Text:
+        suffix: Content | None = None,
+    ) -> Content:
         """Render a single state row.
 
         - exact active state: ▶ marker + bold + color
         - parent of the active state: bold + color, no marker
         - otherwise: plain text
+        - ``suffix`` (e.g. live timers) is appended with its own styling.
         """
         color = entry.color or StateWidget._DEFAULT_ACTIVE_COLOR
         if is_active:
-            return Text(
-                f"{StateWidget._ACTIVE_MARKER}{entry.label}", style=f"bold {color}"
+            cell = Content.assemble(
+                (f"{StateWidget._ACTIVE_MARKER}{entry.label}", f"bold {color}")
             )
-        if is_parent_highlight:
-            return Text(
-                f"{StateWidget._INACTIVE_MARKER}{entry.label}", style=f"bold {color}"
+        elif is_parent_highlight:
+            cell = Content.assemble(
+                (f"{StateWidget._INACTIVE_MARKER}{entry.label}", f"bold {color}")
             )
-        return Text(f"{StateWidget._INACTIVE_MARKER}{entry.label}")
+        else:
+            cell = Content.assemble((f"{StateWidget._INACTIVE_MARKER}{entry.label}", ""))
+        if suffix is not None:
+            cell = Content.assemble(cell, (" ", ""), suffix)
+        return cell
 
     def compose(self) -> ComposeResult:
         yield KeyValueWidget(key_value_entries=self.key_value_entries)
@@ -183,12 +192,13 @@ class StateWidget(Widget):
                             entry,
                             entry.id == state,
                             is_parent_highlight=bool(state) and state in entry.children,
+                            suffix=self.state_suffixes.get(entry.id),
                         ),
                         classes="state-row",
                     )
 
-    def watch_current_state(self, state: str | None) -> None:
-        """Re-render every state row when the session state changes."""
+    def _refresh_state_rows(self) -> None:
+        """Re-render every state row from the current state + suffixes."""
         if not self.is_mounted:
             return
         state_rows = self.query(".state-row")
@@ -199,10 +209,19 @@ class StateWidget(Widget):
                 row.update(
                     self._render_state_cell(
                         entry,
-                        entry.id == state,
-                        is_parent_highlight=bool(state) and state in entry.children,
+                        entry.id == self.current_state,
+                        is_parent_highlight=bool(self.current_state) and self.current_state in entry.children,
+                        suffix=self.state_suffixes.get(entry.id),
                     )
                 )
+
+    def watch_current_state(self, state: str | None) -> None:
+        """Re-render every state row when the session state changes."""
+        self._refresh_state_rows()
+
+    def watch_state_suffixes(self, suffixes: dict[str, Content]) -> None:
+        """Re-render state rows when timer/progress suffixes change."""
+        self._refresh_state_rows()
 
     def watch_key_value_entries(self, rows: tuple[KeyValueEntry, ...]) -> None:
         """Forward key/value entry updates to the embedded KeyValueWidget."""

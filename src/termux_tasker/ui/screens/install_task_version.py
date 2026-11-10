@@ -22,13 +22,14 @@ from termux_tasker.ui.base import (
     ConfirmationScreen,
     InputScreen,
 )
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._utils import (
     termux_app,
     fetch_git_tags,
     git_checkout,
     get_installed_task_version,
     make_unique,
-    merge_runner_properties,
+    merge_task_properties,
     fill_default_properties,
     sanitize_id,
     is_property_value_empty,
@@ -43,7 +44,7 @@ class InstallTaskVersionScreen(MenuScreen):
         self._task_meta = meta
         self._id_to_tag: dict[str, str] = {}
 
-        super().__init__([], show_back_button=True)
+        super().__init__([], show_home_button=True, show_back_button=True)
         self.title = "Task Version"
         self.sub_title = meta.general.name
         self._loaded = False
@@ -186,7 +187,7 @@ class InstallTaskVersionScreen(MenuScreen):
         else:
             old_settings = TaskSettings.load(target_dir / "settings.toml")
             old_meta = TaskMetadata.load(target_dir / "metadata.toml")
-            new_settings = merge_runner_properties(
+            new_settings = merge_task_properties(
                 old_settings, old_meta.properties, meta.properties
             )
             new_settings.save(self.tmp_task_folder / "settings.toml")
@@ -289,7 +290,7 @@ class InstallTaskVersionScreen(MenuScreen):
         from termux_tasker.ui.screens.task_menu import TaskMenuScreen
 
         fill_default_properties(
-            self.tmp_task_folder / "settings.toml", meta.properties
+            self.tmp_task_folder / "settings.toml", meta.properties, kind="task"
         )
 
         if target_dir.exists():
@@ -303,3 +304,8 @@ class InstallTaskVersionScreen(MenuScreen):
             termux_app(self).pop_screen()
 
         termux_app(self).push_screen(TaskMenuScreen(target_dir))
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

@@ -15,6 +15,7 @@ from termux_tasker.ui.base import (
     InfoScreen,
     ConfirmationScreen,
 )
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._utils import (
     termux_app,
     fetch_git_tags,
@@ -60,7 +61,7 @@ class UpdateAppVersionScreen(MenuScreen):
     def __init__(self) -> None:
         self._id_to_tag: dict[str, str] = {}
 
-        super().__init__([], show_back_button=True)
+        super().__init__([], show_home_button=True, show_back_button=True)
         self.title = "App Version"
         self.sub_title = termux_app(self).state.app_version
         self._loaded = False
@@ -167,3 +168,8 @@ class UpdateAppVersionScreen(MenuScreen):
                 severity="info",
             )
         )
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

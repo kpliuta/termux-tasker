@@ -17,13 +17,14 @@ import shutil
 import subprocess
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 
 from termux_tasker.config import (
     RunnerMetadata,
     RunnerSettings,
     TaskMetadata,
+    TaskSettings,
     PropertyDef,
 )
 
@@ -174,12 +175,30 @@ def get_installed_task_version(
     return None
 
 
+def _merge_properties_dict(
+    old_settings: RunnerSettings | TaskSettings,
+    old_properties: list[PropertyDef],
+    new_properties: list[PropertyDef],
+) -> dict[str, str]:
+    """Keep old values whose full property signature is unchanged."""
+    old_signatures = {
+        (p.name, p.input_type, p.optional, tuple(p.options or []))
+        for p in old_properties
+    }
+    merged: dict[str, str] = {}
+    for p in new_properties:
+        sig = (p.name, p.input_type, p.optional, tuple(p.options or []))
+        if sig in old_signatures and p.name in old_settings.properties:
+            merged[p.name] = old_settings.properties[p.name]
+    return merged
+
+
 def merge_runner_properties(
     old_settings: RunnerSettings,
     old_properties: list[PropertyDef],
     new_properties: list[PropertyDef],
 ) -> RunnerSettings:
-    """Merge old property values into a new settings instance during version update.
+    """Merge old property values into a new runner settings instance during version update.
 
     A value is preserved only when the **full signature** of the property
     (name + input_type + optional + options tuple) matches between the old
@@ -188,32 +207,45 @@ def merge_runner_properties(
 
     The ``general`` and ``session`` fields are carried over wholesale.
     """
-    old_signatures = {
-        (p.name, p.input_type, p.optional, tuple(p.options or []))
-        for p in old_properties
-    }
     new_settings = RunnerSettings()
     new_settings.general = old_settings.general
     new_settings.session = old_settings.session
+    new_settings.properties = _merge_properties_dict(
+        old_settings, old_properties, new_properties
+    )
+    return new_settings
 
-    for p in new_properties:
-        sig = (p.name, p.input_type, p.optional, tuple(p.options or []))
-        if sig in old_signatures and p.name in old_settings.properties:
-            new_settings.properties[p.name] = old_settings.properties[p.name]
 
+def merge_task_properties(
+    old_settings: TaskSettings,
+    old_properties: list[PropertyDef],
+    new_properties: list[PropertyDef],
+) -> TaskSettings:
+    """Task counterpart of merge_runner_properties (same merge rules)."""
+    new_settings = TaskSettings()
+    new_settings.general = old_settings.general
+    new_settings.session = old_settings.session
+    new_settings.properties = _merge_properties_dict(
+        old_settings, old_properties, new_properties
+    )
     return new_settings
 
 
 def fill_default_properties(
     settings_path: Path,
     properties: list[PropertyDef],
+    kind: Literal["runner", "task"] = "runner",
 ) -> None:
     """Fill in default values for properties that are missing from the settings.
 
     Only writes to disk if at least one property was actually filled
     (avoids unnecessary I/O on every install/update).
     """
-    settings = RunnerSettings.load(settings_path)
+    settings: RunnerSettings | TaskSettings
+    if kind == "task":
+        settings = TaskSettings.load(settings_path)
+    else:
+        settings = RunnerSettings.load(settings_path)
     changed = False
     for prop in properties:
         if prop.name not in settings.properties and prop.default is not None:

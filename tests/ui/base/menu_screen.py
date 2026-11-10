@@ -141,6 +141,7 @@ class MenuScreenTestApp(App):
         screen = MenuScreen(
             menu_items=items,
             description=description,
+            show_home_button=True,
             show_back_button=True,
             show_exit_button=True,
         )
@@ -166,6 +167,7 @@ class MenuScreenTestApp(App):
         screen = MenuScreen(
             menu_items=items,
             description_widget=table,
+            show_home_button=True,
             show_back_button=True,
         )
         screen.title = "Test 2"
@@ -190,6 +192,7 @@ class MenuScreenTestApp(App):
             menu_items=items,
             description="6 buttons in 2 columns",
             column_count=2,
+            show_home_button=True,
             show_back_button=True,
         )
         screen.title = "Test 3"
@@ -207,6 +210,7 @@ class MenuScreenTestApp(App):
             menu_items=items,
             description=lines,
             description_max_height="30%",
+            show_home_button=True,
             show_back_button=True,
         )
         screen.title = "Test 4"
@@ -222,6 +226,7 @@ class MenuScreenTestApp(App):
         screen = MenuScreen(
             menu_items=items,
             description_widget=LiveCyclingStateDescription(),
+            show_home_button=True,
             show_back_button=True,
         )
         screen.title = "Test 5"

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 from textual.app import App
-from textual.containers import VerticalScroll
+from textual.containers import Horizontal, VerticalScroll
 from textual.css.query import NoMatches
+from textual.css.scalar import Unit
 from textual.dom import BadIdentifier
 from textual.widgets import Button, Static
 
@@ -86,6 +87,14 @@ class TestMenuScreenInit:
         screen = MenuScreen(menu_items=[], description_max_height="50%")
         assert screen._description_max_height == "50%"
 
+    def test_description_min_height_default(self) -> None:
+        screen = MenuScreen(menu_items=[])
+        assert screen._description_min_height is None
+
+    def test_description_min_height_custom(self) -> None:
+        screen = MenuScreen(menu_items=[], description_min_height="100%")
+        assert screen._description_min_height == "100%"
+
     def test_column_count_default(self) -> None:
         screen = MenuScreen(menu_items=[])
         assert screen._column_count == 1
@@ -93,6 +102,10 @@ class TestMenuScreenInit:
     def test_column_count_custom(self) -> None:
         screen = MenuScreen(menu_items=[], column_count=5)
         assert screen._column_count == 5
+
+    def test_show_home_button_default(self) -> None:
+        screen = MenuScreen(menu_items=[])
+        assert screen.show_home_button is False
 
     def test_show_back_button_default(self) -> None:
         screen = MenuScreen(menu_items=[])
@@ -158,6 +171,44 @@ class TestMenuScreenCompose:
                     found = True
                     break
             assert found
+
+    @pytest.mark.asyncio
+    async def test_description_min_max_height_applied(self) -> None:
+        screen = MenuScreen(
+            menu_items=[],
+            description="Test desc",
+            description_max_height="50%",
+            description_min_height="100%",
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            scroll = pilot.app.screen.query_one("#description-scroll", VerticalScroll)
+            assert scroll.styles.max_height.value == 50
+            assert scroll.styles.max_height.unit == Unit.HEIGHT
+            assert scroll.styles.min_height.value == 100
+            assert scroll.styles.min_height.unit == Unit.HEIGHT
+
+    @pytest.mark.asyncio
+    async def test_row_buttons_shrink_on_narrow_screen(self) -> None:
+        items = [
+            ButtonConfig(label="A", id="a"),
+            ButtonConfig(label="B", id="b"),
+            ButtonConfig(label="C", id="c"),
+        ]
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(MenuScreen(menu_items=items, column_count=3))
+
+        async with TestApp().run_test(size=(50, 14)) as pilot:
+            await pilot.pause(0.3)
+            screen = pilot.app.screen
+            for button in screen.query(Button):
+                assert button.region.right <= screen.size.width
 
     @pytest.mark.asyncio
     async def test_back_button_shown_when_enabled(self) -> None:
@@ -259,7 +310,7 @@ class TestMenuScreenCompose:
             bottom_bar = pilot.app.screen.query_one("#bottom-container")
             bottom_btns = [
                 b for b in bottom_bar.query(Button)
-                if b.id not in ("back", "exit")
+                if b.id not in ("home", "back", "exit")
             ]
             assert len(bottom_btns) == 1
             assert bottom_btns[0].id == "bottom"
@@ -413,3 +464,151 @@ class TestMenuScreenWatchers:
         async with TestApp().run_test() as pilot:
             with pytest.raises(NoMatches):
                 pilot.app.screen.query_one("#description-scroll", VerticalScroll)
+
+
+class TestMenuScreenHomeButton:
+    @pytest.mark.asyncio
+    async def test_home_button_hidden_by_default(self) -> None:
+        screen = MenuScreen(menu_items=[])
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            with pytest.raises(NoMatches):
+                pilot.app.screen.query_one("#home", Button)
+
+    @pytest.mark.asyncio
+    async def test_home_button_shown_when_enabled(self) -> None:
+        screen = MenuScreen(menu_items=[], show_home_button=True)
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            btn = pilot.app.screen.query_one("#home", Button)
+            assert str(btn.label).strip() == "🏠"
+            assert btn.variant == "error"
+
+    @pytest.mark.asyncio
+    async def test_home_without_back_takes_full_width(self) -> None:
+        """Home alone mounts directly in the bottom bar, like Back/Exit."""
+        screen = MenuScreen(menu_items=[], show_home_button=True)
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            bottom_bar = pilot.app.screen.query_one("#bottom-container")
+            home = bottom_bar.query_one("#home", Button)
+            assert home.parent is bottom_bar
+            assert home.styles.width.unit == Unit.FRACTION
+            with pytest.raises(NoMatches):
+                pilot.app.screen.query_one("#back", Button)
+
+    @pytest.mark.asyncio
+    async def test_home_with_back_shares_row_home_first(self) -> None:
+        screen = MenuScreen(
+            menu_items=[], show_home_button=True, show_back_button=True
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            bottom_bar = pilot.app.screen.query_one("#bottom-container")
+            nav_row = bottom_bar.query_one("#nav-row", Horizontal)
+            row_buttons = nav_row.query(Button)
+            assert [b.id for b in row_buttons] == ["home", "back"]
+            home = nav_row.query_one("#home", Button)
+            assert home.styles.width.value == 8
+
+    @pytest.mark.asyncio
+    async def test_home_back_exit_order(self) -> None:
+        screen = MenuScreen(
+            menu_items=[],
+            show_home_button=True,
+            show_back_button=True,
+            show_exit_button=True,
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            bottom_bar = pilot.app.screen.query_one("#bottom-container")
+            assert bottom_bar.query_one("#nav-row", Horizontal) is not None
+            assert bottom_bar.query_one("#exit", Button) is not None
+
+    @pytest.mark.asyncio
+    async def test_home_click_does_nothing_on_base(self) -> None:
+        """Base MenuScreen has no home event handling: Home is a no-op.
+
+        Navigation lives in each feature screen's own ``#home``
+        handler (via the ``go_home`` utility).
+        """
+        screen_a = MenuScreen(
+            menu_items=[ButtonConfig(label="A", id="a")],
+            show_home_button=True,
+            show_back_button=True,
+        )
+        screen_b = MenuScreen(
+            menu_items=[ButtonConfig(label="B", id="b")],
+            show_home_button=True,
+            show_back_button=True,
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen_a)
+                self.push_screen(screen_b)
+
+        async with TestApp().run_test() as pilot:
+            await pilot.pause()
+            await pilot.click("#home")
+            await pilot.pause()
+            assert pilot.app.screen is screen_b
+            assert len(pilot.app.screen_stack) == 3
+
+    @pytest.mark.asyncio
+    async def test_menu_items_update_preserves_home_button(self) -> None:
+        screen = MenuScreen(
+            menu_items=[ButtonConfig(label="A", id="a")],
+            show_home_button=True,
+            show_back_button=True,
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            home_before = pilot.app.screen.query_one("#home", Button)
+            screen.menu_items = [ButtonConfig(label="A!", id="a")]
+            await pilot.pause()
+            home_after = pilot.app.screen.query_one("#home", Button)
+            assert home_after is home_before
+
+    @pytest.mark.asyncio
+    async def test_rebuild_keeps_home_and_back(self) -> None:
+        screen = MenuScreen(
+            menu_items=[ButtonConfig(label="A", id="a")],
+            show_home_button=True,
+            show_back_button=True,
+        )
+
+        class TestApp(App):
+            def on_mount(self) -> None:
+                self.push_screen(screen)
+
+        async with TestApp().run_test() as pilot:
+            screen.menu_items = [ButtonConfig(label="C", id="c")]
+            await pilot.pause(0.5)
+            bottom_bar = pilot.app.screen.query_one("#bottom-container")
+            nav_row = bottom_bar.query_one("#nav-row", Horizontal)
+            assert [b.id for b in nav_row.query(Button)] == ["home", "back"]

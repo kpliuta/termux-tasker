@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import shutil
+import time
 
 import termux_tasker.ui.screens.install_runner_version as _irv_mod  # noqa
+
+from termux_tasker.config import RunnerSettings, TaskSettings
 
 from tests.bdd.steps_common import *  # noqa
 
@@ -460,6 +463,35 @@ def when_loop_state(pilot) -> None:
         runner._run_lock = True  # noqa
 
 
+@when("the runner completes a full execution cycle")
+def when_runner_completes_cycle(pilot) -> None:
+    runner_path = ui(pilot).app.state.runners_path / "sh_runner"
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        RunnerSettings.clear_cache(runner_path / "settings.toml")
+        s = settings().load_runner_settings(runner_path)
+        if s.session.last_run_after_duration is not None:
+            return
+        ui(pilot).pause(0.1)
+    raise AssertionError("runner never completed a full execution cycle")
+
+
+@when("the task completes an execution")
+def when_task_completes_execution(pilot) -> None:
+    task_path = (
+        ui(pilot).app.state.runners_path
+        / "sh_runner" / "tasks" / "sh_runner_task"
+    )
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        TaskSettings.clear_cache(task_path / "settings.toml")
+        s = settings().load_task_settings(task_path)
+        if s.session.last_run_exec_duration is not None:
+            return
+        ui(pilot).pause(0.1)
+    raise AssertionError("task durations were never written after an execution")
+
+
 @when("the runner is shut down")
 def when_runner_shut_down(pilot) -> None:
     ui(pilot).app.state.runners.pop("sh_runner", None)
@@ -491,3 +523,9 @@ def when_confirm_clear(pilot) -> None:
 @when('I press "Update App" button')
 def when_update_app(pilot) -> None:
     ui(pilot).click_id("#update_app")
+
+
+@when('I press the "🏠" home button')
+def when_home(pilot) -> None:
+    ui(pilot).click_id("#home")
+    ui(pilot).pause()

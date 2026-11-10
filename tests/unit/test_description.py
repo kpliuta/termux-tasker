@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from textual.app import App, ComposeResult
+from textual.content import Content
 from textual.widget import Widget
 from textual.widgets import Static
 
@@ -150,7 +151,142 @@ class TestStateWidget:
             marked = [
                 r
                 for r in state_rows
-                if str(r.render()).startswith(StateWidget._ACTIVE_MARKER)
+                if str(r.render()).startswith(StateWidget._ACTIVE_MARKER)   # noqa
             ]
             assert len(marked) == 1
-            assert "running" in str(marked[0].render())
+            assert "running" in str(marked[0].render()) # noqa
+
+    @pytest.mark.asyncio
+    async def test_state_suffix_appended_to_row(self) -> None:
+        widget = StateWidget(
+            key_value_entries=(KeyValueEntry("Version", "1.2.3"),),
+            current_state="before-exec",
+            states_entries=(
+                StateEntry("before-exec", "before-exec"),
+                StateEntry("after-exec", "after-exec"),
+            ),
+            state_suffixes={
+                "before-exec": Content.assemble(("[01:33][31]", "$foreground-disabled")),
+                "after-exec": Content.assemble(("[n/a]", "$foreground-disabled")),
+            },
+        )
+        async with _MountApp(widget).run_test() as pilot:
+            await pilot.pause()
+            rows = [str(r.render()) for r in pilot.app.screen.query(".state-row")]  # noqa
+            assert any("before-exec [01:33][31]" in row for row in rows)
+            assert any("after-exec [n/a]" in row for row in rows)
+
+    @pytest.mark.asyncio
+    async def test_watch_state_suffixes_updates_rows_in_place(self) -> None:
+        widget = StateWidget(
+            key_value_entries=(KeyValueEntry("Version", "1.2.3"),),
+            current_state="idle",
+            states_entries=(StateEntry("idle", "idle", color="$text-warning"),),
+        )
+        async with _MountApp(widget).run_test() as pilot:
+            rows_before = list(pilot.app.screen.query(".state-row"))
+            widget.state_suffixes = {
+                "idle": Content.assemble(("[01:45]", "bold $text-warning"))
+            }
+            await pilot.pause()
+            rows_after = list(pilot.app.screen.query(".state-row"))
+            assert [r.id for r in rows_after] == [r.id for r in rows_before]
+            assert any("[01:45]" in str(r.render()) for r in rows_after)    # noqa
+
+
+class TestRenderStateCell:
+    def test_active_cell_is_content_with_theme_var(self) -> None:
+        cell = StateWidget._render_state_cell(
+            StateEntry("idle", "idle", color="$text-warning"), is_active=True
+        )
+        assert isinstance(cell, Content)
+        assert cell.plain == "▶ idle"
+        assert ("▶ idle", "bold $text-warning") in [
+            (cell.plain[span.start : span.end], span.style) for span in cell.spans
+        ]
+
+    def test_suffix_brackets_stay_literal(self) -> None:
+        cell = StateWidget._render_state_cell(
+            StateEntry("task-exec", "├─ task-exec"),
+            is_active=True,
+            suffix=Content.assemble(("[2]", "$foreground-disabled")),
+        )
+        assert isinstance(cell, Content)
+        assert cell.plain == "▶ ├─ task-exec [2]"
+
+
+class TestMountedRenderSmoke:
+    """Guard: every Static in a mounted description renders under the app console."""
+
+    @pytest.mark.asyncio
+    async def test_state_widget_with_suffixes_renders(self) -> None:
+        widget = StateWidget(
+            key_value_entries=(
+                KeyValueEntry("Version", "1.1.0"),
+                KeyValueEntry("Enabled", "True"),
+                KeyValueEntry("PID", "n/a"),
+                KeyValueEntry("RSS", "n/a"),
+                KeyValueEntry("Last Run", "n/a"),
+            ),
+            current_state="idle",
+            states_entries=(
+                StateEntry("off", "off", color="$text-error"),
+                StateEntry("initialization", "initialization"),
+                StateEntry("idle", "idle", color="$text-warning"),
+                StateEntry("termination", "termination", color="$text-error"),
+            ),
+            state_suffixes={
+                "initialization": Content.assemble(("[1]", "$foreground-disabled")),
+                "idle": Content.assemble(("[01:00]", "bold $text-warning")),
+                "termination": Content.assemble(("[n/a]", "$foreground-disabled")),
+            },
+        )
+        async with _MountApp(widget).run_test() as pilot:
+            await pilot.pause()
+            rendered = [str(item.render()) for item in widget.query(Static)]    # noqa
+            assert any("idle" in line for line in rendered)
+            assert any("[01:00]" in line for line in rendered)
+
+    @pytest.mark.asyncio
+    async def test_key_value_values_align_in_columns(self) -> None:
+        widget = KeyValueWidget(
+            key_value_entries=(
+                KeyValueEntry("Version", "1.1.0"),
+                KeyValueEntry("Session ID", "abc"),
+            )
+        )
+        async with _MountApp(widget).run_test() as pilot:
+            await pilot.pause()
+            table = widget.query_one("#key-value-table", Static)
+            lines = _table_text(table.render()).splitlines()
+            value_lines = [line for line in lines if "1.1.0" in line or "abc" in line]
+            assert len(value_lines) == 2
+            assert value_lines[0].index("1.1.0") == value_lines[1].index("abc")
+
+
+class TestThemeVarContent:
+    """Characterization: Content with $var spans renders under the app theme.
+
+    This is the mechanism the suffix refactor relies on (Rich Text spans
+    with $vars raise MissingStyle; Content spans resolve via the widget theme).
+    """
+
+    @pytest.mark.asyncio
+    async def test_content_with_theme_var_spans_renders(self) -> None:
+        from textual.content import Content
+
+        content = Content.assemble(
+            ("  idle", ""),
+            (" ", ""),
+            ("[01:00]", "$text-warning"),
+            ("[27]", "bold $text-success"),
+            ("[1/2]", "$foreground-disabled"),
+        )
+        assert "[01:00]" in content.plain
+        assert "[1/2]" in content.plain
+        widget = Static(content, id="theme-var-probe")
+        async with _MountApp(widget).run_test() as pilot:
+            await pilot.pause()
+            probe = pilot.app.screen.query_one("#theme-var-probe", Static)
+            assert "[01:00]" in str(probe.render()) # noqa
+            assert "[1/2]" in str(probe.render())   # noqa

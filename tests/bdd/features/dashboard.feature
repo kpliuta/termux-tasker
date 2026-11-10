@@ -54,9 +54,15 @@ Feature: Dashboard Navigation
     When I press Ctrl+Q
     Then the same exit flow is triggered as pressing "Exit" on the dashboard
 
-  Scenario: Dashboard shows overview heading
+  Scenario: Dashboard shows resource bars
     Given the dashboard screen is shown
-    Then the dashboard description contains "Overview"
+    Then the dashboard description contains "CPU"
+    And the dashboard description contains "MEM"
+
+  Scenario: Dashboard hides PID line for stopped runner
+    Given the dashboard screen is shown
+    And a runner "sh_runner" is installed with state "off"
+    Then the dashboard description does not contain "PID"
 
   Scenario: Dashboard shows no runners message when empty
     Given all runners are removed
@@ -77,10 +83,35 @@ Feature: Dashboard Navigation
     And the dashboard description contains "Simple sh runner task"
     And the dashboard description contains "[running]"
 
-  Scenario: Dashboard buttons are in 2 columns
+  Scenario: Dashboard shows infinite idle for runner with no enabled tasks
     Given the dashboard screen is shown
-    Then the dashboard has buttons arranged in 2 columns
+    And a runner "sh_runner" is installed with state "idle"
+    And the runner "sh_runner" has a live process with no enabled tasks
+    Then the dashboard description contains "[idle][∞]"
+
+  Scenario: Dashboard buttons are in 3 columns
+    Given the dashboard screen is shown
+    Then the dashboard has buttons arranged in 3 columns
 
   Scenario: Dashboard exit button is in bottom bar
     Given the dashboard screen is shown
     Then the "Exit" button is in the bottom bar
+
+  Scenario: Dashboard action buttons are in bottom bar
+    Given the dashboard screen is shown
+    Then the dashboard action buttons are in the bottom bar
+
+  Scenario: Dashboard shows Help and Settings buttons
+    Given the dashboard screen is shown
+    Then the dashboard shows "❓" button
+    And the dashboard shows "🔧" button
+
+  Scenario: Dashboard buttons order is Help, Settings, Runners
+    Given the dashboard screen is shown
+    Then the dashboard buttons are ordered "help", "settings", "runners"
+
+  Scenario: Dashboard styles do not leak to Settings
+    Given the dashboard screen is shown
+    When I press "Settings" button
+    Then the Settings screen is shown
+    And the settings description keeps compact height

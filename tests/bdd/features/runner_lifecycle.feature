@@ -42,3 +42,20 @@ Feature: Runner Execution Lifecycle
     Given a task is configured with `settings.general.timeout = "30s"`
     When the runner's execution loop enters "idle" state
     Then it sleeps for 30 seconds before the next iteration
+
+  Scenario: Runner records last_run at the start of each execution cycle
+    Given a runner is enabled
+    When the runner completes a full execution cycle
+    Then the runner's settings.toml contains last_run with format "YYYY-MM-DD HH:MM:SS"
+
+  Scenario: Runner records last run step durations after each execution cycle
+    Given a runner is enabled
+    When the runner completes a full execution cycle
+    Then the runner's settings.toml contains last run step durations as numbers of seconds
+
+  Scenario: Task records last run phase durations after each execution
+    Given an installed task is enabled
+    And a runner is enabled
+    When the runner completes a full execution cycle
+    And the task completes an execution
+    Then the task's settings.toml contains last run durations as numbers of seconds

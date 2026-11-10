@@ -9,6 +9,9 @@ Feature: Runner Menu
       """
       - Version
       - Enabled status
+      - PID
+      - RSS
+      - Last Run
       - Session state
       """
     And it contains "Enable"/"Disable" toggle button
@@ -21,6 +24,14 @@ Feature: Runner Menu
     And it contains "Uninstall" button
     And it contains "Back" button
     And it contains no "Set <property>" buttons
+
+  Scenario: Runner menu shows previous-run timers when off
+    Given the Runner Menu screen is shown for a runner
+    Then the runner description contains "PID"
+    And the runner description contains "RSS"
+    And the runner description contains "Last Run"
+    And the runner description contains "initialization [n/a]"
+    And the runner description contains "termination [n/a]"
 
   Scenario: Enable a runner
     Given the Runner Menu screen is shown
@@ -101,3 +112,19 @@ Feature: Runner Menu
     When I press "No" button
     Then the dialog is dismissed
     And the runner remains intact
+
+  Scenario: Update and Uninstall are disabled while the runner is enabled
+    Given the runner is enabled and running
+    And the Runner Menu screen is shown
+    Then the "Update" button is disabled
+    And the "Uninstall" button is disabled
+
+  Scenario: Update and Uninstall are enabled while the runner is disabled
+    Given the runner is disabled
+    And the Runner Menu screen is shown
+    Then the "Update" button is enabled
+    And the "Uninstall" button is enabled
+
+  Scenario: Runner menu shows infinite idle with no enabled tasks
+    Given the Runner Menu is shown for an idle runner with no enabled tasks
+    Then the runner description contains "idle [∞]"

@@ -54,7 +54,7 @@ src/termux_tasker/
 4. From **Runner Menu**, user can enable/disable, view logs, edit properties in the **Properties** screen, or open **Tasks**.
 5. User presses **Install Task** from **Tasks Screen** → selects source (Bundled / GitHub URL / Local) → repository cloned/copied → metadata validated (runner compatibility + custom validators) → version selected → task installed under `runners/<runner_id>/tasks/<task_id>/`.
 6. When a runner is **enabled**, it starts an asyncio loop executing shell commands through its defined lifecycle phases.
-7. The runner iterates over all enabled tasks, skipping those whose timeout hasn't elapsed since last run.
+7. The runner iterates over all enabled tasks, skipping those whose timeout hasn't elapsed since last run. Afterwards it idles until the next task is due: the sleep is the minimum remaining task timeout (rounded up), recomputed every second so timeout edits take effect promptly; with no enabled tasks it waits indefinitely (`[∞]`) until a task shows up.
 
 ### Configuration model (TOML)
 
@@ -77,11 +77,14 @@ Runner processes are managed via `RunnerProcess` (asyncio).
 ```
 initialization
      ↓
- before-exec  ──→ for each enabled task ──→ after-exec  ──→ idle (sleep timeout)
+  before-exec  ──→ for each enabled task ──→ after-exec  ──→ idle (sleep min task remaining)
                       ├─ before-task                         ↓
                       ├─ task-exec (run command)          shutdown → termination → off
                       └─ after-task
 ```
+
+Each run records per-step wall times (`last_run_*_duration`, int seconds) and
+`last_run` in `settings.toml [session]` - **Runner Menu** and **Task Menu** show them live.
 
 ### Output directory
 

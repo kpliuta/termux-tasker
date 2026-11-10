@@ -7,7 +7,7 @@ Feature: App Startup
     Given the app is launched for the first time
     Then the dashboard screen is shown
     And it contains "Runners" button
-    And it contains "Settings" button
+    And it contains "🔧" button
     And it contains "Exit" button
     And the title is "Dashboard"
     And the work directory `.termux-tasker` is created

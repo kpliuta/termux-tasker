@@ -7,6 +7,7 @@ from textual.widgets import Button
 
 from termux_tasker.config import TaskMetadata
 from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
+from termux_tasker.ui.screens._ui_utils import go_home
 from termux_tasker.ui.screens._utils import termux_app
 
 
@@ -19,6 +20,7 @@ class InstallTaskScreen(MenuScreen):
         super().__init__(
             menu_items=[ButtonConfig("install", "Install", variant="primary", layout=ButtonLayout.BOTTOM)],
             description=meta.general.description or "",
+            show_home_button=True,
             show_back_button=True,
         )
         self.title = "Install Task"
@@ -31,3 +33,8 @@ class InstallTaskScreen(MenuScreen):
         termux_app(self).push_screen(
             InstallTaskVersionScreen(self.runner_path, self.tmp_task_folder)
         )
+
+    @on(Button.Pressed, "#home")
+    def on_home_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        go_home(self)

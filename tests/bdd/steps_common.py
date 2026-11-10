@@ -9,7 +9,8 @@ from pytest_bdd import given, then, when
 from textual.widgets import DirectoryTree, RichLog, Static
 
 from termux_tasker.config import AppConfig
-from termux_tasker.runner_process import RunnerProcess, _parse_timeout  # noqa
+from termux_tasker._parse import parse_timeout  # noqa
+from termux_tasker.runner_process import RunnerProcess
 from termux_tasker.runner_validator import RunnerValidator
 from termux_tasker.task_validator import TaskValidator, TaskValidatorException
 
@@ -47,7 +48,7 @@ __all__ = [
     "UIHelper", "given", "then", "when",
     "Path", "pytest", "asyncio", "AsyncMock", "patch",
     "AppConfig", "DirectoryTree", "RichLog", "Static",
-    "RunnerProcess", "_parse_timeout", "RunnerValidator",
+    "RunnerProcess", "parse_timeout", "RunnerValidator",
     "TaskValidator", "TaskValidatorException",
     "BundledRunnerScreen", "BundledTaskScreen",
     "ConfirmationScreen", "FileBrowserScreen", "InfoScreen",
