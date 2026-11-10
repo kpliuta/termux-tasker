@@ -14,6 +14,9 @@ from termux_tasker.config import RunnerSettings, TaskSettings
 from termux_tasker.runner_process import (
     RunnerProcess,
     _to_env_key, # noqa
+    compute_idle_seconds,
+    task_idle_remaining,
+    task_remaining_sec,
 )
 from termux_tasker.app_state import AppState
 
@@ -914,7 +917,11 @@ class TestStartStampedSession:
             assert final_settings.session.last_run_status == "success"
 
     async def test_last_run_records_start_not_end(self, tmp_dir: Path) -> None:
-        stamps = ["2026-03-01 10:00:00", "2026-03-01 10:00:01", "2026-03-01 10:00:02"]
+        base = datetime.now(timezone.utc)
+        stamps = [
+            (base + timedelta(seconds=offset)).strftime("%Y-%m-%d %H:%M:%S")
+            for offset in range(3)
+        ]
         with (
             patch(
                 "termux_tasker.runner_process.asyncio.create_subprocess_exec",
@@ -988,6 +995,417 @@ class TestWholeBlockTaskStatus:
         assert runner_settings.session.last_run != "none"
 
 
+def _write_task_with_state(
+    runner_path: Path, name: str, *, enabled: bool = True,
+    timeout: str = "1m", session_id: str = "test-session",
+    last_run: str = "none",
+) -> Path:
+    task_path = runner_path / "tasks" / name
+    task_path.mkdir(parents=True, exist_ok=True)
+    (task_path / "metadata.toml").write_text(
+        TASK_METADATA.replace('"test-task"', f'"{name}"')
+    )
+    settings = TaskSettings()
+    settings.general.enabled = enabled
+    settings.general.timeout = timeout
+    settings.session.session_id = session_id
+    settings.session.last_run = last_run
+    settings.session.state = "stopped"
+    settings.save(task_path / "settings.toml")
+    return task_path
+
+
+def _recent_stamp(seconds_ago: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+
+class TestTaskRemainingSec:
+    def test_disabled_task_is_excluded(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", enabled=False, last_run=_recent_stamp(10)
+        )
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        assert task_remaining_sec(settings, "test-session", now) is None
+
+    def test_different_session_is_due_now(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", session_id="old-session",
+            last_run=_recent_stamp(10),
+        )
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        assert task_remaining_sec(settings, "test-session", now) == 0
+
+    def test_never_run_is_due_now(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(runner_path, "t1")
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        assert task_remaining_sec(settings, "test-session", now) == 0
+
+    def test_recent_run_returns_remaining(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", timeout="1m", last_run=_recent_stamp(10)
+        )
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        remaining = task_remaining_sec(settings, "test-session", now)
+        assert remaining is not None
+        assert 45 <= remaining <= 50
+
+    def test_expired_run_is_due_now(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", timeout="30s", last_run=_recent_stamp(90)
+        )
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        assert task_remaining_sec(settings, "test-session", now) == 0
+
+    def test_malformed_timeout_falls_back_to_60(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", timeout="bogus", last_run=_recent_stamp(10)
+        )
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        remaining = task_remaining_sec(settings, "test-session", now)
+        assert remaining is not None
+        assert 45 <= remaining <= 50
+
+    def test_malformed_last_run_is_due_now(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", last_run="not-a-timestamp"
+        )
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        assert task_remaining_sec(settings, "test-session", now) == 0
+
+
+class TestComputeIdleSeconds:
+    def test_missing_tasks_dir_is_unbounded(self, tmp_dir: Path) -> None:
+        tasks_path = tmp_dir / "no-such-dir"
+        now = datetime.now(timezone.utc)
+        assert compute_idle_seconds(tasks_path, "test-session", now) is None
+
+    def test_no_enabled_tasks_is_unbounded(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        _write_task_with_state(runner_path, "t1", enabled=False)
+        now = datetime.now(timezone.utc)
+        assert (
+            compute_idle_seconds(runner_path / "tasks", "test-session", now)
+            is None
+        )
+
+    def test_empty_tasks_dir_is_unbounded(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        now = datetime.now(timezone.utc)
+        assert (
+            compute_idle_seconds(runner_path / "tasks", "test-session", now)
+            is None
+        )
+
+    def test_single_task_remaining(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        _write_task_with_state(
+            runner_path, "t1", timeout="1m", last_run=_recent_stamp(10)
+        )
+        now = datetime.now(timezone.utc)
+        idle = compute_idle_seconds(
+            runner_path / "tasks", "test-session", now
+        )
+        assert idle is not None
+        assert 45 <= idle <= 50
+
+    def test_minimum_across_tasks_wins(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        _write_task_with_state(
+            runner_path, "t1", timeout="5m", last_run=_recent_stamp(10)
+        )
+        _write_task_with_state(
+            runner_path, "t2", timeout="30s", last_run=_recent_stamp(10)
+        )
+        now = datetime.now(timezone.utc)
+        idle = compute_idle_seconds(
+            runner_path / "tasks", "test-session", now
+        )
+        assert idle is not None
+        assert 15 <= idle <= 20
+
+    def test_due_task_means_no_sleep(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        _write_task_with_state(runner_path, "t1")
+        now = datetime.now(timezone.utc)
+        assert (
+            compute_idle_seconds(runner_path / "tasks", "test-session", now)
+            == 0
+        )
+
+    def test_not_capped_by_runner_timeout(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        _write_task_with_state(
+            runner_path, "t1", timeout="1h", last_run=_recent_stamp(10)
+        )
+        now = datetime.now(timezone.utc)
+        idle = compute_idle_seconds(
+            runner_path / "tasks", "test-session", now
+        )
+        assert idle is not None
+        assert 3590 <= idle <= 3595
+
+    def test_picks_up_timeout_edit_from_disk(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", timeout="1h", last_run=_recent_stamp(10)
+        )
+        now = datetime.now(timezone.utc)
+        first = compute_idle_seconds(
+            runner_path / "tasks", "test-session", now
+        )
+        assert first is not None
+        assert first > 3000
+        settings = _load_task_settings_fresh(task_path)
+        settings.general.timeout = "30s"
+        settings.save(task_path / "settings.toml")
+        second = compute_idle_seconds(
+            runner_path / "tasks", "test-session", now
+        )
+        assert second is not None
+        assert 15 <= second <= 20
+
+    def test_newly_enabled_task_ends_unbounded_idle(
+        self, tmp_dir: Path
+    ) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(runner_path, "t1", enabled=False)
+        now = datetime.now(timezone.utc)
+        assert (
+            compute_idle_seconds(runner_path / "tasks", "test-session", now)
+            is None
+        )
+        settings = _load_task_settings_fresh(task_path)
+        settings.general.enabled = True
+        settings.save(task_path / "settings.toml")
+        assert (
+            compute_idle_seconds(runner_path / "tasks", "test-session", now)
+            == 0
+        )
+
+
+class TestTaskIdleRemaining:
+    def test_disabled_task_hides_countdown(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", enabled=False, last_run=_recent_stamp(10)
+        )
+        settings = _load_task_settings_fresh(task_path)
+        assert task_idle_remaining(settings, datetime.now(timezone.utc)) is None
+
+    def test_never_run_hides_countdown(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(runner_path, "t1")
+        settings = _load_task_settings_fresh(task_path)
+        assert task_idle_remaining(settings, datetime.now(timezone.utc)) is None
+
+    def test_recent_run_shows_remaining(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", timeout="1m", last_run=_recent_stamp(15)
+        )
+        settings = _load_task_settings_fresh(task_path)
+        remaining = task_idle_remaining(settings, datetime.now(timezone.utc))
+        assert remaining is not None
+        assert 40 <= remaining <= 45
+
+    def test_expired_run_shows_zero(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", timeout="30s", last_run=_recent_stamp(90)
+        )
+        settings = _load_task_settings_fresh(task_path)
+        assert task_idle_remaining(settings, datetime.now(timezone.utc)) == 0
+
+
+class TestSkipRemainingConsistency:
+    @pytest.mark.parametrize(
+        ("timeout", "ago", "is_skipped"),
+        [
+            ("30s", 10, True),
+            ("30s", 29, True),
+            ("30s", 31, False),
+            ("1m", 59, True),
+            ("1m", 61, False),
+            ("1h", 3599, True),
+            ("1h", 3601, False),
+        ],
+    )
+    def test_skip_iff_remaining_positive(
+        self, tmp_dir: Path, timeout: str, ago: int, is_skipped: bool
+    ) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task_with_state(
+            runner_path, "t1", timeout=timeout, last_run=_recent_stamp(ago)
+        )
+        proc = _create_proc(runner_path, tmp_dir)
+        settings = _load_task_settings_fresh(task_path)
+        now = datetime.now(timezone.utc)
+        assert proc._should_skip_task(settings) is is_skipped
+        remaining = task_remaining_sec(settings, "test-session", now)
+        assert remaining is not None
+        assert (remaining > 0) is is_skipped
+
+
+@pytest.mark.asyncio
+class TestTaskDrivenIdleLoop:
+    async def _wait_for_state(
+        self, runner_path: Path, state: str, timeout: float = 10.0
+    ) -> None:
+        deadline = asyncio.get_event_loop().time() + timeout
+        while True:
+            current = _load_runner_settings_fresh(runner_path).session.state
+            if current == state:
+                return
+            if asyncio.get_event_loop().time() > deadline:
+                raise AssertionError(
+                    f"runner never reached {state!r} state"
+                )
+            await asyncio.sleep(0.05)
+
+    async def test_rate_limited_cycle_still_runs_runner_phases(
+        self, tmp_dir: Path
+    ) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            task_settings = _load_task_settings_fresh(task_path)
+            task_settings.session.session_id = "test-session"
+            task_settings.session.last_run = _recent_stamp(10)
+            task_settings.save(task_path / "settings.toml")
+            proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+            proc.shutting_down = False
+            loop_task = asyncio.create_task(proc._run_loop())
+            try:
+                await self._wait_for_state(runner_path, "idle")
+            finally:
+                proc.shutting_down = True
+                await asyncio.wait_for(loop_task, timeout=10)
+            runner_settings = _load_runner_settings_fresh(runner_path)
+            assert runner_settings.session.last_run_before_duration is not None
+            assert runner_settings.session.last_run_after_duration is not None
+            assert (
+                _load_task_settings_fresh(task_path).session.last_run
+                == task_settings.session.last_run
+            )
+
+    async def test_idle_wakes_early_after_timeout_shortened(
+        self, tmp_dir: Path
+    ) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task(runner_path)
+            proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+            proc.shutting_down = False
+            loop_task = asyncio.create_task(proc._run_loop())
+            try:
+                await self._wait_for_state(runner_path, "idle")
+                first_run = _load_runner_settings_fresh(runner_path).session.last_run
+                task_settings = _load_task_settings_fresh(task_path)
+                task_settings.general.timeout = "1s"
+                task_settings.save(task_path / "settings.toml")
+                deadline = asyncio.get_event_loop().time() + 15.0
+                while True:
+                    current = _load_runner_settings_fresh(
+                        runner_path
+                    ).session.last_run
+                    if current != first_run:
+                        break
+                    if asyncio.get_event_loop().time() > deadline:
+                        raise AssertionError(
+                            "runner never woke from idle after timeout edit"
+                        )
+                    await asyncio.sleep(0.1)
+            finally:
+                proc.shutting_down = True
+                await asyncio.wait_for(loop_task, timeout=10)
+
+    async def test_idle_without_enabled_tasks_sleeps_indefinitely(
+        self, tmp_dir: Path
+    ) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            runner_settings = _load_runner_settings_fresh(runner_path)
+            runner_settings.general.timeout = "1s"
+            runner_settings.save(runner_path / "settings.toml")
+            _write_task_with_state(runner_path, "t1", enabled=False)
+            proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+            proc.shutting_down = False
+            loop_task = asyncio.create_task(proc._run_loop())
+            try:
+                await self._wait_for_state(runner_path, "idle")
+                first_run = _load_runner_settings_fresh(runner_path).session.last_run
+                await asyncio.sleep(2.5)
+                settled = _load_runner_settings_fresh(runner_path)
+                assert settled.session.state == "idle"
+                assert settled.session.last_run == first_run
+                assert "Sleep until a task is due" in (
+                    runner_path / "stdout"
+                ).read_text()
+            finally:
+                proc.shutting_down = True
+                await asyncio.wait_for(loop_task, timeout=10)
+
+    async def test_idle_wakes_when_task_becomes_enabled(
+        self, tmp_dir: Path
+    ) -> None:
+        with patch(
+            "termux_tasker.runner_process.asyncio.create_subprocess_exec",
+            return_value=_mock_proc(),
+        ):
+            runner_path = _write_full_runner(tmp_dir)
+            task_path = _write_task_with_state(
+                runner_path, "t1", enabled=False
+            )
+            proc = RunnerProcess(runner_path, "test-session", tmp_dir / ".tmp")
+            proc.shutting_down = False
+            loop_task = asyncio.create_task(proc._run_loop())
+            try:
+                await self._wait_for_state(runner_path, "idle")
+                first_run = _load_runner_settings_fresh(runner_path).session.last_run
+                task_settings = _load_task_settings_fresh(task_path)
+                task_settings.general.enabled = True
+                task_settings.save(task_path / "settings.toml")
+                deadline = asyncio.get_event_loop().time() + 15.0
+                while True:
+                    current = _load_runner_settings_fresh(
+                        runner_path
+                    ).session.last_run
+                    if current != first_run:
+                        break
+                    if asyncio.get_event_loop().time() > deadline:
+                        raise AssertionError(
+                            "runner never woke from idle after task enabled"
+                        )
+                    await asyncio.sleep(0.1)
+            finally:
+                proc.shutting_down = True
+                await asyncio.wait_for(loop_task, timeout=10)
+
 class TestSkipUsesUtc:
     def test_recent_run_is_skipped(self, tmp_dir: Path) -> None:
         runner_path = _write_runner(tmp_dir)
@@ -1002,6 +1420,18 @@ class TestSkipUsesUtc:
         task_settings.session.last_run = (
             datetime.now(timezone.utc) - timedelta(seconds=90)
         ).strftime("%Y-%m-%d %H:%M:%S")
+        assert proc._should_skip_task(task_settings) is False
+
+    def test_malformed_timeout_rate_limits_as_60s(self, tmp_dir: Path) -> None:
+        runner_path = _write_runner(tmp_dir)
+        task_path = _write_task(runner_path)
+        proc = _create_proc(runner_path, tmp_dir)
+        task_settings = _load_task_settings_fresh(task_path)
+        task_settings.session.session_id = "test-session"
+        task_settings.general.timeout = "bogus"
+        task_settings.session.last_run = _recent_stamp(10)
+        assert proc._should_skip_task(task_settings) is True
+        task_settings.session.last_run = _recent_stamp(90)
         assert proc._should_skip_task(task_settings) is False
 
     @pytest.mark.skipif(not hasattr(time, "tzset"), reason="POSIX-only TZ override")

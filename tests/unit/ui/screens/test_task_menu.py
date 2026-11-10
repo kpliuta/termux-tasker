@@ -254,10 +254,46 @@ class TestStoppedIdleSuffixEnabledGate:
     async def test_idle_countdown_shown_when_task_enabled(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from datetime import datetime, timedelta, timezone
+
         runner_dir = _write_runner_dir(tmp_path / "sh_runner")
         task_path = _write_task_dir(runner_dir / "tasks" / "sh_task", enabled=True)
+        task_settings = TaskSettings.load(task_path / "settings.toml")
+        task_settings.general.timeout = "1m"
+        task_settings.session.last_run = (
+            datetime.now(timezone.utc) - timedelta(seconds=15)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        task_settings.save(task_path / "settings.toml")
         proc = MagicMock()
-        proc.state_elapsed.return_value = 15
+        proc.session_id = "test-session"
+        proc.current_task_path = None
+        async with _TaskMenuTestApp().run_test() as pilot:
+            screen = TaskMenuScreen(task_path)
+            await pilot.app.push_screen(screen)
+            monkeypatch.setattr(screen, "_live_runner_proc", lambda: proc)
+            settings = TaskSettings.load(task_path / "settings.toml")
+            suffixes = screen._build_suffixes(settings)
+            assert suffixes["stopped"].plain == "[45]"
+
+    @pytest.mark.asyncio
+    async def test_idle_countdown_uses_task_timeout_not_runner_timeout(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from datetime import datetime, timedelta, timezone
+
+        runner_dir = _write_runner_dir(tmp_path / "sh_runner")
+        runner_settings = RunnerSettings.load(runner_dir / "settings.toml")
+        runner_settings.general.timeout = "1h"
+        runner_settings.save(runner_dir / "settings.toml")
+        task_path = _write_task_dir(runner_dir / "tasks" / "sh_task", enabled=True)
+        task_settings = TaskSettings.load(task_path / "settings.toml")
+        task_settings.general.timeout = "1m"
+        task_settings.session.last_run = (
+            datetime.now(timezone.utc) - timedelta(seconds=15)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        task_settings.save(task_path / "settings.toml")
+        proc = MagicMock()
+        proc.session_id = "test-session"
         proc.current_task_path = None
         async with _TaskMenuTestApp().run_test() as pilot:
             screen = TaskMenuScreen(task_path)

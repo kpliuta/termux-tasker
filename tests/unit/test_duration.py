@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 
-from termux_tasker.ui.screens._format import format_compact_duration, format_optional   # noqa
+from termux_tasker._format import (  # noqa
+    format_compact_duration,
+    format_optional,
+    format_timestamp,
+)
 
 
 @pytest.mark.parametrize(
@@ -46,3 +52,8 @@ def test_format_optional_custom_none_label() -> None:
 def test_format_optional_without_formatter_returns_value() -> None:
     assert format_optional("ready") == "ready"
     assert format_optional(None) == "n/a"
+
+
+def test_format_timestamp_shape() -> None:
+    now = datetime.now(timezone.utc)
+    assert format_timestamp(now) == now.strftime("%Y-%m-%d %H:%M:%S")

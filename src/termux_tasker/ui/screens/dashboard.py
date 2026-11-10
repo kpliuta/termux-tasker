@@ -15,10 +15,9 @@ from textual.widgets import Button, Rule, Static
 
 from termux_tasker import proc_stats
 from termux_tasker.config import AppConfig, RunnerMetadata, RunnerSettings, TaskMetadata, TaskSettings
-from termux_tasker.runner_process import RunnerProcess
+from termux_tasker.runner_process import RunnerProcess, compute_idle_seconds
 from termux_tasker.ui.base import ButtonConfig, ButtonLayout, MenuScreen
-from termux_tasker.ui.screens._format import format_compact_duration
-from termux_tasker._parse import parse_timeout
+from termux_tasker._format import format_compact_duration
 from termux_tasker.ui.screens._state_colors import (
     runner_emoji,
     runner_state_color,
@@ -376,7 +375,11 @@ class DashboardScreen(MenuScreen):
             runner_id = runner_meta.general.id
             parts.append((f" {runner_emoji(runner_settings)} {runner_meta.general.name} ", ""))
             parts.append((f"[{state}]", state_style))
-            idle_suffix = self._idle_suffix(runner_id, runner_settings, procs)
+            idle_suffix = self._idle_suffix(
+                runner_settings,
+                (procs or {}).get(runner_id),
+                runners_path / runner_id / "tasks",
+            )
             if idle_suffix is not None:
                 parts.append((idle_suffix, state_style))
             tree = (trees or {}).get(runner_id)
@@ -403,19 +406,21 @@ class DashboardScreen(MenuScreen):
 
     @staticmethod
     def _idle_suffix(
-        runner_id: str,
         runner_settings: RunnerSettings,
-        procs: Mapping[str, RunnerProcess] | None,
+        proc: RunnerProcess | None,
+        tasks_path: Path,
     ) -> str | None:
-        """Countdown to the next iteration; only for idle runners with a live proc."""
-        if runner_settings.session.state != "idle" or procs is None:
+        """Countdown to the next iteration; only for idle runners with a live proc.
+
+        Sleeps track the minimum remaining task timeout, so this mirrors
+        the runner's idle computation. Shows ``[∞]`` when nothing is
+        scheduled (no enabled tasks).
+        """
+        if runner_settings.session.state != "idle" or proc is None:
             return None
-        proc = procs.get(runner_id)
-        if proc is None:
-            return None
-        remaining = max(
-            0, parse_timeout(runner_settings.general.timeout) - proc.state_elapsed()
-        )
+        remaining = compute_idle_seconds(tasks_path, proc.session_id)
+        if remaining is None:
+            return "[∞]"
         return f"[{format_compact_duration(remaining)}]"
 
     @staticmethod

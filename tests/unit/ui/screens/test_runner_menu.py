@@ -198,6 +198,45 @@ class TestBuildStateSuffixes:
         )
         assert "idle" not in running
 
+    def test_idle_infinite_shows_infinity_symbol(self) -> None:
+        settings = _settings()
+        idle = build_state_suffixes(
+            current_state="idle",
+            last_durations=_last_durations(settings),
+            task_last_durations=None,
+            elapsed_sec=15,
+            exec_progress=None,
+            idle_remaining=None,
+            idle_infinite=True,
+        )
+        assert idle["idle"].plain == "[∞]"
+
+    def test_idle_infinite_hidden_when_not_idle(self) -> None:
+        settings = _settings()
+        suffixes = build_state_suffixes(
+            current_state="before-exec",
+            last_durations=_last_durations(settings),
+            task_last_durations=None,
+            elapsed_sec=15,
+            exec_progress=None,
+            idle_remaining=None,
+            idle_infinite=True,
+        )
+        assert "idle" not in suffixes
+
+    def test_idle_infinite_uses_idle_color(self) -> None:
+        settings = _settings()
+        idle = build_state_suffixes(
+            current_state="idle",
+            last_durations=_last_durations(settings),
+            task_last_durations=None,
+            elapsed_sec=None,
+            exec_progress=None,
+            idle_remaining=None,
+            idle_infinite=True,
+        )
+        assert _span_styles(idle["idle"]) == ["bold $text-warning"]
+
     def test_hour_durations_use_full_format(self) -> None:
         settings = _settings(init=3721)
         suffixes = build_state_suffixes(

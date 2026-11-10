@@ -517,3 +517,72 @@ def given_sh_runner_idle(pilot) -> None:
 @given('the runner "sh_runner" has a task "sh_runner_task" with state "running"')
 def given_sh_runner_task_running(pilot) -> None:
     _create_task_with_state(pilot, "sh_runner", "sh_runner_task", "running")
+
+
+@given('the runner "sh_runner" has a live process with no enabled tasks')
+def given_sh_runner_live_proc_no_tasks(pilot) -> None:
+    from termux_tasker.runner_process import RunnerProcess
+    app = ui(pilot).app
+    runner_path = app.state.runners_path / "sh_runner"
+    proc = RunnerProcess(runner_path, app.state.session_id, app.state.tmp_dir)
+    app.state.runners["sh_runner"] = proc
+    _refresh_dashboard(pilot)
+
+
+@given("the Runner Menu is shown for an idle runner with no enabled tasks")
+def given_runner_menu_idle_no_tasks(pilot) -> None:
+    from termux_tasker.config import RunnerSettings, TaskSettings
+    from termux_tasker.runner_process import RunnerProcess
+    app = ui(pilot).app
+    runner_path = app.state.runners_path / "sh_runner"
+    tasks_path = runner_path / "tasks"
+    if tasks_path.exists():
+        for task_path in tasks_path.iterdir():
+            settings_file = task_path / "settings.toml"
+            if task_path.is_dir() and settings_file.exists():
+                TaskSettings.clear_cache(settings_file)
+                task_settings = TaskSettings.load(settings_file)
+                task_settings.general.enabled = False
+                task_settings.save(settings_file)
+    RunnerSettings.clear_cache(runner_path / "settings.toml")
+    runner_settings = RunnerSettings.load(runner_path / "settings.toml")
+    runner_settings.general.enabled = True
+    runner_settings.session.session_id = app.state.session_id
+    runner_settings.session.state = "idle"
+    runner_settings.save(runner_path / "settings.toml")
+    app.state.runners["sh_runner"] = RunnerProcess(
+        runner_path, app.state.session_id, app.state.tmp_dir
+    )
+    given_runner_menu(pilot)
+    ui(pilot).pause()
+
+
+@given("the Task Menu is shown for a stopped task with an expired timeout")
+def given_task_menu_stopped_expired(pilot) -> None:
+    from datetime import datetime, timedelta, timezone
+    from termux_tasker.config import RunnerSettings, TaskSettings
+    from termux_tasker.runner_process import RunnerProcess
+    app = ui(pilot).app
+    runner_path = app.state.runners_path / "sh_runner"
+    task_path = runner_path / "tasks" / "sh_runner_task"
+    TaskSettings.clear_cache(task_path / "settings.toml")
+    task_settings = TaskSettings.load(task_path / "settings.toml")
+    task_settings.general.enabled = True
+    task_settings.general.timeout = "30s"
+    task_settings.session.session_id = app.state.session_id
+    task_settings.session.state = "stopped"
+    task_settings.session.last_run = (
+        datetime.now(timezone.utc) - timedelta(seconds=90)
+    ).strftime("%Y-%m-%d %H:%M:%S")
+    task_settings.save(task_path / "settings.toml")
+    RunnerSettings.clear_cache(runner_path / "settings.toml")
+    runner_settings = RunnerSettings.load(runner_path / "settings.toml")
+    runner_settings.general.enabled = True
+    runner_settings.session.session_id = app.state.session_id
+    runner_settings.session.state = "idle"
+    runner_settings.save(runner_path / "settings.toml")
+    app.state.runners["sh_runner"] = RunnerProcess(
+        runner_path, app.state.session_id, app.state.tmp_dir
+    )
+    given_task_menu(pilot)
+    ui(pilot).pause()

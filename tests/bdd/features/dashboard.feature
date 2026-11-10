@@ -83,6 +83,12 @@ Feature: Dashboard Navigation
     And the dashboard description contains "Simple sh runner task"
     And the dashboard description contains "[running]"
 
+  Scenario: Dashboard shows infinite idle for runner with no enabled tasks
+    Given the dashboard screen is shown
+    And a runner "sh_runner" is installed with state "idle"
+    And the runner "sh_runner" has a live process with no enabled tasks
+    Then the dashboard description contains "[idle][∞]"
+
   Scenario: Dashboard buttons are in 3 columns
     Given the dashboard screen is shown
     Then the dashboard has buttons arranged in 3 columns

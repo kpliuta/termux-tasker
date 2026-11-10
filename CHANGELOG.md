@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Runner Menu lifecycle states now carry timer suffixes: previous-run duration on every timed state, a live elapsed timer on the active state, `exec [i/n]` task progress while tasks run, and an `idle` countdown to the next iteration.
 - Dashboard runner headers now show the same `idle` countdown (`[idle][MM:SS]`) while a runner is idle.
 - Task Menu now shows `Last Run` and `Last Status` rows (`n/a` when never run).
-- Task Menu lifecycle states now carry timer suffixes: `running` shows summed task-phase durations plus live elapsed time, `stopped` shows the parent runner's idle countdown while the runner is idle and the task is enabled.
+- Task Menu lifecycle states now carry timer suffixes: `running` shows summed task-phase durations plus live elapsed time, `stopped` shows the task's own countdown to its next run while the runner is idle and the task is enabled.
 
 ### Changed
 
@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Task `settings.toml [session]` now records `last_run_before_duration`, `last_run_exec_duration`, `last_run_after_duration` (int seconds, per-phase wall time, omitted until the first run, written on both success and failure).
 - Runner `settings.toml [session]` now records `last_run_init_duration`, `last_run_before_duration`, `last_run_exec_duration` (whole task-loop wall time), `last_run_after_duration`, `last_run_termination_duration` (int seconds, omitted until run, written even when a step fails).
 - Status/description text now uses Textual `Content` with `$var` span styles instead of Rich `Text` with pre-resolved hexes: theme colors resolve at render (theme switching works live), and the hex-translation layer is deleted.
+- Runner idle sleep is now task-driven: it sleeps the minimum remaining time across enabled tasks (rounded up) instead of the runner timeout. The remaining time is re-read from disk every second, so task timeout edits made while the runner is idle take effect within ~1s. With no enabled tasks the runner waits indefinitely until a task shows up, and the `idle` countdown on the Runner Menu and dashboard shows `[∞]` instead of the misleading runner-timeout fallback.
+- Task Menu `stopped` suffix now shows the task's own countdown to its next run instead of the parent runner's idle countdown.
 
 ### Fixed
 

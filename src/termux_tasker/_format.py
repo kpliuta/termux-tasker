@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any, TypeVar
 
+from termux_tasker._parse import TIMESTAMP_FORMAT
+
 T = TypeVar("T")
+
+
+def format_timestamp(moment: datetime) -> str:
+    """Format a moment with the shared UTC file/log timestamp format."""
+    return moment.strftime(TIMESTAMP_FORMAT)
 
 
 def format_compact_duration(total_seconds: int) -> str:

@@ -16,8 +16,7 @@ from termux_tasker.config import (
     TaskSessionInfo,
     TaskSettings,
 )
-from termux_tasker._parse import parse_timeout
-from termux_tasker.runner_process import RunnerProcess
+from termux_tasker.runner_process import RunnerProcess, compute_idle_seconds
 from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base import (
     ButtonConfig,
@@ -32,7 +31,7 @@ from termux_tasker.ui.screens._utils import (
     termux_app,
     copy_to_tmp,
 )
-from termux_tasker.ui.screens._format import format_compact_duration, format_optional
+from termux_tasker._format import format_compact_duration, format_optional
 from termux_tasker.ui.screens.properties import PropertiesScreen
 from termux_tasker.ui.screens.tasks_menu import TasksMenuScreen
 from termux_tasker.ui.screens.widgets.description import (
@@ -130,6 +129,7 @@ def build_state_suffixes(
     elapsed_sec: int | None,
     exec_progress: tuple[int, int] | None,
     idle_remaining: int | None,
+    idle_infinite: bool = False,
 ) -> dict[str, Content]:
     """Per-state suffixes for the runner lifecycle list.
 
@@ -138,7 +138,8 @@ def build_state_suffixes(
     Task-level rows work the same way but read the currently running
     task's durations — when no task is running they carry no suffix at
     all. ``exec`` shows ``[i/n]`` while a task state is active; ``idle``
-    shows the countdown to the next iteration.
+    shows the countdown to the next iteration (minimum remaining time
+    across enabled tasks), or ``[∞]`` when nothing is scheduled.
     """
     suffixes: dict[str, Content] = {}
     for state_id in _RUNNER_LAST_DURATION_ATTRS:
@@ -154,11 +155,10 @@ def build_state_suffixes(
         index, total = exec_progress
         color = RUNNER_STATE_COLORS.get("exec", _FALLBACK_STATE_STYLE)
         suffixes["exec"] = Content.assemble((f"[{index}/{total}]", color))
-    if current_state == "idle" and idle_remaining is not None:
+    if current_state == "idle" and (idle_remaining is not None or idle_infinite):
         color = RUNNER_STATE_COLORS.get("idle", _FALLBACK_STATE_STYLE)
-        suffixes["idle"] = Content.assemble(
-            (f"[{format_compact_duration(idle_remaining)}]", f"bold {color}")
-        )
+        text = "[∞]" if idle_remaining is None else f"[{format_compact_duration(idle_remaining)}]"
+        suffixes["idle"] = Content.assemble((text, f"bold {color}"))
     return suffixes
 
 
@@ -268,6 +268,7 @@ class RunnerMenuScreen(MenuScreen):
         task_last: dict[str, int | None] | None = None
         progress: tuple[int, int] | None = None
         idle_remaining: int | None = None
+        idle_infinite = False
         proc = self._live_proc(self._runner_id())
         if proc is not None:
             elapsed_sec = proc.state_elapsed()
@@ -281,7 +282,10 @@ class RunnerMenuScreen(MenuScreen):
             if proc.exec_total > 0:
                 progress = (proc.exec_index, proc.exec_total)
             if current_state == "idle":
-                idle_remaining = max(0, parse_timeout(settings.general.timeout) - elapsed_sec)
+                idle_remaining = compute_idle_seconds(
+                    self.runner_path / "tasks", proc.session_id
+                )
+                idle_infinite = idle_remaining is None
         return build_state_suffixes(
             current_state=current_state,
             last_durations=_session_durations(
@@ -291,6 +295,7 @@ class RunnerMenuScreen(MenuScreen):
             elapsed_sec=elapsed_sec,
             exec_progress=progress,
             idle_remaining=idle_remaining,
+            idle_infinite=idle_infinite,
         )
 
     def _runner_id(self) -> str:

@@ -11,7 +11,7 @@ from textual.content import Content
 from textual.widgets import Button
 
 from termux_tasker.config import RunnerSettings, TaskMetadata, TaskSettings
-from termux_tasker.runner_process import RunnerProcess
+from termux_tasker.runner_process import RunnerProcess, task_idle_remaining
 from termux_tasker.ui.base.log_screen import LogScreen
 from termux_tasker.ui.base import (
     ButtonConfig,
@@ -21,8 +21,7 @@ from termux_tasker.ui.base import (
     ConfirmationScreen,
     FileBrowserScreen,
 )
-from termux_tasker._parse import parse_timeout
-from termux_tasker.ui.screens._format import format_compact_duration, format_optional
+from termux_tasker._format import format_compact_duration, format_optional
 from termux_tasker.ui.screens._state_colors import TASK_STATE_COLORS
 from termux_tasker.ui.screens._utils import (
     termux_app,
@@ -77,9 +76,10 @@ def build_task_suffixes(
 ) -> dict[str, Content]:
     """Per-state suffixes for the task lifecycle list.
 
-    ``stopped`` shows the parent runner's idle countdown (visible only
-    while the runner is idle). ``running`` shows the summed task-phase
-    durations plus the live elapsed time when the task is executing.
+    ``stopped`` shows this task's own countdown to its next run (visible
+    only while the parent runner is idle). ``running`` shows the summed
+    task-phase durations plus the live elapsed time when the task is
+    executing.
     """
     suffixes: dict[str, Content] = {}
     if current_state == "stopped" and idle_remaining is not None:
@@ -186,9 +186,7 @@ class TaskMenuScreen(MenuScreen):
                 elapsed_sec = proc.state_elapsed()
             runner_settings = RunnerSettings.load(self.runner_path / "settings.toml")
             if runner_settings.session.state == "idle" and settings.general.enabled:
-                idle_remaining = max(
-                    0, parse_timeout(runner_settings.general.timeout) - proc.state_elapsed()
-                )
+                idle_remaining = task_idle_remaining(settings)
         return build_task_suffixes(
             current_state=current_state,
             phase_durations=task_phase_durations(settings),

@@ -386,34 +386,83 @@ class TestDashboardRunnerLines:
         assert "PID" not in result.plain
 
     def test_idle_runner_with_live_proc_shows_countdown(self, tmp_path: Path) -> None:
+        from datetime import datetime, timedelta, timezone
+
         runners_path = tmp_path / "runners"
-        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="idle")
+        _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=True, state="stopped")
+        task_settings = TaskSettings.load(runner_dir / "tasks" / "sh_task" / "settings.toml")
+        task_settings.general.timeout = "1m"
+        task_settings.session.last_run = (
+            datetime.now(timezone.utc) - timedelta(seconds=15)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        task_settings.save(runner_dir / "tasks" / "sh_task" / "settings.toml")
         proc = MagicMock()
-        proc.state_elapsed.return_value = 15
+        proc.session_id = "test-session"
 
         screen = DashboardScreen()
         result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
         assert "[idle][45]" in result.plain
 
     def test_idle_countdown_uses_compact_format(self, tmp_path: Path) -> None:
+        from datetime import datetime, timezone
+
         runners_path = tmp_path / "runners"
-        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="idle")
+        _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=True, state="stopped")
+        task_settings = TaskSettings.load(runner_dir / "tasks" / "sh_task" / "settings.toml")
+        task_settings.general.timeout = "1m"
+        task_settings.session.last_run = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        task_settings.save(runner_dir / "tasks" / "sh_task" / "settings.toml")
         proc = MagicMock()
-        proc.state_elapsed.return_value = 0
+        proc.session_id = "test-session"
 
         screen = DashboardScreen()
         result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
         assert "[idle][01:00]" in result.plain
 
     def test_idle_countdown_clamps_at_zero(self, tmp_path: Path) -> None:
+        from datetime import datetime, timedelta, timezone
+
         runners_path = tmp_path / "runners"
-        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="idle")
+        _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=True, state="stopped")
+        task_settings = TaskSettings.load(runner_dir / "tasks" / "sh_task" / "settings.toml")
+        task_settings.general.timeout = "30s"
+        task_settings.session.last_run = (
+            datetime.now(timezone.utc) - timedelta(seconds=999)
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        task_settings.save(runner_dir / "tasks" / "sh_task" / "settings.toml")
         proc = MagicMock()
-        proc.state_elapsed.return_value = 999
+        proc.session_id = "test-session"
 
         screen = DashboardScreen()
         result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
         assert "[idle][0]" in result.plain
+
+    def test_idle_countdown_uses_minimum_task_timeout(self, tmp_path: Path) -> None:
+        from datetime import datetime, timezone
+
+        runners_path = tmp_path / "runners"
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="idle")
+        now_stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        for task_id, timeout in (("task_a", "1h"), ("task_b", "30s")):
+            meta = SH_TASK_METADATA.replace('"sh_task"', f'"{task_id}"')
+            _write_task(runner_dir / "tasks" / task_id, meta, enabled=True, state="stopped")
+            task_settings = TaskSettings.load(runner_dir / "tasks" / task_id / "settings.toml")
+            task_settings.general.timeout = timeout
+            task_settings.session.last_run = now_stamp
+            task_settings.save(runner_dir / "tasks" / task_id / "settings.toml")
+        proc = MagicMock()
+        proc.session_id = "test-session"
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
+        assert "[idle][30]" in result.plain
 
     def test_idle_runner_without_proc_hides_countdown(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"
@@ -423,6 +472,28 @@ class TestDashboardRunnerLines:
         result = screen._build_runner_lines(runners_path)
         assert "[idle]" in result.plain
         assert "[idle][" not in result.plain
+
+    def test_idle_without_enabled_tasks_shows_infinity(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        runner_dir = runners_path / "sh_runner"
+        _write_runner(runner_dir, SH_RUNNER_METADATA, enabled=True, state="idle")
+        _write_task(runner_dir / "tasks" / "sh_task", SH_TASK_METADATA, enabled=False, state="stopped")
+        proc = MagicMock()
+        proc.session_id = "test-session"
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
+        assert "[idle][∞]" in result.plain
+
+    def test_idle_without_tasks_dir_shows_infinity(self, tmp_path: Path) -> None:
+        runners_path = tmp_path / "runners"
+        _write_runner(runners_path / "sh_runner", SH_RUNNER_METADATA, enabled=True, state="idle")
+        proc = MagicMock()
+        proc.session_id = "test-session"
+
+        screen = DashboardScreen()
+        result = screen._build_runner_lines(runners_path, procs={"sh_runner": proc})
+        assert "[idle][∞]" in result.plain
 
     def test_non_idle_runner_with_proc_hides_countdown(self, tmp_path: Path) -> None:
         runners_path = tmp_path / "runners"

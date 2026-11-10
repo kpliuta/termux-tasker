@@ -1805,6 +1805,20 @@ def then_dashboard_desc_simple_sh_runner_task(pilot) -> None:
 def then_dashboard_desc_running(pilot) -> None:
     _assert_dashboard_description_contains(pilot, "[running]")
 
+@then('the dashboard description contains "[idle][∞]"')
+def then_dashboard_desc_idle_infinite(pilot) -> None:
+    _assert_dashboard_description_contains(pilot, "[idle][∞]")
+
+
+@then('the runner description contains "idle [∞]"')
+def then_runner_desc_idle_infinite(pilot) -> None:
+    _assert_runner_description_contains(pilot, "idle [∞]")
+
+
+@then('the task description contains "stopped [0]"')
+def then_task_desc_stopped_zero(pilot) -> None:
+    _assert_task_description_contains(pilot, "stopped [0]")
+
 
 def _runner_description_text(pilot) -> str:
     screen = ui(pilot).app.screen

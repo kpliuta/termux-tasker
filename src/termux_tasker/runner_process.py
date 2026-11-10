@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from termux_tasker._parse import parse_timeout
+from termux_tasker._format import format_timestamp
+from termux_tasker._parse import (
+    parse_timeout,
+    parse_timestamp,
+)
 from termux_tasker.config import (
     RunnerMetadata,
     RunnerSettings,
@@ -25,7 +30,97 @@ class TaskException(Exception):
 
 
 def _now_timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    return format_timestamp(datetime.now(timezone.utc))
+
+
+def _remaining_from_stamp(timeout_str: str, last_run_dt: datetime, now: datetime) -> int:
+    """Seconds from *now* until a start stamp becomes due again (ceil, min 0).
+
+    Shared tail of the skip/remaining calculations. Ceil-rounding keeps
+    ``_should_skip_task`` consistent with ``task_remaining_sec``: a
+    skipped task always has a remaining time of at least 1s, so the idle
+    sleep fully covers the rate-limit window instead of spin-waiting.
+    """
+    timeout_sec = parse_timeout(timeout_str)
+    elapsed = (now - last_run_dt).total_seconds()
+    return max(0, math.ceil(timeout_sec - elapsed))
+
+
+def task_remaining_sec(
+    task_settings: TaskSettings, session_id: str, now: datetime
+) -> int | None:
+    """Seconds until an enabled task is due again; None when disabled.
+
+    Returns 0 when the task is due right now (never ran, ran in a
+    different session, or its timeout already elapsed). This is the
+    single source of truth for rate limiting — ``_should_skip_task``
+    delegates to it.
+    """
+    if not task_settings.general.enabled:
+        return None
+    if task_settings.session.session_id != session_id:
+        return 0
+    last_run_dt = parse_timestamp(task_settings.session.last_run)
+    if last_run_dt is None:
+        return 0
+    return _remaining_from_stamp(
+        task_settings.general.timeout, last_run_dt, now
+    )
+
+
+def task_idle_remaining(
+    task_settings: TaskSettings, now: datetime | None = None
+) -> int | None:
+    """Countdown for a stopped task's ``[...]`` suffix; None when hidden.
+
+    Shown only for enabled tasks with a parseable start stamp — the
+    seconds until the task may run again (0 when already due). Shares
+    the remaining-time math with ``task_remaining_sec`` via
+    ``_remaining_from_stamp``; a full merge is impossible because the
+    never-ran case must hide (None) here but count as due (0) there.
+    """
+    if not task_settings.general.enabled:
+        return None
+    last_run_dt = parse_timestamp(task_settings.session.last_run)
+    if last_run_dt is None:
+        return None
+    current = now if now is not None else datetime.now(timezone.utc)
+    return _remaining_from_stamp(
+        task_settings.general.timeout, last_run_dt, current
+    )
+
+
+def compute_idle_seconds(
+    tasks_path: Path,
+    session_id: str,
+    now: datetime | None = None,
+) -> int | None:
+    """Idle sleep for the runner: minimum remaining time across enabled tasks.
+
+    Returns None when nothing is scheduled (no enabled tasks, or the
+    tasks directory is missing) — the caller waits indefinitely until a
+    task shows up. Task files are re-read from disk on every call so
+    timeout edits made while the runner sleeps take effect on the next
+    1s tick. Disabled tasks are ignored.
+    """
+    current = now if now is not None else datetime.now(timezone.utc)
+    if not tasks_path.exists():
+        return None
+    remainings: list[int] = []
+    for task_path in sorted(tasks_path.iterdir()):
+        if not task_path.is_dir():
+            continue
+        settings_path = task_path / "settings.toml"
+        if not settings_path.exists():
+            continue
+        TaskSettings.clear_cache(settings_path)
+        task_settings = TaskSettings.load(settings_path)
+        remaining = task_remaining_sec(task_settings, session_id, current)
+        if remaining is not None:
+            remainings.append(remaining)
+    if not remainings:
+        return None
+    return min(remainings)
 
 
 def _to_env_key(name: str) -> str:
@@ -39,7 +134,9 @@ class RunnerProcess:
         initialization -> (before-exec -> [per-task: before-task -> task-exec -> after-task] -> after-exec -> idle)* -> termination -> off
 
     The lifecycle repeats until shutdown() is called.  During idle, the
-    shutting_down flag is checked every second for responsive shutdown.
+    shutting_down flag is checked every second for responsive shutdown,
+    and the remaining sleep is recomputed from the task files on every
+    tick so task timeout edits take effect within ~1s.
     """
 
     def __init__(self, runner_path: Path, session_id: str, tmp_dir: Path) -> None:
@@ -69,7 +166,7 @@ class RunnerProcess:
         return [proc.pid for proc in self._processes if proc.pid is not None]
 
     def _log(self, msg: str) -> None:
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = format_timestamp(datetime.now(timezone.utc))
         line = f"[{timestamp}] {msg}\n"
         self._stdout_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self._stdout_path, "a") as f:
@@ -131,10 +228,10 @@ class RunnerProcess:
                 break
             text = line.decode(errors="replace").strip()
             if text:
-                timestamp = datetime.now(timezone.utc).strftime("[%Y-%m-%d %H:%M:%S]")
+                timestamp = format_timestamp(datetime.now(timezone.utc))
                 self._stdout_path.parent.mkdir(parents=True, exist_ok=True)
                 with open(self._stdout_path, "a") as f:
-                    f.write(f"{timestamp} {text}\n")
+                    f.write(f"[{timestamp}] {text}\n")
 
         return_code = await proc.wait()
         self._processes.remove(proc)
@@ -161,31 +258,16 @@ class RunnerProcess:
     def _should_skip_task(self, task_settings: TaskSettings) -> bool:
         """Determine if a task should be skipped during this run cycle.
 
-        A task is skipped if:
-        1. It is not enabled, OR
-        2. Its session_id matches the current session AND its last_run
-           elapsed time is less than its configured timeout (rate-limiting).
-
+        A task is skipped if it is not enabled, or if its remaining time
+        until the next run (see ``task_remaining_sec``) is positive.
         Tasks from a different session are always re-run (no cross-session
-        rate limiting).
+        rate limiting). A malformed start stamp means "run it"; a
+        malformed timeout falls back to 60s (see ``parse_timeout``).
         """
-        if not task_settings.general.enabled:
-            return True
-
-        if task_settings.session.session_id == self.session_id:
-            if task_settings.session.last_run != "none":
-                try:
-                    last_run_dt = datetime.strptime(
-                        task_settings.session.last_run, "%Y-%m-%d %H:%M:%S"
-                    ).replace(tzinfo=timezone.utc)
-                    now = datetime.now(timezone.utc)
-                    elapsed = (now - last_run_dt).total_seconds()
-                    timeout_sec = parse_timeout(task_settings.general.timeout)
-                    if elapsed < timeout_sec:
-                        return True
-                except ValueError:
-                    pass
-        return False
+        remaining = task_remaining_sec(
+            task_settings, self.session_id, datetime.now(timezone.utc)
+        )
+        return remaining is None or remaining > 0
 
     async def _run_loop(self) -> None:
         """Main execution loop — the runner's lifecycle state machine.
@@ -230,6 +312,9 @@ class RunnerProcess:
                 self.settings.save(self._settings_path)
 
             while not self.shutting_down:
+                # Yield every cycle so back-to-back due-task iterations
+                # can never starve the event loop.
+                await asyncio.sleep(0)
                 # Start of cycle: adopt the session and stamp the start time.
                 # _change_runner_state persists both in the same save.
                 self.settings.session.session_id = self.session_id
@@ -384,14 +469,27 @@ class RunnerProcess:
                     break
 
                 # Idle phase: sleep in 1s increments so shutdown()
-                # does not have to wait for the full timeout to elapse
+                # does not have to wait for the full timeout to elapse.
+                # The sleep length is the minimum remaining time across
+                # enabled tasks (None when nothing is scheduled — then
+                # the runner waits here until a task shows up), recomputed
+                # from disk every tick so task timeout edits shorten or
+                # extend the sleep within ~1s.
                 self._change_runner_state("idle")
-                timeout_sec = parse_timeout(self.settings.general.timeout)
-                self._log(f"Sleep for {self.settings.general.timeout}")
-                for _ in range(timeout_sec):
+                idle_sec = self._compute_idle_seconds()
+                if idle_sec is None:
+                    self._log("Sleep until a task is due")
+                else:
+                    self._log(f"Sleep for {idle_sec}s")
+                while True:
                     if self.shutting_down:
                         break
                     await asyncio.sleep(1)
+                    if self.shutting_down:
+                        break
+                    idle_sec = self._compute_idle_seconds()
+                    if idle_sec is not None and idle_sec <= 0:
+                        break
 
             self._change_runner_state("termination")
             if self.metadata.exec.termination:
@@ -418,6 +516,10 @@ class RunnerProcess:
             self.current_task_path = None
             self._change_runner_state("off")
             self._run_lock = False
+
+    def _compute_idle_seconds(self, now: datetime | None = None) -> int | None:
+        """Current idle sleep: min remaining across enabled tasks, None when unscheduled."""
+        return compute_idle_seconds(self._tasks_path, self.session_id, now)
 
     def _count_runnable_tasks(self) -> int:
         """Count enabled, non-rate-limited tasks for the exec progress suffix."""

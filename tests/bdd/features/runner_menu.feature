@@ -124,3 +124,7 @@ Feature: Runner Menu
     And the Runner Menu screen is shown
     Then the "Update" button is enabled
     And the "Uninstall" button is enabled
+
+  Scenario: Runner menu shows infinite idle with no enabled tasks
+    Given the Runner Menu is shown for an idle runner with no enabled tasks
+    Then the runner description contains "idle [∞]"

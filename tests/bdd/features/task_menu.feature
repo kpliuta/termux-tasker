@@ -131,3 +131,7 @@ Feature: Task Menu
     Given the task state is "stopped"
     And the Task Menu screen is shown for a task
     Then the "Enable"/"Disable" toggle button is enabled
+
+  Scenario: Task menu shows the task's own countdown when stopped
+    Given the Task Menu is shown for a stopped task with an expired timeout
+    Then the task description contains "stopped [0]"
